@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { Package, Menu, X } from 'lucide-react';
 import { NostrConnectButton } from '@/components/nostr-connect-button';
 import { useNostr } from '@/components/nostr-provider';
+import { useUIAnimation } from '@/components/ui-animation-context';
 
 export function Navbar() {
   const { isLoggedIn, isReady } = useNostr();
+  const { showUI } = useUIAnimation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -35,35 +37,37 @@ export function Navbar() {
 
   return (
     <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? 'bg-white/80 backdrop-blur-lg shadow-md' : 'bg-transparent'
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-1000 ${
+        scrolled ? 'bg-black/80 backdrop-blur-lg shadow-lg border-b border-cyan-500/20' : 'bg-black/20 backdrop-blur-sm'
+      } ${
+        showUI ? 'animate-slide-up-fade opacity-100' : 'opacity-0 -translate-y-4'
       }`}
     >
       <div className='container mx-auto px-4 py-4 flex justify-between items-center'>
         <Link href='/' className='flex items-center gap-2'>
-          <div className='bg-gradient-to-r from-[#FF7170] to-[#FFE57F] rounded-full p-2'>
+          <div className='bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full p-2 shadow-cyan-glow'>
             <Package className='h-5 w-5 text-white' />
           </div>
-          <span className='font-bold text-xl text-gray-900'>A to ₿</span>
+          <span className='font-cyber font-bold text-xl text-white drop-shadow-md'>A to ₿</span>
         </Link>
 
         {/* Desktop Navigation */}
         <div className='hidden md:flex items-center gap-6'>
           <Link
             href={isLoggedIn ? '/post-package' : '/login'}
-            className='text-gray-600 hover:text-[#FF7170] transition-colors'
+            className='text-gray-300 hover:text-cyan-400 transition-colors font-medium'
           >
             Post Package
           </Link>
           <Link
             href={isLoggedIn ? '/view-packages' : '/login'}
-            className='text-gray-600 hover:text-[#22D3EE] transition-colors'
+            className='text-gray-300 hover:text-purple-400 transition-colors font-medium'
           >
             View Map
           </Link>
           <Link
             href={isLoggedIn ? '/my-deliveries' : '/login'}
-            className='text-gray-600 hover:text-[#C084FC] transition-colors'
+            className='text-gray-300 hover:text-pink-400 transition-colors font-medium'
           >
             My Deliveries
           </Link>
@@ -72,7 +76,7 @@ export function Navbar() {
 
         {/* Mobile Menu Button */}
         <button
-          className='md:hidden text-gray-800'
+          className='md:hidden text-white'
           onClick={() => setIsMenuOpen(!isMenuOpen)}
         >
           {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -81,25 +85,25 @@ export function Navbar() {
 
       {/* Mobile Navigation */}
       {isMenuOpen && (
-        <div className='md:hidden bg-white border-t border-gray-100 shadow-lg animate-fade-in'>
+        <div className='md:hidden bg-black/90 border-t border-cyan-500/20 shadow-lg animate-fade-in backdrop-blur-lg'>
           <div className='container mx-auto px-4 py-4 flex flex-col gap-4'>
             <Link
               href={isLoggedIn ? '/post-package' : '/login'}
-              className='py-3 px-4 hover:bg-gray-50 rounded-lg transition-colors text-gray-800'
+              className='py-3 px-4 hover:bg-cyan-500/10 rounded-lg transition-colors text-gray-300 hover:text-cyan-400 border border-transparent hover:border-cyan-500/30'
               onClick={() => setIsMenuOpen(false)}
             >
               Post Package
             </Link>
             <Link
               href={isLoggedIn ? '/view-packages' : '/login'}
-              className='py-3 px-4 hover:bg-gray-50 rounded-lg transition-colors text-gray-800'
+              className='py-3 px-4 hover:bg-purple-500/10 rounded-lg transition-colors text-gray-300 hover:text-purple-400 border border-transparent hover:border-purple-500/30'
               onClick={() => setIsMenuOpen(false)}
             >
               View Map
             </Link>
             <Link
               href={isLoggedIn ? '/my-deliveries' : '/login'}
-              className='py-3 px-4 hover:bg-gray-50 rounded-lg transition-colors text-gray-800'
+              className='py-3 px-4 hover:bg-pink-500/10 rounded-lg transition-colors text-gray-300 hover:text-pink-400 border border-transparent hover:border-pink-500/30'
               onClick={() => setIsMenuOpen(false)}
             >
               My Deliveries

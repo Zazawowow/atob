@@ -6,6 +6,7 @@ import { Toaster } from 'sonner';
 import { NostrProvider } from '@/components/nostr-provider';
 import { Footer } from '@/components/ui/footer';
 import { Navbar } from '@/components/navbar';
+import { UIAnimationProvider } from '@/components/ui-animation-context';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -33,12 +34,14 @@ export default function RootLayout({
     <html lang='en'>
       <body className={`${inter.className} min-h-screen flex flex-col`}>
         <NostrProvider>
-          <Navbar />
-          <div className="flex-1 flex flex-col">
-            {children}
-          </div>
-          <Footer />
-          <Toaster />
+          <UIAnimationProvider>
+            <Navbar />
+            <div className="flex-1 flex flex-col">
+              {children}
+            </div>
+            <Footer />
+            <Toaster />
+          </UIAnimationProvider>
         </NostrProvider>
       </body>
     </html>

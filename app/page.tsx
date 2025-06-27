@@ -5,14 +5,108 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Package, Map, CheckCircle, Truck, User } from 'lucide-react';
 import { useNostr } from '@/components/nostr-provider';
+import { useUIAnimation } from '@/components/ui-animation-context';
 
 export default function Home() {
   const { isLoggedIn, isReady } = useNostr();
+  const { showUI, setShowUI } = useUIAnimation();
   const [mounted, setMounted] = useState(false);
+  const [videoEnded, setVideoEnded] = useState(false);
+  const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
+  const [introPhase, setIntroPhase] = useState(0); // 0: none, 1: "Move Packages", 2: "Build Reputation", 3: "Stack Sats", 4: done
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [hasSeenIntro, setHasSeenIntro] = useState(false);
+  
+  // Array of background images to rotate through
+  const backgroundImages = ['/hero.jpeg', 'hero-3.jpeg', '/hero-4.jpeg', '/hero-5.jpeg'];
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    
+    // Check if user has seen the intro before
+    const seenIntro = localStorage.getItem('atob-intro-seen');
+    if (seenIntro === 'true') {
+      setHasSeenIntro(true);
+      setVideoEnded(true);
+      setShowUI(true);
+      setIntroPhase(4);
+    } else {
+      setHasSeenIntro(false);
+      setShowUI(false);
+      setIntroPhase(0);
+    }
+  }, [setShowUI]);
+
+  // Handle intro phase transitions
+  useEffect(() => {
+    if (introPhase === 0 || hasSeenIntro) return;
+    
+    let duration;
+    if (introPhase === 1) {
+      duration = 1000; // "Move Packages" lasts 1.0s (0.5s to 1.5s)
+    } else if (introPhase === 2) {
+      duration = 1000; // "Build Reputation" lasts 1.0s (1.5s to 2.5s)
+    } else if (introPhase === 3) {
+      duration = 1000; // "Stack Sats" lasts 1.0s (2.5s to 3.5s)
+    }
+    
+    const timer = setTimeout(() => {
+      if (introPhase < 4) {
+        setIntroPhase(introPhase + 1);
+      } else {
+        // Intro sequence complete, show main UI and mark as seen
+        setShowUI(true);
+        localStorage.setItem('atob-intro-seen', 'true');
+        setHasSeenIntro(true);
+      }
+    }, duration);
+
+    return () => clearTimeout(timer);
+  }, [introPhase, setShowUI, hasSeenIntro]);
+
+  // Handle background image rotation after video ends
+  useEffect(() => {
+    if (!videoEnded) return;
+
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prevIndex) => 
+        (prevIndex + 1) % backgroundImages.length
+      );
+    }, 4000); // Rotate every 4 seconds
+
+    return () => clearInterval(interval);
+  }, [videoEnded, backgroundImages.length]);
+
+  useEffect(() => {
+    if (videoRef && mounted && !hasSeenIntro) {
+      // Force video to start from beginning and play
+      videoRef.currentTime = 0;
+      videoRef.style.opacity = '1';
+      videoRef.style.display = 'block';
+      setVideoEnded(false);
+      setShowUI(false);
+      
+      // Force play the video
+      const playPromise = videoRef.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          // Start intro sequence after video starts playing (with a shorter delay)
+          setTimeout(() => {
+            setIntroPhase(1);
+          }, 500);
+        }).catch(error => {
+          console.log('Video autoplay failed:', error);
+          // If video fails to play, start intro immediately
+          setIntroPhase(1);
+        });
+      } else {
+        // Fallback if play() doesn't return a promise
+        setTimeout(() => {
+          setIntroPhase(1);
+        }, 500);
+      }
+    }
+  }, [videoRef, mounted, hasSeenIntro]);
 
   // Feature cards data
   const features = [
@@ -22,35 +116,40 @@ export default function Home() {
       description:
         'Create a new delivery request with location and destination',
       link: isLoggedIn ? '/post-package' : '/login',
-      color: 'from-[#FF7170] to-[#FFE57F]',
+      color: 'from-cyan-500 to-cyan-400',
+      hoverColor: 'hover:border-cyan-400/50',
     },
     {
       icon: <Map size={24} />,
       title: 'View Packages',
       description: 'Browse available packages on an interactive map',
       link: isLoggedIn ? '/view-packages' : '/login',
-      color: 'from-[#0EA5E9] to-[#22D3EE]',
+      color: 'from-purple-500 to-purple-400',
+      hoverColor: 'hover:border-purple-400/50',
     },
     {
       icon: <Truck size={24} />,
       title: 'My Deliveries',
       description: "Track packages you've picked up and confirm deliveries",
       link: isLoggedIn ? '/my-deliveries' : '/login',
-      color: 'from-[#8B5CF6] to-[#C084FC]',
+      color: 'from-pink-500 to-pink-400',
+      hoverColor: 'hover:border-pink-400/50',
     },
     {
       icon: <CheckCircle size={24} />,
       title: 'Confirm Delivery',
       description: 'Scan QR code to confirm package delivery',
       link: isLoggedIn ? '/confirm-delivery' : '/login',
-      color: 'from-[#10B981] to-[#34D399]',
+      color: 'from-emerald-500 to-emerald-400',
+      hoverColor: 'hover:border-emerald-400/50',
     },
     {
       icon: <User size={24} />,
       title: 'Profile',
       description: 'View your profile and reputation',
       link: isLoggedIn ? '/profile' : '/login',
-      color: 'from-[#F59E0B] to-[#FBBF24]',
+      color: 'from-amber-500 to-amber-400',
+      hoverColor: 'hover:border-amber-400/50',
     },
   ];
 
@@ -65,133 +164,202 @@ export default function Home() {
   }
 
   return (
-    <main className='min-h-screen bg-white text-gray-800 overflow-hidden'>
-      {/* Hero Section with Background Image */}
-      <section className='relative pt-32 pb-32 overflow-hidden'>
+    <main className='min-h-screen bg-gray-900 text-white overflow-hidden'>
+      {/* Hero Section with Cyberpunk Background */}
+      <section className='relative min-h-screen flex items-center overflow-hidden'>
+        {/* Background Video with Image Transition */}
+        <div className='absolute inset-0 z-0'>
+          {/* Rotating Background Images - initially hidden, fades in when video ends */}
+          {backgroundImages.map((imageSrc, index) => (
+            <Image
+              key={imageSrc}
+              src={imageSrc}
+              alt='Cyberpunk delivery scene'
+              fill
+              className={`object-cover object-center transition-opacity duration-1000 ${
+                videoEnded && currentImageIndex === index ? 'opacity-100' : 'opacity-0'
+              }`}
+              priority={index === 0}
+            />
+          ))}
+          
+          {/* Video - plays once then fades out */}
+          <video
+            ref={(el) => {
+              if (el && !videoRef) {
+                setVideoRef(el);
+              }
+            }}
+            key={mounted ? 'mounted' : 'loading'} // Force re-render when mounted
+            muted
+            playsInline
+            className={`w-full h-full object-cover object-center transition-opacity duration-1000 ${videoEnded ? 'opacity-0' : 'opacity-100'}`}
+            onTimeUpdate={(e) => {
+              const video = e.target as HTMLVideoElement;
+              const duration = video.duration;
+              const currentTime = video.currentTime;
+              
+              // Start fading when video is 90% complete
+              if (duration && currentTime >= duration * 0.9 && !videoEnded) {
+                const fadeProgress = (currentTime - duration * 0.9) / (duration * 0.1);
+                video.style.opacity = String(1 - fadeProgress);
+              }
+            }}
+            onEnded={() => {
+              setVideoEnded(true);
+              if (videoRef) {
+                videoRef.style.opacity = '0';
+              }
+            }}
+          >
+            <source src='/hero-alt.mp4' type='video/mp4' />
+          </video>
+          
+          {/* Dark overlay for readability */}
+          <div className='absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40 z-10'></div>
+          {/* Cyberpunk color overlay */}
+          <div className='absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-purple-500/10 z-10'></div>
+        </div>
+
+        {/* Neon glow effects */}
+        <div className='absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-cyan-400/20 blur-3xl animate-pulse-slow'></div>
+        <div className='absolute bottom-1/3 right-1/4 w-48 h-48 rounded-full bg-purple-500/20 blur-3xl animate-pulse-slow animation-delay-2000'></div>
+        <div className='absolute top-1/2 right-1/3 w-32 h-32 rounded-full bg-pink-500/20 blur-2xl animate-pulse-slow'></div>
+
+        {/* Intro Text Overlay */}
+        {!hasSeenIntro && introPhase > 0 && introPhase < 4 && (
+          <div className='absolute inset-0 z-30 flex items-center justify-center'>
+            <div className='text-center'>
+              {introPhase === 1 && (
+                <h1 className='text-4xl md:text-6xl font-cyber font-bold text-white uppercase animate-center-fade'>
+                  Move Packages
+                </h1>
+              )}
+              {introPhase === 2 && (
+                <h1 className='text-4xl md:text-6xl font-cyber font-bold text-white uppercase animate-center-fade'>
+                  Build Reputation
+                </h1>
+              )}
+              {introPhase === 3 && (
+                <h1 className='text-4xl md:text-6xl font-cyber font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 text-transparent bg-clip-text uppercase animate-center-fade-glow'>
+                  Stack Sats
+                </h1>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className='container mx-auto px-4 relative z-20'>
-          <div className='max-w-2xl'>
+          <div className={`grid grid-cols-1 lg:grid-cols-12 gap-8 lg:items-center transition-all duration-1000 ${showUI ? 'animate-slide-up-fade opacity-100' : 'opacity-0'}`}>
             {/* Left Content */}
-            <div className='flex flex-col items-start text-left'>
-              <div className='inline-flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-full px-4 py-2 mb-6'>
-                <span className='inline-block w-2 h-2 rounded-full bg-[#FF7170]'></span>
-                <span className='text-sm font-medium text-gray-700'>
+            <div className='lg:col-span-7 flex flex-col items-start text-left min-h-screen lg:min-h-0 justify-center lg:justify-start'>
+              <div className='inline-flex items-center gap-2 bg-cyan-500/10 border border-cyan-400/30 rounded-full px-4 py-2 mb-6 backdrop-blur-sm'>
+                <span className='inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse'></span>
+                <span className='text-sm font-medium text-cyan-300'>
                   Decentralized Delivery Platform
                 </span>
               </div>
 
-              <h1 className='text-4xl md:text-6xl font-bold mb-6 leading-tight text-gray-900'>
-                Move Packages,
-                <br />
-                Build Reputation,
-                <span className='block bg-gradient-to-r from-[#FF7170] to-[#FFE57F] text-transparent bg-clip-text'>
+              <h1 className='text-4xl sm:text-7xl md:text-6xl lg:text-5xl font-cyber font-bold mb-6 leading-tight uppercase'>
+                <span className={`block text-white drop-shadow-lg transition-all duration-1500 ${showUI ? 'animate-slide-in-right animation-delay-300 opacity-100' : 'opacity-0'}`}>
+                  Move Packages,
+                </span>
+                <span className={`block text-white drop-shadow-lg transition-all duration-1500 ${showUI ? 'animate-slide-in-right animation-delay-600 opacity-100' : 'opacity-0'}`}>
+                  Build Reputation,
+                </span>
+                <span
+                  className={`block text-black font-extrabold transition-all duration-1500 ${showUI ? 'animate-glow-after-slide animation-delay-900 opacity-100' : 'opacity-0'}`}
+                  style={{
+                    WebkitTextStroke: '0.5px #60a5fa'
+                  }}
+                >
                   Stack Sats.
                 </span>
               </h1>
 
-              <p className='text-lg text-gray-600 mb-8 max-w-lg'>
-                A to ₿ connects people who need packages delivered with those
-                who can deliver them, all powered by Nostr technology.
-              </p>
-
-              <div className='flex flex-wrap gap-4'>
+              {/* Mobile-only login button */}
+              <div className='block lg:hidden mt-8'>
                 <Link href={isLoggedIn ? '/post-package' : '/login'}>
-                  <button className='px-8 py-4 bg-gradient-to-r from-[#FF7170] to-[#FFE57F] rounded-full text-white font-medium hover:shadow-glow-orange transform hover:-translate-y-1 transition-all duration-300 cursor-pointer'>
+                  <button className='px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'>
                     {isLoggedIn ? 'Post a Package' : 'Login with Nostr'}
-                  </button>
-                </Link>
-                <Link href={isLoggedIn ? '/view-packages' : '/login'}>
-                  <button className='px-8 py-4 bg-gray-50 border border-gray-200 rounded-full font-medium text-gray-700 hover:border-gray-300 transform hover:-translate-y-1 transition-all duration-300 cursor-pointer'>
-                    View Map
                   </button>
                 </Link>
               </div>
             </div>
-          </div>
-        </div>
 
-        <div className='absolute top-0 left-[5%] md:left-[2%] lg:left-[5%] w-[250px] md:w-[280px] lg:w-[300px] h-[250px] md:h-[280px] lg:h-[300px] rounded-full bg-[#FF7170] opacity-10 md:opacity-8 lg:opacity-10 blur-[80px] md:blur-[90px] lg:blur-[100px]'></div>
-        <div className='absolute top-[30%] right-0 md:right-[-5%] lg:right-0 w-[300px] md:w-[350px] lg:w-[400px] h-[300px] md:h-[350px] lg:h-[400px] rounded-full bg-[#22D3EE] opacity-10 md:opacity-8 lg:opacity-10 blur-[80px] md:blur-[90px] lg:blur-[100px]'></div>
-        <div className='absolute bottom-[10%] left-0 md:left-[-5%] lg:left-0 w-[250px] md:w-[300px] lg:w-[350px] h-[250px] md:h-[300px] lg:h-[350px] rounded-full bg-[#C084FC] opacity-10 md:opacity-8 lg:opacity-10 blur-[80px] md:blur-[90px] lg:blur-[100px]'></div>
-        <div className='absolute top-[15%] right-[20%] md:right-[15%] lg:right-[20%] w-[250px] md:w-[300px] lg:w-[350px] h-[250px] md:h-[300px] lg:h-[350px] rounded-full bg-[#8B5CF6] opacity-10 md:opacity-8 lg:opacity-10 blur-[80px] md:blur-[90px] lg:blur-[100px]'></div>
-        {/* Additional orb for medium screens to fill potential gaps */}
-        <div className='hidden md:block lg:hidden absolute top-[60%] right-[40%] w-[280px] h-[280px] rounded-full bg-[#FF7170] opacity-8 blur-[90px]'></div>
-        {/* Hero Image - Hidden on mobile, positioned behind content on desktop */}
-        <div className='hidden md:block absolute right-0 top-0 w-[65%] h-full z-10 overflow-hidden'>
-          <div className='absolute inset-0 bg-gradient-to-l from-transparent to-white w-[30%] z-10'></div>
-          <Image
-            src='/logistics-app.png'
-            alt='Logistics app interface showing package tracking and delivery features'
-            width={1200}
-            height={800}
-            className='w-full h-full object-contain object-right animate-float'
-            priority
-          />
+            {/* Right Content */}
+            <div className='lg:col-span-5 flex flex-col'>
+              <div className='bg-black/30 border border-cyan-500/20 rounded-2xl p-6 backdrop-blur-sm'>
+                <p className='text-lg text-gray-300 drop-shadow-md leading-relaxed'>
+                  A to ₿ connects people who need packages delivered with those
+                  who can deliver them, all powered by <span className='text-cyan-400 font-semibold'>Nostr technology</span>.
+                </p>
+                
+                <div className='mt-6 space-y-3'>
+                  <div className='flex items-center gap-3'>
+                    <div className='w-2 h-2 rounded-full bg-cyan-400'></div>
+                    <span className='text-sm text-gray-400'>Decentralized & Trustless</span>
+                  </div>
+                  <div className='flex items-center gap-3'>
+                    <div className='w-2 h-2 rounded-full bg-purple-400'></div>
+                    <span className='text-sm text-gray-400'>Bitcoin Payments</span>
+                  </div>
+                  <div className='flex items-center gap-3'>
+                    <div className='w-2 h-2 rounded-full bg-pink-400'></div>
+                    <span className='text-sm text-gray-400'>Reputation System</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Wave Separator */}
-      <div className='wave-separator'>
-        <svg
-          xmlns='http://www.w3.org/2000/svg'
-          viewBox='0 0 1440 320'
-          preserveAspectRatio='none'
-        >
-          <defs>
-            <linearGradient
-              id='wave-gradient'
-              x1='0%'
-              y1='0%'
-              x2='100%'
-              y2='0%'
-            >
-              <stop offset='0%' stopColor='#FF7170' />
-              <stop offset='100%' stopColor='#FFE57F' />
-            </linearGradient>
-          </defs>
-          <path
-            fill='url(#wave-gradient)'
-            fillOpacity='1'
-            d='M0,96L48,112C96,128,192,160,288,186.7C384,213,480,235,576,224C672,213,768,171,864,149.3C960,128,1056,128,1152,149.3C1248,171,1344,213,1392,234.7L1440,256L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z'
-          ></path>
-        </svg>
-      </div>
-
       {/* Features Section */}
-      <section className='py-20 relative features-section'>
-        <div className='container mx-auto px-4'>
+      <section className='py-20 relative features-section bg-gray-900'>
+        {/* Cyberpunk background effects */}
+        <div className='absolute inset-0 z-0'>
+          <div className='absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-cyan-500/10 blur-3xl animate-pulse-slow'></div>
+          <div className='absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-purple-500/10 blur-3xl animate-pulse-slow animation-delay-2000'></div>
+          <div className='absolute top-3/4 left-1/2 w-64 h-64 rounded-full bg-pink-500/10 blur-3xl animate-pulse-slow'></div>
+        </div>
+
+        <div className='container mx-auto px-4 relative z-10'>
           <div className='text-center mb-16'>
-            <h2 className='text-4xl md:text-5xl font-extrabold mb-4 text-black tracking-tight'>
-              Powerful Features
+            <h2 className='text-4xl md:text-5xl font-cyber font-extrabold mb-4 tracking-tight uppercase'>
+              <span className='bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 text-transparent bg-clip-text'>
+                Powerful Features
+              </span>
             </h2>
-            <p className='text-gray-600 max-w-2xl mx-auto'>
+            <p className='text-gray-300 max-w-2xl mx-auto'>
               Everything you need to send and receive packages in a
-              decentralized way
+              <span className='text-cyan-400 font-semibold'> decentralized way</span>
             </p>
           </div>
 
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'>
             {features.map((feature, index) => (
               <Link href={feature.link} key={index} className='block group'>
-                <div className='h-full bg-white border border-gray-100 rounded-2xl p-6 hover:border-opacity-0 transition-all duration-300 hover:shadow-xl relative overflow-hidden group-hover:transform group-hover:-translate-y-2'>
+                <div className={`h-full bg-black/40 border border-gray-700/50 ${feature.hoverColor} rounded-2xl p-6 transition-all duration-300 hover:shadow-cyan-glow relative overflow-hidden group-hover:transform group-hover:-translate-y-2 backdrop-blur-sm`}>
                   {/* Gradient background that appears on hover */}
-                  <div className='absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-5 transition-opacity duration-300 z-0'></div>
+                  <div className='absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0'></div>
 
                   {/* Icon with gradient background */}
                   <div
-                    className={`w-12 h-12 rounded-xl bg-gradient-to-r ${feature.color} flex items-center justify-center mb-4`}
+                    className={`w-12 h-12 rounded-xl bg-gradient-to-r ${feature.color} flex items-center justify-center mb-4 shadow-cyan-glow`}
                   >
                     <div className='text-white'>{feature.icon}</div>
                   </div>
 
-                  <h3 className='text-xl font-bold mb-2 relative z-10 text-gray-900'>
+                  <h3 className='text-xl font-bold mb-2 relative z-10 text-white uppercase'>
                     {feature.title}
                   </h3>
-                  <p className='text-gray-600 mb-4 relative z-10'>
+                  <p className='text-gray-300 mb-4 relative z-10'>
                     {feature.description}
                   </p>
 
                   <div className='mt-4 relative z-10'>
-                    <span className='inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-[#FF7170] to-[#FFE57F] text-white text-sm font-medium transition-all duration-300 hover:shadow-lg hover:shadow-orange-300/30 hover:-translate-y-1'>
+                    <span className='inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/30 text-cyan-300 text-sm font-medium transition-all duration-300 hover:border-cyan-400 hover:shadow-cyan-glow/50 hover:-translate-y-1 backdrop-blur-sm'>
                       Learn more
                       <svg
                         className='ml-2 h-4 w-4'
@@ -217,68 +385,69 @@ export default function Home() {
       </section>
 
       {/* How It Works Section */}
-      <section className='py-20 relative bg-gray-50'>
+      <section className='py-20 relative bg-gray-800'>
         <div className='absolute inset-0 z-0'>
-          <div className='absolute top-[20%] right-[10%] w-[300px] h-[300px] rounded-full bg-[#8B5CF6] opacity-5 blur-[100px]'></div>
-          <div className='absolute bottom-[10%] left-[10%] w-[250px] h-[250px] rounded-full bg-[#FF7170] opacity-5 blur-[100px]'></div>
+          <div className='absolute top-[20%] right-[10%] w-[300px] h-[300px] rounded-full bg-purple-500/10 blur-[100px]'></div>
+          <div className='absolute bottom-[10%] left-[10%] w-[250px] h-[250px] rounded-full bg-cyan-500/10 blur-[100px]'></div>
+          <div className='absolute top-[60%] left-[30%] w-[200px] h-[200px] rounded-full bg-pink-500/10 blur-[80px]'></div>
         </div>
 
         <div className='container mx-auto px-4 relative z-10'>
           <div className='text-center mb-16'>
-            <h2 className='text-4xl md:text-5xl font-bold mb-4 text-gray-900'>
-              <span className='bg-gradient-to-r from-[#8B5CF6] to-[#C084FC] text-transparent bg-clip-text'>
+            <h2 className='text-4xl md:text-5xl font-cyber font-bold mb-4'>
+              <span className='bg-gradient-to-r from-cyan-400 to-purple-400 text-transparent bg-clip-text'>
                 How It Works
               </span>
             </h2>
-            <p className='text-gray-600 max-w-2xl mx-auto'>
-              Simple steps to get your package delivered
+            <p className='text-gray-300 max-w-2xl mx-auto'>
+              Simple steps to get your package delivered in the <span className='text-purple-400 font-semibold'>cyberpunk way</span>
             </p>
           </div>
 
           <div className='grid grid-cols-1 md:grid-cols-3 gap-8'>
             {/* Step 1 */}
             <div className='relative'>
-              <div className='bg-white border border-gray-100 rounded-2xl p-6 h-full shadow-sm'>
-                <div className='w-12 h-12 rounded-full bg-gradient-to-r from-[#FF7170] to-[#FFE57F] flex items-center justify-center mb-6 text-white font-bold'>
+              <div className='bg-black/40 border border-cyan-500/30 rounded-2xl p-6 h-full backdrop-blur-sm hover:border-cyan-400/50 transition-all duration-300 hover:shadow-cyan-glow'>
+                <div className='w-12 h-12 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 flex items-center justify-center mb-6 text-white font-bold shadow-cyan-glow'>
                   1
                 </div>
-                <h3 className='text-xl font-bold mb-4 text-gray-900'>
+                <h3 className='text-xl font-bold mb-4 text-white'>
                   Post Your Package
                 </h3>
-                <p className='text-gray-600'>
+                <p className='text-gray-300'>
                   Create a delivery request with pickup location, destination,
-                  and payment amount in Bitcoin.
+                  and payment amount in <span className='text-cyan-400 font-semibold'>Bitcoin</span>.
                 </p>
               </div>
             </div>
 
             {/* Step 2 */}
             <div className='relative'>
-              <div className='bg-white border border-gray-100 rounded-2xl p-6 h-full shadow-sm'>
-                <div className='w-12 h-12 rounded-full bg-gradient-to-r from-[#0EA5E9] to-[#22D3EE] flex items-center justify-center mb-6 text-white font-bold'>
+              <div className='bg-black/40 border border-purple-500/30 rounded-2xl p-6 h-full backdrop-blur-sm hover:border-purple-400/50 transition-all duration-300 hover:shadow-purple-glow'>
+                <div className='w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-purple-400 flex items-center justify-center mb-6 text-white font-bold shadow-purple-glow'>
                   2
                 </div>
-                <h3 className='text-xl font-bold mb-4 text-gray-900'>
+                <h3 className='text-xl font-bold mb-4 text-white'>
                   Courier Picks Up
                 </h3>
-                <p className='text-gray-600'>
+                <p className='text-gray-300'>
                   A nearby courier accepts your delivery request and picks up
-                  your package.
+                  your package using the <span className='text-purple-400 font-semibold'>decentralized network</span>.
                 </p>
               </div>
             </div>
 
             {/* Step 3 */}
             <div>
-              <div className='bg-white border border-gray-100 rounded-2xl p-6 h-full shadow-sm'>
-                <div className='w-12 h-12 rounded-full bg-gradient-to-r from-[#8B5CF6] to-[#C084FC] flex items-center justify-center mb-6 text-white font-bold'>
+              <div className='bg-black/40 border border-pink-500/30 rounded-2xl p-6 h-full backdrop-blur-sm hover:border-pink-400/50 transition-all duration-300 hover:shadow-pink-glow'>
+                <div className='w-12 h-12 rounded-full bg-gradient-to-r from-pink-500 to-pink-400 flex items-center justify-center mb-6 text-white font-bold shadow-pink-glow'>
                   3
                 </div>
-                <h3 className='text-xl font-bold mb-4 text-gray-900'>
+                <h3 className='text-xl font-bold mb-4 text-white'>
                   Delivery Confirmation
                 </h3>
-                <p className='text-gray-600'>
-                  Recipient scans QR code to confirm delivery and release
+                <p className='text-gray-300'>
+                  Recipient scans <span className='text-pink-400 font-semibold'>QR code</span> to confirm delivery and release
                   Bitcoin payment.
                 </p>
               </div>
@@ -288,33 +457,36 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className='py-20'>
+      <section className='py-20 bg-gray-900'>
         <div className='container mx-auto px-4'>
-          <div className='bg-gradient-to-r from-[#F8FAFC] to-[#F1F5F9] border border-gray-100 rounded-3xl p-8 md:p-12 relative overflow-hidden shadow-lg'>
+          <div className='bg-gradient-to-r from-black/60 to-gray-900/60 border border-cyan-500/30 rounded-3xl p-8 md:p-12 relative overflow-hidden shadow-cyan-glow backdrop-blur-sm'>
             {/* Background Elements */}
             <div className='absolute inset-0 z-0'>
-              <div className='absolute top-0 right-0 w-[300px] h-[300px] rounded-full bg-[#FF7170] opacity-5 blur-[100px]'></div>
-              <div className='absolute bottom-0 left-0 w-[300px] h-[300px] rounded-full bg-[#22D3EE] opacity-5 blur-[100px]'></div>
+              <div className='absolute top-0 right-0 w-[300px] h-[300px] rounded-full bg-cyan-500/10 blur-[100px]'></div>
+              <div className='absolute bottom-0 left-0 w-[300px] h-[300px] rounded-full bg-purple-500/10 blur-[100px]'></div>
+              <div className='absolute top-1/2 left-1/2 w-[200px] h-[200px] rounded-full bg-pink-500/10 blur-[80px]'></div>
             </div>
 
             <div className='relative z-10 flex flex-col md:flex-row items-center justify-between gap-8'>
               <div>
-                <h2 className='text-3xl md:text-4xl font-bold mb-4 text-gray-900 text-center md:text-left'>
-                  Ready to get started?
+                <h2 className='text-3xl md:text-4xl font-cyber font-bold mb-4 text-center md:text-left'>
+                  <span className='bg-gradient-to-r from-cyan-400 to-purple-400 text-transparent bg-clip-text'>
+                    Ready to get started?
+                  </span>
                 </h2>
-                <p className='text-gray-600 max-w-lg text-center md:text-left'>
-                  Join the decentralized delivery revolution today and
+                <p className='text-gray-300 max-w-lg text-center md:text-left'>
+                  Join the <span className='text-cyan-400 font-semibold'>decentralized delivery revolution</span> today and
                   experience the future of package delivery.
                 </p>
               </div>
               <div className='flex flex-wrap gap-2'>
                 <Link href={isLoggedIn ? '/post-package' : '/login'}>
-                  <button className='px-8 py-4 bg-gradient-to-r from-[#FF7170] to-[#FFE57F] rounded-full text-white font-medium hover:shadow-glow-orange transform hover:-translate-y-1 transition-all duration-300 cursor-pointer'>
+                  <button className='px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'>
                     {isLoggedIn ? 'Post a Package' : 'Login with Nostr'}
                   </button>
                 </Link>
                 <Link href={isLoggedIn ? '/view-packages' : '/login'}>
-                  <button className='px-8 py-4 bg-white border border-gray-200 rounded-full font-medium text-gray-700 hover:border-gray-300 transform hover:-translate-y-1 transition-all duration-300 cursor-pointer'>
+                  <button className='px-8 py-4 bg-black/40 border border-gray-500/50 rounded-full font-medium text-gray-300 hover:border-purple-400/50 hover:text-purple-300 transform hover:-translate-y-1 transition-all duration-300 cursor-pointer backdrop-blur-sm'>
                     View Map
                   </button>
                 </Link>

@@ -4,6 +4,23 @@
 @import 'leaflet/dist/leaflet.css';
 @custom-variant dark (&:is(.dark *));
 
+/* Cyber Alert Font */
+@font-face {
+  font-family: 'Cyber Alert';
+  src: url('/cyber-alert.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Cyber Alert';
+  src: url('/cyber-alert-italic.otf') format('opentype');
+  font-weight: normal;
+  font-style: italic;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -333,6 +350,21 @@
   }
 }
 
+@keyframes pulse-glow {
+  0% {
+    opacity: 0.7;
+    text-shadow: 0 0 10px rgba(6, 182, 212, 0.8), 0 0 20px rgba(6, 182, 212, 0.5), 0 0 40px rgba(6, 182, 212, 0.2);
+  }
+  50% {
+    opacity: 1;
+    text-shadow: 0 0 15px rgba(6, 182, 212, 1), 0 0 30px rgba(6, 182, 212, 0.8), 0 0 60px rgba(6, 182, 212, 0.4);
+  }
+  100% {
+    opacity: 0.7;
+    text-shadow: 0 0 10px rgba(6, 182, 212, 0.8), 0 0 20px rgba(6, 182, 212, 0.5), 0 0 40px rgba(6, 182, 212, 0.2);
+  }
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -344,6 +376,103 @@
   }
 }
 
+@keyframes slide-up-fade {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-60px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(60px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scale-glow {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slide-in-right-once {
+  from {
+    opacity: 0;
+    transform: translateX(60px);
+  }
+  to {
+    opacity: 0.7;
+    transform: translateX(0);
+  }
+}
+
+@keyframes center-fade-in-out {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes center-fade-in-out-glow {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+    text-shadow: 0 0 10px rgba(6, 182, 212, 0.8), 0 0 20px rgba(6, 182, 212, 0.5), 0 0 40px rgba(6, 182, 212, 0.2);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1);
+    text-shadow: 0 0 15px rgba(6, 182, 212, 1), 0 0 30px rgba(6, 182, 212, 0.8), 0 0 60px rgba(6, 182, 212, 0.4);
+  }
+  80% {
+    opacity: 1;
+    transform: scale(1);
+    text-shadow: 0 0 15px rgba(6, 182, 212, 1), 0 0 30px rgba(6, 182, 212, 0.8), 0 0 60px rgba(6, 182, 212, 0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.1);
+    text-shadow: 0 0 20px rgba(6, 182, 212, 1), 0 0 40px rgba(6, 182, 212, 0.8), 0 0 80px rgba(6, 182, 212, 0.6);
+  }
+}
+
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
@@ -352,12 +481,67 @@
   animation: pulse-slow 4s ease-in-out infinite;
 }
 
+.animate-pulse-glow {
+  animation: pulse-glow 4s ease-in-out infinite;
+}
+
 .animation-delay-2000 {
   animation-delay: 2s;
 }
 
 .animate-fade-in {
   animation: fade-in 0.3s ease-out forwards;
+}
+
+.animate-slide-up-fade {
+  animation: slide-up-fade 1.2s ease-out forwards;
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 1s ease-out forwards;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 1.5s ease-out forwards;
+  opacity: 0; /* Start invisible until animation begins */
+}
+
+.animate-scale-glow {
+  animation: scale-glow 1.2s ease-out forwards;
+}
+
+.animate-slide-in-right-once {
+  animation: slide-in-right-once 1.5s ease-out forwards;
+  opacity: 0; /* Start invisible until animation begins */
+}
+
+.animate-glow-after-slide {
+  animation: slide-in-right-once 1.5s ease-out forwards, pulse-glow 4s ease-in-out 1.5s infinite;
+  opacity: 0; /* Start invisible until animation begins */
+}
+
+.animate-center-fade {
+  animation: center-fade-in-out 1.0s ease-in-out forwards;
+}
+
+.animate-center-fade-glow {
+  animation: center-fade-in-out-glow 1.0s ease-in-out forwards;
+}
+
+.animate-center-fade-fast {
+  animation: center-fade-in-out 0.5s ease-in-out forwards;
+}
+
+.animation-delay-300 {
+  animation-delay: 0.3s;
+}
+
+.animation-delay-600 {
+  animation-delay: 0.6s;
+}
+
+.animation-delay-900 {
+  animation-delay: 0.9s;
 }
 
 /* Shadow effects */
@@ -407,4 +591,50 @@
 
 .hover\:text-gray-900:hover {
   color: #111827 !important;
+}
+
+/* Cyberpunk neon glow effects */
+.shadow-cyan-glow {
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.6), 0 0 40px rgba(6, 182, 212, 0.3);
+}
+
+.hover\:shadow-cyan-glow:hover {
+  box-shadow: 0 0 25px rgba(6, 182, 212, 0.8), 0 0 50px rgba(6, 182, 212, 0.4);
+}
+
+.shadow-purple-glow {
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.6), 0 0 40px rgba(168, 85, 247, 0.3);
+}
+
+.shadow-pink-glow {
+  box-shadow: 0 0 20px rgba(236, 72, 153, 0.6), 0 0 40px rgba(236, 72, 153, 0.3);
+}
+
+/* Cyberpunk text glow */
+.text-glow-cyan {
+  text-shadow: 0 0 10px rgba(6, 182, 212, 0.8), 0 0 20px rgba(6, 182, 212, 0.5);
+}
+
+.text-glow-cyan-wide {
+  text-shadow: 0 0 10px rgba(6, 182, 212, 1), 0 0 20px rgba(6, 182, 212, 0.7), 0 0 40px rgba(6, 182, 212, 0.2);
+}
+
+.text-glow-purple {
+  text-shadow: 0 0 10px rgba(168, 85, 247, 0.8), 0 0 20px rgba(168, 85, 247, 0.5);
+}
+
+.text-glow-pink {
+  text-shadow: 0 0 10px rgba(236, 72, 153, 0.8), 0 0 20px rgba(236, 72, 153, 0.5);
+}
+
+/* Cyberpunk font utilities */
+.font-cyber {
+  font-family: 'Cyber Alert', 'Inter', system-ui, -apple-system, sans-serif;
+  letter-spacing: 0.05em; /* 5% character spacing */
+}
+
+.font-cyber-italic {
+  font-family: 'Cyber Alert', 'Inter', system-ui, -apple-system, sans-serif;
+  font-style: italic;
+  letter-spacing: 0.05em; /* 5% character spacing */
 }

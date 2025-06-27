@@ -31,13 +31,13 @@ export function NostrConnectButton() {
     }
   }, [publicKey]);
 
-  // Custom gradient button style
+  // Custom hollow button style with blue outline
   const gradientButtonClass =
-    'bg-gradient-to-r from-[#FF7170] to-[#FFE57F] text-white border-0 hover:shadow-glow-orange transition-all';
+    'bg-transparent text-blue-400 border border-blue-400 hover:border-blue-300 hover:text-blue-300 hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300';
 
   if (!isReady) {
     return (
-      <Button disabled className='flex items-center gap-2'>
+      <Button disabled className='flex items-center gap-2 bg-black/40 border border-gray-500/50 text-gray-400'>
         <span className='animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full'></span>
         Loading...
       </Button>
@@ -55,17 +55,17 @@ export function NostrConnectButton() {
             {npub}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align='end'>
-          <div className='bg-[#f5f2fa]'>
-            <DropdownMenuLabel>Account</DropdownMenuLabel>
-            <DropdownMenuSeparator />
+        <DropdownMenuContent align='end' className='bg-black/90 border border-cyan-500/30 backdrop-blur-lg'>
+          <div>
+            <DropdownMenuLabel className='text-cyan-300'>Account</DropdownMenuLabel>
+            <DropdownMenuSeparator className='bg-cyan-500/20' />
             <Link href='/profile'>
-              <DropdownMenuItem className='cursor-pointer'>
+              <DropdownMenuItem className='cursor-pointer text-gray-300 hover:bg-cyan-500/10 hover:text-cyan-400 focus:bg-cyan-500/10 focus:text-cyan-400'>
                 <User className='mr-2 h-4 w-4' />
                 <span>Profile</span>
               </DropdownMenuItem>
             </Link>
-            <DropdownMenuItem onClick={logout} className='cursor-pointer'>
+            <DropdownMenuItem onClick={logout} className='cursor-pointer text-gray-300 hover:bg-pink-500/10 hover:text-pink-400 focus:bg-pink-500/10 focus:text-pink-400'>
               <LogOut className='mr-2 h-4 w-4' />
               <span>Logout</span>
             </DropdownMenuItem>
