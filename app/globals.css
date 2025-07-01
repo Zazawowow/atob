@@ -21,6 +21,12 @@
   font-display: swap;
 }
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import './styles/variants.css';
+
 @layer base {
   :root {
     --background: 0 0% 100%;

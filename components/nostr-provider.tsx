@@ -69,7 +69,7 @@ export function NostrProvider({ children }: { children: ReactNode }) {
     setIsLoggedIn(false);
     localStorage.removeItem('nostr_pubkey');
     localStorage.removeItem('nostr_privkey');
-    router.replace('/login');
+    router.replace('/');
   };
 
   // Don't access browser APIs during SSR

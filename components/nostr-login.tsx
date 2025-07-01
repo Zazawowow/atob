@@ -14,23 +14,32 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Key, AlertCircle, ExternalLink } from 'lucide-react';
 import { nip19, getPublicKey } from 'nostr-tools';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
+import Image from 'next/image';
 
 interface NostrLoginProps {
   onLogin: (publicKey: string) => void;
+  onSignup: () => void;
   onCancel?: () => void;
 }
 
-export function NostrLogin({ onLogin, onCancel }: NostrLoginProps) {
+export function NostrLogin({ onLogin, onSignup, onCancel }: NostrLoginProps) {
   const [loading, setLoading] = useState(false);
   const [hasExtension, setHasExtension] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [nsecKey, setNsecKey] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
+  const [activeTab, setActiveTab] = useState('extension');
 
   // Check if browser extension is available - only on client side
   useEffect(() => {
-    setHasExtension(
-      typeof window !== 'undefined' && window.nostr !== undefined
-    );
+    const extensionExists =
+      typeof window !== 'undefined' && window.nostr !== undefined;
+    setHasExtension(extensionExists);
+    if (!extensionExists) {
+      setActiveTab('nsec');
+    }
     setMounted(true);
   }, []);
 
@@ -134,126 +143,173 @@ export function NostrLogin({ onLogin, onCancel }: NostrLoginProps) {
   if (!mounted) {
     return (
       <Card className='w-full max-w-md mx-auto'>
-        <CardHeader>
-          <CardTitle className='flex items-center gap-2 '>
-            <Key className='h-5 w-5' />
-            Connect to Nostr
-          </CardTitle>
-          <CardDescription>
-            Use your existing Nostr account to connect to A to ₿
-          </CardDescription>
+        <CardHeader className='flex flex-col items-center justify-center text-center pt-8'>
+          <div className='w-24 h-24 relative mb-4'>
+            <Image
+              src='/logo.png'
+              alt='Logo'
+              layout='fill'
+              objectFit='contain'
+            />
+          </div>
         </CardHeader>
         <CardContent className='space-y-6'>
           <div className='flex justify-center py-4'>
             <div className='animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full'></div>
           </div>
         </CardContent>
-        <CardFooter className='flex flex-col gap-4'>
-          <p className='text-xs text-center text-gray-500'>
-            Already have a Nostr account on apps like Iris, Damus, or Snort? You
-            can use the same account here!
-          </p>
-        </CardFooter>
       </Card>
     );
   }
 
   return (
-    <Card className='w-full max-w-md mx-auto'>
-      <CardHeader>
-        <CardTitle className='flex items-center gap-2'>
-          <Key className='h-5 w-5' />
-          Connect to Nostr
-        </CardTitle>
-        <CardDescription>
-          Use your existing Nostr account to connect to A to ₿
-        </CardDescription>
+    <Card className='w-full max-w-sm mx-auto bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10'>
+      <CardHeader className='flex flex-col items-center justify-center text-center pt-8'>
+        <h1 className='font-cyber text-3xl font-bold mb-2 text-blue-400'>A TO ₿</h1>
       </CardHeader>
-      <CardContent className='space-y-6'>
-        {hasExtension && (
-          <Button
-            onClick={handleExtensionLogin}
-            className='w-full flex items-center justify-center gap-2 bg-gray-50'
-            disabled={loading}
+      <CardContent className='px-6 pb-6'>
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className='w-full'
+        >
+          <TabsList className='grid w-full grid-cols-2'>
+            <TabsTrigger 
+              value='extension' 
+              disabled={!hasExtension}
+            >
+              Browser Extension
+            </TabsTrigger>
+            <TabsTrigger 
+              value='nsec'
+            >
+              Private Key (nsec)
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent 
+            value='extension'
           >
-            {loading ? (
-              <span className='animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full'></span>
-            ) : (
-              <Key className='h-4 w-4' />
-            )}
-            Connect with Extension
-          </Button>
-        )}
+            <div className='space-y-4'>
+              <Button
+                onClick={handleExtensionLogin}
+                className='w-full font-bold text-lg py-6 bg-blue-400 hover:bg-blue-400/90 text-white shadow-[0_0_15px_rgba(96,165,250,0.15)] hover:shadow-[0_0_25px_rgba(96,165,250,0.25)] transition-all duration-300'
+                disabled={loading}
+              >
+                {loading ? (
+                  <span className='animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full'></span>
+                ) : (
+                  <Key className='h-5 w-5 mr-2' />
+                )}
+                Extension Login
+              </Button>
 
-        <div className='relative'>
-          <div className='absolute inset-0 flex items-center'>
-            <span className='w-full border-t border-gray-200' />
-          </div>
-          <div className='relative flex justify-center text-xs uppercase'>
-            <span className='bg-white px-2 text-gray-500'>Or</span>
-          </div>
-        </div>
-
-        <div className='space-y-4'>
-          <Input
-            type='password'
-            placeholder='Enter your nsec key'
-            value={nsecKey}
-            onChange={(e) => setNsecKey(e.target.value)}
-            className='w-full'
-          />
-          <Button
-            onClick={handleNsecLogin}
-            className='w-full flex items-center justify-center gap-2 bg-gray-50'
-            disabled={loading || !nsecKey}
-          >
-            {loading ? (
-              <span className='animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full'></span>
-            ) : (
-              <Key className='h-4 w-4' />
-            )}
-            Login with nsec
-          </Button>
-        </div>
-
-        {!hasExtension && (
-          <div className='bg-amber-50 border border-amber-200 rounded-md p-4 text-amber-800 text-sm'>
-            <div className='flex items-start gap-2'>
-              <AlertCircle className='h-5 w-5 mt-0.5 flex-shrink-0' />
-              <div>
-                <p className='font-medium'>No Nostr extension detected</p>
-                <p className='mt-1'>
-                  For the best experience, we recommend installing a Nostr
-                  extension like Alby or nos2x.
-                </p>
-                <div className='mt-3 flex gap-2'>
-                  <a
-                    href='https://getalby.com'
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    className='text-amber-900 underline flex items-center gap-1 text-xs'
-                  >
-                    Get Alby <ExternalLink className='h-3 w-3' />
-                  </a>
-                  <a
-                    href='https://github.com/fiatjaf/nos2x'
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    className='text-amber-900 underline flex items-center gap-1 text-xs'
-                  >
-                    Get nos2x <ExternalLink className='h-3 w-3' />
-                  </a>
+              {!hasExtension && (
+                <div className='bg-black/30 border border-amber-400/20 rounded-xl p-4 text-amber-400/90 text-sm backdrop-blur-sm'>
+                  <div className='flex items-start gap-2'>
+                    <AlertCircle className='h-5 w-5 mt-0.5 flex-shrink-0' />
+                    <div>
+                      <p className='font-medium'>No Nostr extension detected</p>
+                      <p className='mt-1 text-xs opacity-90'>
+                        We recommend installing a browser extension like Alby or
+                        nos2x for a better experience.
+                      </p>
+                      <div className='mt-3 flex gap-4 justify-center'>
+                        <a
+                          href='https://getalby.com'
+                          target='_blank'
+                          rel='noopener noreferrer'
+                          className='text-amber-400 hover:text-amber-300 flex items-center gap-1 text-xs transition-colors duration-200'
+                        >
+                          Get Alby <ExternalLink className='h-3 w-3' />
+                        </a>
+                        <a
+                          href='https://github.com/fiatjaf/nos2x'
+                          target='_blank'
+                          rel='noopener noreferrer'
+                          className='text-amber-400 hover:text-amber-300 flex items-center gap-1 text-xs transition-colors duration-200'
+                        >
+                          Get nos2x <ExternalLink className='h-3 w-3' />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
-          </div>
-        )}
+          </TabsContent>
+          <TabsContent 
+            value='nsec'
+          >
+            <div className='space-y-4'>
+              <div className="relative">
+                <Input
+                  type='password'
+                  placeholder='Enter your nsec...'
+                  value={nsecKey}
+                  onChange={(e) => setNsecKey(e.target.value)}
+                  className='w-full text-center text-lg py-6 bg-black/20 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 placeholder:text-[#FAFAFA]/60 text-[#FAFAFA] transition-all duration-300 pr-24'
+                />
+                <button
+                  onClick={async () => {
+                    try {
+                      const text = await navigator.clipboard.readText();
+                      setNsecKey(text);
+                      toast.success('Pasted from clipboard');
+                    } catch (err) {
+                      toast.error('Failed to read clipboard');
+                    }
+                  }}
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-sm bg-blue-400/10 hover:bg-blue-400/20 text-[#FAFAFA] rounded-md border border-blue-400/20 transition-all duration-200"
+                >
+                  Paste
+                </button>
+              </div>
+              <Button
+                onClick={handleNsecLogin}
+                className='w-full font-bold text-lg py-6 bg-blue-400 hover:bg-blue-400/90 text-white shadow-[0_0_15px_rgba(96,165,250,0.15)] hover:shadow-[0_0_25px_rgba(96,165,250,0.25)] transition-all duration-300'
+                disabled={loading || !nsecKey}
+              >
+                {loading ? (
+                  <span className='animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full'></span>
+                ) : (
+                  <Key className='h-5 w-5 mr-2' />
+                )}
+                Login with nsec
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
+        <div className='flex items-center space-x-2 mt-6'>
+          <Checkbox
+            id='remember'
+            checked={rememberMe}
+            onCheckedChange={(checked) => setRememberMe(Boolean(checked))}
+            className='border-primary/50 data-[state=checked]:bg-primary bg-[#FAFAFA]'
+          />
+          <label
+            htmlFor='remember'
+            className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-[#FAFAFA]'
+          >
+            Remember me
+          </label>
+        </div>
       </CardContent>
-      <CardFooter className='flex flex-col gap-4'>
-        <p className='text-xs text-center text-gray-500'>
-          Already have a Nostr account on apps like Iris, Damus, or Snort? You
-          can use the same account here!
-        </p>
+      <CardFooter className='flex flex-col gap-4 pb-8'>
+        <div className='text-xs uppercase text-[#FAFAFA] text-center'>
+          Or
+        </div>
+        <div className='flex flex-col items-center gap-2'>
+          <p className='text-sm text-center text-[#FAFAFA]'>
+            Don't have a nostr account?
+          </p>
+          <button
+            onClick={onSignup}
+            className='underline text-blue-400 hover:text-blue-300 transition-colors duration-200'
+          >
+            Sign up
+          </button>
+        </div>
       </CardFooter>
     </Card>
   );

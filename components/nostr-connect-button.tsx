@@ -14,9 +14,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { NostrAuthModal } from './nostr-auth-modal';
 
 export function NostrConnectButton() {
-  const { publicKey, isReady, isLoggedIn, logout } = useNostr();
+  const { publicKey, isReady, isLoggedIn, logout, login } = useNostr();
   const [npub, setNpub] = useState<string>('');
 
   useEffect(() => {
@@ -76,11 +77,14 @@ export function NostrConnectButton() {
   }
 
   return (
-    <Link href='/login'>
-      <Button className={`flex items-center gap-2 ${gradientButtonClass}`}>
-        <Key className='h-4 w-4' />
-        Login with Nostr
-      </Button>
-    </Link>
+    <NostrAuthModal
+      trigger={
+        <Button className={`flex items-center gap-2 ${gradientButtonClass}`}>
+          <Key className='h-4 w-4' />
+          Login with Nostr
+        </Button>
+      }
+      onAuth={login}
+    />
   );
 }

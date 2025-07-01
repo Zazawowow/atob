@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { Package, Map, CheckCircle, Truck, User } from 'lucide-react';
 import { useNostr } from '@/components/nostr-provider';
 import { useUIAnimation } from '@/components/ui-animation-context';
+import { NostrAuthModal } from '@/components/nostr-auth-modal';
 
 export default function Home() {
   const { isLoggedIn, isReady } = useNostr();
@@ -284,11 +285,21 @@ export default function Home() {
 
               {/* Mobile-only login button */}
               <div className='block lg:hidden mt-8'>
-                <Link href={isLoggedIn ? '/post-package' : '/login'} className='block w-full'>
-                  <button className='w-full px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'>
-                    {isLoggedIn ? 'Post a Package' : 'Login with Nostr'}
-                  </button>
-                </Link>
+                {isLoggedIn ? (
+                  <Link href='/post-package' className='block w-full'>
+                    <button className='w-full px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'>
+                      Post a Package
+                    </button>
+                  </Link>
+                ) : (
+                  <NostrAuthModal
+                    trigger={
+                      <button className='w-full px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'>
+                        Login with Nostr
+                      </button>
+                    }
+                  />
+                )}
               </div>
             </div>
 
@@ -518,11 +529,21 @@ export default function Home() {
                 </p>
               </div>
               <div className='w-full md:w-auto'>
-                <Link href={isLoggedIn ? '/post-package' : '/login'} className='block w-full md:w-auto'>
-                  <button className='w-full md:w-auto px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'>
-                    {isLoggedIn ? 'Post a Package' : 'Login with Nostr'}
-                  </button>
-                </Link>
+                {isLoggedIn ? (
+                  <Link href='/post-package' className='block w-full md:w-auto'>
+                    <button className='w-full md:w-auto px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'>
+                      Post a Package
+                    </button>
+                  </Link>
+                ) : (
+                  <NostrAuthModal
+                    trigger={
+                      <button className='w-full md:w-auto px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'>
+                        Login with Nostr
+                      </button>
+                    }
+                  />
+                )}
               </div>
             </div>
           </div>

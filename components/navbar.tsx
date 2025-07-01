@@ -6,9 +6,10 @@ import { Package, Menu, X } from 'lucide-react';
 import { NostrConnectButton } from '@/components/nostr-connect-button';
 import { useNostr } from '@/components/nostr-provider';
 import { useUIAnimation } from '@/components/ui-animation-context';
+import { NostrAuthModal } from './nostr-auth-modal';
 
 export function Navbar() {
-  const { isLoggedIn, isReady } = useNostr();
+  const { isLoggedIn, isReady, login } = useNostr();
   const { showUI } = useUIAnimation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -34,6 +35,31 @@ export function Navbar() {
   if (!mounted || !isReady) {
     return null;
   }
+
+  const ProtectedLink = ({ href, children }: { href: string, children: React.ReactNode }) => {
+    if (isLoggedIn) {
+      return (
+        <Link
+          href={href}
+          className='py-3 px-4 hover:bg-cyan-500/10 rounded-lg transition-colors text-gray-300 hover:text-cyan-400 border border-transparent hover:border-cyan-500/30'
+          onClick={() => setIsMenuOpen(false)}
+        >
+          {children}
+        </Link>
+      );
+    }
+    
+    return (
+      <NostrAuthModal
+        trigger={
+          <button className='w-full text-left py-3 px-4 hover:bg-cyan-500/10 rounded-lg transition-colors text-gray-300 hover:text-cyan-400 border border-transparent hover:border-cyan-500/30'>
+            {children}
+          </button>
+        }
+        onAuth={login}
+      />
+    );
+  };
 
   return (
     <nav
@@ -84,27 +110,15 @@ export function Navbar() {
       {isMenuOpen && (
         <div className='md:hidden bg-black/90 border-t border-cyan-500/20 shadow-lg animate-fade-in backdrop-blur-lg'>
           <div className='container mx-auto px-4 py-4 flex flex-col gap-4'>
-            <Link
-              href={isLoggedIn ? '/post-package' : '/login'}
-              className='py-3 px-4 hover:bg-cyan-500/10 rounded-lg transition-colors text-gray-300 hover:text-cyan-400 border border-transparent hover:border-cyan-500/30'
-              onClick={() => setIsMenuOpen(false)}
-            >
+            <ProtectedLink href='/post-package'>
               Post Package
-            </Link>
-            <Link
-              href={isLoggedIn ? '/view-packages' : '/login'}
-              className='py-3 px-4 hover:bg-purple-500/10 rounded-lg transition-colors text-gray-300 hover:text-purple-400 border border-transparent hover:border-purple-500/30'
-              onClick={() => setIsMenuOpen(false)}
-            >
+            </ProtectedLink>
+            <ProtectedLink href='/view-packages'>
               View Map
-            </Link>
-            <Link
-              href={isLoggedIn ? '/my-deliveries' : '/login'}
-              className='py-3 px-4 hover:bg-pink-500/10 rounded-lg transition-colors text-gray-300 hover:text-pink-400 border border-transparent hover:border-pink-500/30'
-              onClick={() => setIsMenuOpen(false)}
-            >
+            </ProtectedLink>
+            <ProtectedLink href='/my-deliveries'>
               My Deliveries
-            </Link>
+            </ProtectedLink>
             <div className='py-3 px-4'>
               <NostrConnectButton />
             </div>
