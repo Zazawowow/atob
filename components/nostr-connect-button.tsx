@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-export function NostrConnectButton() {
+export function NostrConnectButton({ fullWidth = false }: { fullWidth?: boolean }) {
   const { publicKey, isReady, isLoggedIn, logout } = useNostr();
   const [npub, setNpub] = useState<string>('');
 
@@ -72,6 +72,17 @@ export function NostrConnectButton() {
           </div>
         </DropdownMenuContent>
       </DropdownMenu>
+    );
+  }
+
+  if (fullWidth) {
+    return (
+      <Link href='/login' className='block w-full'>
+        <button className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium transition-all duration-300 ${gradientButtonClass.replace('transform hover:-translate-y-1', '')}`}>
+          <Key className='h-4 w-4' />
+          Login with Nostr
+        </button>
+      </Link>
     );
   }
 

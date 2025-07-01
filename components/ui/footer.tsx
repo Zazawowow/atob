@@ -12,10 +12,7 @@ export function Footer() {
       <div className='container mx-auto px-4 relative z-10'>
         <div className='flex flex-col md:flex-row justify-between items-center'>
           <div className='flex items-center gap-2 mb-6 md:mb-0'>
-            <div className='bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full p-2 shadow-cyan-glow'>
-              <Package className='h-5 w-5 text-white' />
-            </div>
-            <span className='font-cyber font-bold text-xl text-white drop-shadow-md'>A to ₿</span>
+            <span className='font-cyber font-bold text-xl text-white drop-shadow-md'>A TO ₿</span>
           </div>
 
           <div className='flex flex-col items-center md:items-end gap-2'>
@@ -32,7 +29,7 @@ export function Footer() {
               {' '}for atob.
             </p>
             <p className='text-gray-500 text-sm'>
-              &copy; {new Date().getFullYear()} A to ₿. All rights reserved.
+              &copy; {new Date().getFullYear()} A TO ₿. All rights reserved.
             </p>
           </div>
         </div>

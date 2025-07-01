@@ -228,8 +228,8 @@ export default function Home() {
 
         {/* Intro Text Overlay */}
         {!hasSeenIntro && introPhase > 0 && introPhase < 4 && (
-          <div className='absolute inset-0 z-30 flex items-center justify-center'>
-            <div className='text-center'>
+          <div className='absolute inset-0 z-30'>
+            <div className='absolute left-1/2 top-1/2 w-full -translate-x-1/2 -translate-y-1/2 text-center'>
               {introPhase === 1 && (
                 <h1 className='text-4xl md:text-6xl font-cyber font-bold text-white uppercase animate-center-fade'>
                   Move Packages
@@ -241,7 +241,12 @@ export default function Home() {
                 </h1>
               )}
               {introPhase === 3 && (
-                <h1 className='text-4xl md:text-6xl font-cyber font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 text-transparent bg-clip-text uppercase animate-center-fade-glow'>
+                <h1
+                  className='text-4xl md:text-6xl font-cyber font-bold text-black uppercase animate-center-fade-glow'
+                  style={{
+                    WebkitTextStroke: '0.5px #60a5fa',
+                  }}
+                >
                   Stack Sats
                 </h1>
               )}
@@ -278,9 +283,9 @@ export default function Home() {
               </h1>
 
               {/* Mobile-only login button */}
-              <div className='block lg:hidden mt-8'>
-                <Link href={isLoggedIn ? '/post-package' : '/login'}>
-                  <button className='px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'>
+              <div className='block lg:hidden mt-8 w-full self-stretch'>
+                <Link href={isLoggedIn ? '/post-package' : '/login'} className='block w-full'>
+                  <button className='w-full px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'>
                     {isLoggedIn ? 'Post a Package' : 'Login with Nostr'}
                   </button>
                 </Link>
@@ -288,25 +293,25 @@ export default function Home() {
             </div>
 
             {/* Right Content */}
-            <div className='lg:col-span-5 flex flex-col'>
+            <div className='hidden lg:flex lg:col-span-5 flex-col'>
               <div className='bg-black/30 border border-cyan-500/20 rounded-2xl p-6 backdrop-blur-sm'>
                 <p className='text-lg text-gray-300 drop-shadow-md leading-relaxed'>
-                  A to ₿ connects people who need packages delivered with those
+                  <span className='font-cyber font-bold'>A TO ₿</span> connects people who need packages delivered with those
                   who can deliver them, all powered by <span className='text-cyan-400 font-semibold'>Nostr technology</span>.
                 </p>
                 
                 <div className='mt-6 space-y-3'>
                   <div className='flex items-center gap-3'>
                     <div className='w-2 h-2 rounded-full bg-cyan-400'></div>
-                    <span className='text-sm text-gray-400'>Decentralized & Trustless</span>
+                    <span className='text-md text-gray-400'>Decentralized & Trustless</span>
                   </div>
                   <div className='flex items-center gap-3'>
                     <div className='w-2 h-2 rounded-full bg-purple-400'></div>
-                    <span className='text-sm text-gray-400'>Bitcoin Payments</span>
+                    <span className='text-md text-gray-400'>Bitcoin Payments</span>
                   </div>
                   <div className='flex items-center gap-3'>
                     <div className='w-2 h-2 rounded-full bg-pink-400'></div>
-                    <span className='text-sm text-gray-400'>Reputation System</span>
+                    <span className='text-md text-gray-400'>Reputation System</span>
                   </div>
                 </div>
               </div>
@@ -315,71 +320,35 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className='py-20 relative features-section bg-gray-900'>
-        {/* Cyberpunk background effects */}
+      {/* Mobile Info Section */}
+      <section className='lg:hidden py-16 bg-gray-900 relative'>
+        {/* Background effects */}
         <div className='absolute inset-0 z-0'>
-          <div className='absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-cyan-500/10 blur-3xl animate-pulse-slow'></div>
-          <div className='absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-purple-500/10 blur-3xl animate-pulse-slow animation-delay-2000'></div>
-          <div className='absolute top-3/4 left-1/2 w-64 h-64 rounded-full bg-pink-500/10 blur-3xl animate-pulse-slow'></div>
+          <div className='absolute top-1/2 left-1/4 w-48 h-48 rounded-full bg-cyan-500/10 blur-3xl'></div>
+          <div className='absolute bottom-0 right-1/4 w-32 h-32 rounded-full bg-purple-500/10 blur-3xl'></div>
         </div>
-
+        
         <div className='container mx-auto px-4 relative z-10'>
-          <div className='text-center mb-16'>
-            <h2 className='text-4xl md:text-5xl font-cyber font-extrabold mb-4 tracking-tight uppercase'>
-              <span className='bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 text-transparent bg-clip-text'>
-                Powerful Features
-              </span>
-            </h2>
-            <p className='text-gray-300 max-w-2xl mx-auto'>
-              Everything you need to send and receive packages in a
-              <span className='text-cyan-400 font-semibold'> decentralized way</span>
+          <div className='bg-black/30 border border-cyan-500/20 rounded-2xl p-6 backdrop-blur-sm max-w-lg mx-auto'>
+            <p className='text-base text-gray-300 drop-shadow-md leading-relaxed text-center mb-6'>
+              <span className='font-cyber font-bold'>A TO ₿</span> connects people who need packages delivered with those
+              who can deliver them, all powered by <span className='text-cyan-400 font-semibold'>Nostr technology</span>.
             </p>
-          </div>
-
-          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'>
-            {features.map((feature, index) => (
-              <Link href={feature.link} key={index} className='block group'>
-                <div className={`h-full bg-black/40 border border-gray-700/50 ${feature.hoverColor} rounded-2xl p-6 transition-all duration-300 hover:shadow-cyan-glow relative overflow-hidden group-hover:transform group-hover:-translate-y-2 backdrop-blur-sm`}>
-                  {/* Gradient background that appears on hover */}
-                  <div className='absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0'></div>
-
-                  {/* Icon with gradient background */}
-                  <div
-                    className={`w-12 h-12 rounded-xl bg-gradient-to-r ${feature.color} flex items-center justify-center mb-4 shadow-cyan-glow`}
-                  >
-                    <div className='text-white'>{feature.icon}</div>
-                  </div>
-
-                  <h3 className='text-xl font-bold mb-2 relative z-10 text-white uppercase'>
-                    {feature.title}
-                  </h3>
-                  <p className='text-gray-300 mb-4 relative z-10'>
-                    {feature.description}
-                  </p>
-
-                  <div className='mt-4 relative z-10'>
-                    <span className='inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/30 text-cyan-300 text-sm font-medium transition-all duration-300 hover:border-cyan-400 hover:shadow-cyan-glow/50 hover:-translate-y-1 backdrop-blur-sm'>
-                      Learn more
-                      <svg
-                        className='ml-2 h-4 w-4'
-                        viewBox='0 0 24 24'
-                        fill='none'
-                        xmlns='http://www.w3.org/2000/svg'
-                      >
-                        <path
-                          d='M5 12H19M19 12L12 5M19 12L12 19'
-                          stroke='currentColor'
-                          strokeWidth='2'
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                        />
-                      </svg>
-                    </span>
-                  </div>
-                </div>
-              </Link>
-            ))}
+            
+            <div className='space-y-4'>
+              <div className='flex items-center justify-center gap-3'>
+                <div className='w-2 h-2 rounded-full bg-cyan-400'></div>
+                <span className='text-md text-gray-400'>Decentralized & Trustless</span>
+              </div>
+              <div className='flex items-center justify-center gap-3'>
+                <div className='w-2 h-2 rounded-full bg-purple-400'></div>
+                <span className='text-md text-gray-400'>Bitcoin Payments</span>
+              </div>
+              <div className='flex items-center justify-center gap-3'>
+                <div className='w-2 h-2 rounded-full bg-pink-400'></div>
+                <span className='text-md text-gray-400'>Reputation System</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -456,6 +425,75 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Features Section */}
+      <section className='py-20 relative features-section bg-gray-900'>
+        {/* Cyberpunk background effects */}
+        <div className='absolute inset-0 z-0'>
+          <div className='absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-cyan-500/10 blur-3xl animate-pulse-slow'></div>
+          <div className='absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-purple-500/10 blur-3xl animate-pulse-slow animation-delay-2000'></div>
+          <div className='absolute top-3/4 left-1/2 w-64 h-64 rounded-full bg-pink-500/10 blur-3xl animate-pulse-slow'></div>
+        </div>
+
+        <div className='container mx-auto px-4 relative z-10'>
+          <div className='text-center mb-16'>
+            <h2 className='text-4xl md:text-5xl font-cyber font-extrabold mb-4 tracking-tight uppercase'>
+              <span className='bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 text-transparent bg-clip-text'>
+                Powerful Features
+              </span>
+            </h2>
+            <p className='text-gray-300 max-w-2xl mx-auto'>
+              Everything you need to send and receive packages in a
+              <span className='text-cyan-400 font-semibold'> decentralized way</span>
+            </p>
+          </div>
+
+          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'>
+            {features.map((feature, index) => (
+              <Link href={feature.link} key={index} className='block group'>
+                <div className={`h-full bg-black/40 border border-gray-700/50 ${feature.hoverColor} rounded-2xl p-6 transition-all duration-300 hover:shadow-cyan-glow relative overflow-hidden group-hover:transform group-hover:-translate-y-2 backdrop-blur-sm`}>
+                  {/* Gradient background that appears on hover */}
+                  <div className='absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0'></div>
+
+                  {/* Icon with gradient background */}
+                  <div
+                    className={`w-12 h-12 rounded-xl bg-gradient-to-r ${feature.color} flex items-center justify-center mb-4 shadow-cyan-glow`}
+                  >
+                    <div className='text-white'>{feature.icon}</div>
+                  </div>
+
+                  <h3 className='text-xl font-bold mb-2 relative z-10 text-white uppercase'>
+                    {feature.title}
+                  </h3>
+                  <p className='text-gray-300 mb-4 relative z-10'>
+                    {feature.description}
+                  </p>
+
+                  <div className='mt-4 relative z-10'>
+                    <span className='inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/30 text-cyan-300 text-sm font-medium transition-all duration-300 hover:border-cyan-400 hover:shadow-cyan-glow/50 hover:-translate-y-1 backdrop-blur-sm'>
+                      Learn more
+                      <svg
+                        className='ml-2 h-4 w-4'
+                        viewBox='0 0 24 24'
+                        fill='none'
+                        xmlns='http://www.w3.org/2000/svg'
+                      >
+                        <path
+                          d='M5 12H19M19 12L12 5M19 12L12 19'
+                          stroke='currentColor'
+                          strokeWidth='2'
+                          strokeLinecap='round'
+                          strokeLinejoin='round'
+                        />
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className='py-20 bg-gray-900'>
         <div className='container mx-auto px-4'>
@@ -479,15 +517,10 @@ export default function Home() {
                   experience the future of package delivery.
                 </p>
               </div>
-              <div className='flex flex-wrap gap-2'>
-                <Link href={isLoggedIn ? '/post-package' : '/login'}>
-                  <button className='px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'>
+              <div className='w-full md:w-auto'>
+                <Link href={isLoggedIn ? '/post-package' : '/login'} className='block w-full md:w-auto'>
+                  <button className='w-full md:w-auto px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'>
                     {isLoggedIn ? 'Post a Package' : 'Login with Nostr'}
-                  </button>
-                </Link>
-                <Link href={isLoggedIn ? '/view-packages' : '/login'}>
-                  <button className='px-8 py-4 bg-black/40 border border-gray-500/50 rounded-full font-medium text-gray-300 hover:border-purple-400/50 hover:text-purple-300 transform hover:-translate-y-1 transition-all duration-300 cursor-pointer backdrop-blur-sm'>
-                    View Map
                   </button>
                 </Link>
               </div>

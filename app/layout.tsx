@@ -11,9 +11,10 @@ import { UIAnimationProvider } from '@/components/ui-animation-context';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'A to ₿ - Decentralized Package Delivery',
+  title: 'A TO ₿ - Decentralized Package Delivery',
   description: 'A decentralized package delivery platform built on Nostr technology',
   manifest: '/manifest.json',
+  themeColor: '#0A0A0A',
   icons: {
     icon: [{ url: '/favicon.ico', sizes: 'any' }],
     shortcut: '/icon-512.png',
@@ -32,6 +33,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='en'>
+      <head>
+        <meta name="theme-color" content="#0A0A0A" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+      </head>
       <body className={`${inter.className} min-h-screen flex flex-col`}>
         <NostrProvider>
           <UIAnimationProvider>

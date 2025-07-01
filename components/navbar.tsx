@@ -38,17 +38,14 @@ export function Navbar() {
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-1000 ${
-        scrolled ? 'bg-black/80 backdrop-blur-lg shadow-lg border-b border-cyan-500/20' : 'bg-black/20 backdrop-blur-sm'
+        scrolled ? 'bg-black/80 backdrop-blur-lg shadow-lg border-b border-cyan-500/20' : 'bg-transparent'
       } ${
         showUI ? 'animate-slide-up-fade opacity-100' : 'opacity-0 -translate-y-4'
       }`}
     >
       <div className='container mx-auto px-4 py-4 flex justify-between items-center'>
         <Link href='/' className='flex items-center gap-2'>
-          <div className='bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full p-2 shadow-cyan-glow'>
-            <Package className='h-5 w-5 text-white' />
-          </div>
-          <span className='font-cyber font-bold text-xl text-white drop-shadow-md'>A to ₿</span>
+          <span className='font-cyber font-bold text-xl text-white drop-shadow-md'>A TO ₿</span>
         </Link>
 
         {/* Desktop Navigation */}
@@ -108,8 +105,8 @@ export function Navbar() {
             >
               My Deliveries
             </Link>
-            <div className='py-3 px-4'>
-              <NostrConnectButton />
+            <div className='py-3 px-4 w-full'>
+              <NostrConnectButton fullWidth />
             </div>
           </div>
         </div>
