@@ -32,6 +32,7 @@ import { NostrStatus } from '@/components/nostr-status';
 import { DebugPanel } from '@/components/debug-panel';
 import { Badge } from '@/components/ui/badge';
 import { type PackageData } from '@/lib/nostr-types';
+import Image from 'next/image';
 
 // Dynamically import the map component to avoid SSR issues
 const PackageMap = dynamic(() => import('@/components/package-map'), {
@@ -211,238 +212,169 @@ export default function ViewPackages() {
   }
 
   return (
-    <div className='container mx-auto px-4 pt-24 pb-8'>
-      <div className='flex justify-between items-center mb-6'>
-        <Link href='/' className='flex items-center text-sm hover:underline'>
-          <ArrowLeft className='mr-2 h-4 w-4' />
-          Back to Home
-        </Link>
-        <div className='flex items-center gap-4'>
-          <Link href='/settings'>
+    <div className='container mx-auto px-4 pt-24 pb-8 relative z-10'>
+      <div className='fixed inset-0 -z-10'>
+        <Image
+          src='/hero-5.jpeg'
+          alt='Background'
+          fill
+          className='object-cover object-center brightness-[0.3]'
+          priority
+        />
+        <div className='absolute inset-0 bg-black/30' />
+      </div>
+
+      <div className='flex flex-col md:flex-row gap-6'>
+        <div className='w-full md:w-1/2 lg:w-2/5'>
+          <div className='flex items-center justify-between mb-6'>
+            <Link href='/' className='flex items-center text-sm hover:underline text-[#FAFAFA]'>
+              <ArrowLeft className='mr-2 h-4 w-4' />
+              Back to Home
+            </Link>
             <Button
+              onClick={handleRefresh}
               variant='outline'
-              size='sm'
-              className='flex items-center gap-1 cursor-pointer'
+              size='icon'
+              className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-[#FAFAFA]'
+              disabled={refreshing}
             >
-              <Settings className='h-4 w-4' />
-              Relay Settings
+              <RefreshCw
+                className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
+              />
             </Button>
-          </Link>
-          <NostrStatus />
-        </div>
-      </div>
-      <DebugPanel />
+          </div>
 
-      <div className='flex justify-between items-center mb-4'>
-        <h1 className='text-2xl font-bold'>Packages</h1>
-        <div className='flex gap-2'>
-          <Button
-            variant={viewMode === 'all' ? 'outline' : 'default'}
-            size='sm'
-            className='cursor-pointer'
-            onClick={() => setViewMode('all')}
-          >
-            Available Packages
-          </Button>
-          <Button
-            variant={viewMode === 'my-packages' ? 'outline' : 'default'}
-            size='sm'
-            className='cursor-pointer'
-            onClick={() => setViewMode('my-packages')}
-          >
-            My Packages
-          </Button>
-        </div>
-      </div>
-
-      <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
-        <div className='lg:col-span-2'>
-          <Card className='h-full'>
+          <Card className='bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10 mb-6'>
             <CardHeader>
-              <CardTitle>Package Map</CardTitle>
-              <CardDescription>
-                View available packages on the map
+              <CardTitle className='text-[#FAFAFA]'>Available Packages</CardTitle>
+              <CardDescription className='text-[#FAFAFA]/70'>
+                Click on a package to view its details on the map
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <PackageMap
-                packages={filteredPackages}
-                onSelectPackage={setSelectedPackage}
-                selectedPackage={selectedPackage}
-              />
-            </CardContent>
-          </Card>
-        </div>
-
-        <div>
-          <Card className='h-full'>
-            <CardHeader className='flex flex-row items-center justify-between'>
-              <div>
-                <CardTitle className='flex items-center'>
-                  <Package className='mr-2 h-5 w-5' />
-                  <div className='cursor-pointer'>
-                    {viewMode === 'all' ? 'Available Packages' : 'My Packages'}
-                  </div>
-                </CardTitle>
-                <CardDescription>
-                  {loading
-                    ? 'Loading packages...'
-                    : `${filteredPackages.length} packages`}
-                </CardDescription>
+              <div className='flex gap-2 mb-4'>
+                <Button
+                  onClick={() => setViewMode('all')}
+                  variant={viewMode === 'all' ? 'default' : 'outline'}
+                  size='sm'
+                  className={viewMode === 'all' ? 
+                    'bg-blue-400 hover:bg-blue-400/90 text-[#FAFAFA] shadow-[0_0_15px_rgba(96,165,250,0.15)] hover:shadow-[0_0_25px_rgba(96,165,250,0.25)]' : 
+                    'bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-[#FAFAFA]'
+                  }
+                >
+                  All Packages
+                </Button>
+                <Button
+                  onClick={() => setViewMode('my-packages')}
+                  variant={viewMode === 'my-packages' ? 'default' : 'outline'}
+                  size='sm'
+                  className={viewMode === 'my-packages' ? 
+                    'bg-blue-400 hover:bg-blue-400/90 text-[#FAFAFA] shadow-[0_0_15px_rgba(96,165,250,0.15)] hover:shadow-[0_0_25px_rgba(96,165,250,0.25)]' : 
+                    'bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-[#FAFAFA]'
+                  }
+                >
+                  My Packages
+                </Button>
               </div>
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={handleRefresh}
-                disabled={loading || refreshing}
-                className='flex items-center gap-2'
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
-                />
-                {refreshing ? 'Refreshing...' : 'Refresh'}
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className='space-y-2'>
-                  {[1, 2, 3].map((i) => (
-                    <div
-                      key={i}
-                      className='h-24 bg-gray-100 animate-pulse rounded-md'
-                    ></div>
-                  ))}
-                </div>
-              ) : filteredPackages.length === 0 ? (
-                <div className='text-center py-8 text-gray-500'>
-                  <p>No packages available at the moment</p>
-                  <p className='text-sm mt-2'>
-                    {viewMode === 'all'
-                      ? 'Try posting a package or refreshing the list'
-                      : "You haven't posted any packages yet"}
-                  </p>
-                </div>
-              ) : (
-                <div className='space-y-4'>
-                  {filteredPackages.map((pkg) => (
+
+              <div className='space-y-4'>
+                {filteredPackages.length === 0 ? (
+                  <div className='text-center py-8 text-[#FAFAFA]/70'>
+                    No packages available
+                  </div>
+                ) : (
+                  filteredPackages.map((pkg) => (
                     <Card
                       key={pkg.id}
-                      className={`${
-                        selectedPackage?.id === pkg.id ? 'border-primary' : ''
+                      className={`cursor-pointer transition-all duration-300 hover:-translate-y-1 ${
+                        selectedPackage?.id === pkg.id
+                          ? 'bg-blue-400/10 border-blue-400/30'
+                          : 'bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30'
                       }`}
                       onClick={() => setSelectedPackage(pkg)}
                     >
-                      <CardContent className='p-4'>
-                        <div className='flex items-center justify-between mb-2'>
-                          <div className='font-medium'>{pkg.title}</div>
-                          {getEffectiveStatus(pkg) === 'in_transit' && (
-                            <Badge
-                              variant='outline'
-                              className='bg-blue-50 text-blue-700 border-blue-200'
-                            >
-                              <Truck className='h-3 w-3 mr-1' />
-                              In Transit
-                            </Badge>
-                          )}
-                          {getEffectiveStatus(pkg) === 'delivered' && (
-                            <Badge
-                              variant='outline'
-                              className='bg-green-50 text-green-700 border-green-200'
-                            >
-                              <CheckCircle className='h-3 w-3 mr-1' />
-                              Delivered
-                            </Badge>
-                          )}
-                          {getEffectiveStatus(pkg) === 'expired' && (
-                            <Badge
-                              variant='outline'
-                              className='bg-gray-50 text-gray-700 border-gray-200'
-                            >
-                              <Clock className='h-3 w-3 mr-1' />
-                              Expired
-                            </Badge>
-                          )}
+                      <CardHeader className='p-4'>
+                        <div className='flex justify-between items-start'>
+                          <div>
+                            <CardTitle className='text-lg font-semibold mb-1 text-[#FAFAFA]'>
+                              {pkg.title}
+                            </CardTitle>
+                            <CardDescription className='text-sm text-[#FAFAFA]/70'>
+                              {pkg.description || 'No description provided'}
+                            </CardDescription>
+                          </div>
+                          <Badge
+                            variant='outline'
+                            className='bg-blue-400/10 text-blue-400 border-blue-400/30'
+                          >
+                            {pkg.cost} sats
+                          </Badge>
                         </div>
-                        <div className='text-sm text-gray-500 mt-1'>
-                          From: {pkg.pickupLocation}
-                        </div>
-                        <div className='text-sm text-gray-500'>
-                          To: {pkg.destination}
-                        </div>
-                        <div className='flex justify-between items-center mt-2'>
-                          <div className='font-medium'>{pkg.cost} sats</div>
+                      </CardHeader>
+                      <CardContent className='p-4 pt-0'>
+                        <div className='flex justify-between items-center'>
+                          <div className='text-sm text-[#FAFAFA]/70'>
+                            {pkg.pickupLocation} → {pkg.destination}
+                          </div>
                           {isOwnPackage(pkg) ? (
-                            pkg.status === 'available' ? (
-                              <Button
-                                size='sm'
-                                variant='destructive'
-                                className='bg-red-500 text-white cursor-pointer'
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeletePackage(pkg.id);
-                                }}
-                                disabled={deletingId === pkg.id}
-                              >
-                                {deletingId === pkg.id ? (
-                                  <>
-                                    <div className='animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2'></div>
-                                    Deleting...
-                                  </>
-                                ) : (
-                                  <div>Delete</div>
-                                )}
-                              </Button>
-                            ) : (
-                              <div className='text-xs text-gray-500'>
-                                {pkg.status === 'in_transit' &&
-                                  pkg.pickup_time && (
-                                    <span>
-                                      Picked up:{' '}
-                                      {new Date(
-                                        pkg.pickup_time * 1000
-                                      ).toLocaleString()}
-                                    </span>
-                                  )}
-                                {pkg.status === 'delivered' &&
-                                  pkg.delivery_time && (
-                                    <span>
-                                      Delivered:{' '}
-                                      {new Date(
-                                        pkg.delivery_time * 1000
-                                      ).toLocaleString()}
-                                    </span>
-                                  )}
-                              </div>
-                            )
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeletePackage(pkg.id);
+                              }}
+                              variant='outline'
+                              size='sm'
+                              className='bg-black/20 border-red-400/20 hover:bg-red-400/10 hover:border-red-400/30 text-red-400'
+                              disabled={deletingId === pkg.id}
+                            >
+                              {deletingId === pkg.id ? (
+                                <span className='animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full' />
+                              ) : (
+                                'Delete'
+                              )}
+                            </Button>
                           ) : (
-                            pkg.status === 'available' && (
-                              <Button
-                                size='sm'
-                                variant='default'
-                                className='bg-gradient-to-r from-[#FF7170] to-[#FFE57F] text-white'
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePickup(pkg.id);
-                                }}
-                                disabled={pickingUpId === pkg.id}
-                              >
-                                {pickingUpId === pkg.id ? (
-                                  <>
-                                    <div className='animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2'></div>
-                                    Picking Up...
-                                  </>
-                                ) : (
-                                  'Pick Up'
-                                )}
-                              </Button>
-                            )
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePickup(pkg.id);
+                              }}
+                              variant='outline'
+                              size='sm'
+                              className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-[#FAFAFA]'
+                              disabled={pickingUpId === pkg.id}
+                            >
+                              {pickingUpId === pkg.id ? (
+                                <span className='animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full' />
+                              ) : (
+                                'Pick Up'
+                              )}
+                            </Button>
                           )}
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
-                </div>
-              )}
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className='w-full md:w-1/2 lg:w-3/5'>
+          <Card className='bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10'>
+            <CardHeader>
+              <CardTitle className='text-[#FAFAFA]'>Package Map</CardTitle>
+              <CardDescription className='text-[#FAFAFA]/70'>
+                View package locations and delivery routes
+              </CardDescription>
+            </CardHeader>
+            <CardContent className='p-0'>
+              <PackageMap
+                packages={filteredPackages}
+                selectedPackage={selectedPackage}
+                onSelectPackage={setSelectedPackage}
+              />
             </CardContent>
           </Card>
         </div>

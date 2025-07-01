@@ -22,6 +22,7 @@ import Link from 'next/link';
 import { createPackage, getEffectiveStatus } from '@/lib/nostr';
 import { useNostr } from '@/components/nostr-provider';
 import { AddressInput } from '@/components/address-input';
+import Image from 'next/image';
 
 export default function PostPackage() {
   const router = useRouter();
@@ -89,28 +90,39 @@ export default function PostPackage() {
   }
 
   return (
-    <div className='container mx-auto px-4 pt-24 pb-8'>
-      <Link href='/' className='flex items-center text-sm mb-6 hover:underline'>
+    <div className='container mx-auto px-4 pt-24 pb-8 relative z-10'>
+      <div className='fixed inset-0 -z-10'>
+        <Image
+          src='/hero-4.jpeg'
+          alt='Background'
+          fill
+          className='object-cover object-center brightness-[0.3]'
+          priority
+        />
+        <div className='absolute inset-0 bg-black/30' />
+      </div>
+      
+      <Link href='/' className='flex items-center text-sm mb-6 hover:underline text-[#FAFAFA]'>
         <ArrowLeft className='mr-2 h-4 w-4' />
         Back to Home
       </Link>
 
-      <Card className='max-w-2xl mx-auto border border-gray-100 shadow-lg overflow-hidden'>
-        <CardHeader className='bg-gradient-to-r from-[#F8FAFC] to-[#F1F5F9] border-b border-gray-100'>
-          <CardTitle className='flex items-center text-gray-900'>
-            <div className='bg-gradient-to-r from-[#FF7170] to-[#FFE57F] rounded-full p-2 mr-2'>
-              <Package className='h-5 w-5 text-white' />
+      <Card className='max-w-2xl mx-auto bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10'>
+        <CardHeader className='border-b border-primary/20'>
+          <CardTitle className='flex items-center text-[#FAFAFA]'>
+            <div className='bg-blue-400 rounded-full p-2 mr-2'>
+              <Package className='h-5 w-5 text-[#FAFAFA]' />
             </div>
             Post a Package
           </CardTitle>
-          <CardDescription>
+          <CardDescription className='text-[#FAFAFA]/70'>
             Create a new delivery request with all the necessary details
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className='space-y-4 pt-6'>
             <div className='space-y-2'>
-              <Label htmlFor='title'>Package Title</Label>
+              <Label htmlFor='title' className='text-[#FAFAFA]'>Package Title</Label>
               <Input
                 id='title'
                 name='title'
@@ -118,11 +130,12 @@ export default function PostPackage() {
                 value={formData.title}
                 onChange={handleChange}
                 required
+                className='bg-black/20 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 placeholder:text-[#FAFAFA]/60 text-[#FAFAFA]'
               />
             </div>
 
             <div className='space-y-2'>
-              <Label htmlFor='pickupLocation'>Pickup Location</Label>
+              <Label htmlFor='pickupLocation' className='text-[#FAFAFA]'>Pickup Location</Label>
               <AddressInput
                 id='pickupLocation'
                 value={formData.pickupLocation}
@@ -135,7 +148,7 @@ export default function PostPackage() {
             </div>
 
             <div className='space-y-2'>
-              <Label htmlFor='destination'>Destination</Label>
+              <Label htmlFor='destination' className='text-[#FAFAFA]'>Destination</Label>
               <AddressInput
                 id='destination'
                 value={formData.destination}
@@ -146,7 +159,7 @@ export default function PostPackage() {
             </div>
 
             <div className='space-y-2'>
-              <Label htmlFor='cost'>Cost (sats)</Label>
+              <Label htmlFor='cost' className='text-[#FAFAFA]'>Cost (sats)</Label>
               <Input
                 id='cost'
                 name='cost'
@@ -155,11 +168,12 @@ export default function PostPackage() {
                 value={formData.cost}
                 onChange={handleChange}
                 required
+                className='bg-black/20 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 placeholder:text-[#FAFAFA]/60 text-[#FAFAFA]'
               />
             </div>
 
             <div className='space-y-2'>
-              <Label htmlFor='description'>Description (optional)</Label>
+              <Label htmlFor='description' className='text-[#FAFAFA]'>Description (optional)</Label>
               <Textarea
                 id='description'
                 name='description'
@@ -167,24 +181,25 @@ export default function PostPackage() {
                 value={formData.description}
                 onChange={handleChange}
                 rows={3}
+                className='bg-black/20 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 placeholder:text-[#FAFAFA]/60 text-[#FAFAFA]'
               />
             </div>
           </CardContent>
-          <CardFooter className='flex flex-col sm:flex-row gap-4 p-6'>
-            <Button
-              type='button'
-              variant='outline'
-              className='w-full border bg-gray-50 border-gray-200 hover:border-gray-300 transform hover:-translate-y-1 transition-all duration-300 cursor-pointer'
-              onClick={() => router.push('/')}
-            >
-              Cancel
-            </Button>
+          <CardFooter className='flex flex-col gap-4 p-6'>
             <Button
               type='submit'
-              className='w-full bg-gradient-to-r from-[#FF7170] to-[#FFE57F] text-white font-medium hover:shadow-glow-orange transform hover:-translate-y-1 transition-all duration-300 cursor-pointer'
+              className='w-full bg-blue-400 hover:bg-blue-400/90 text-[#FAFAFA] font-medium shadow-[0_0_15px_rgba(96,165,250,0.15)] hover:shadow-[0_0_25px_rgba(96,165,250,0.25)] transform hover:-translate-y-1 transition-all duration-300'
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Posting...' : 'Post Package'}
+            </Button>
+            <Button
+              type='button'
+              variant='outline'
+              className='w-full bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-[#FAFAFA] transform hover:-translate-y-1 transition-all duration-300'
+              onClick={() => router.push('/')}
+            >
+              Cancel
             </Button>
           </CardFooter>
         </form>

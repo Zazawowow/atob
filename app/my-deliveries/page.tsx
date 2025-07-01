@@ -21,6 +21,8 @@ import { useNostr } from '@/components/nostr-provider';
 import { QRCodeSVG } from 'qrcode.react';
 import { debugStorage } from '@/lib/local-package-service';
 import { type PackageData } from '@/lib/nostr-types';
+import { Badge } from '@/components/ui/badge';
+import Image from 'next/image';
 
 export default function MyDeliveries() {
   const { isReady } = useNostr();
@@ -194,228 +196,170 @@ export default function MyDeliveries() {
   }
 
   return (
-    <div className='container mx-auto px-4 pt-24 pb-8'>
-      <Link href='/' className='flex items-center text-sm mb-6 hover:underline'>
-        <ArrowLeft className='mr-2 h-4 w-4' />
-        Back to Home
-      </Link>
+    <div className='container mx-auto px-4 pt-24 pb-8 relative z-10'>
+      <div className='fixed inset-0 -z-10'>
+        <Image
+          src='/hero-3.jpeg'
+          alt='Background'
+          fill
+          className='object-cover object-center brightness-[0.3]'
+          priority
+        />
+        <div className='absolute inset-0 bg-black/30' />
+      </div>
 
-      <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
-        <div className='lg:col-span-2'>
-          <Card className='h-full'>
-            <CardHeader className='flex flex-row items-center justify-between'>
-              <div>
-                <CardTitle className='flex items-center'>
-                  <Truck className='mr-2 h-5 w-5' />
-                  My Active Deliveries
-                </CardTitle>
-                <CardDescription>
-                  {loading
-                    ? 'Loading deliveries...'
-                    : `${deliveries.length} active deliveries`}
-                </CardDescription>
-              </div>
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={handleRefresh}
-                disabled={loading || refreshing}
-                className='flex items-center gap-2'
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
-                />
-                {refreshing ? 'Refreshing...' : 'Refresh'}
-              </Button>
+      <div className='flex flex-col md:flex-row gap-6'>
+        <div className='w-full md:w-1/2 lg:w-2/5'>
+          <div className='flex items-center justify-between mb-6'>
+            <Link href='/' className='flex items-center text-sm hover:underline text-[#FAFAFA]'>
+              <ArrowLeft className='mr-2 h-4 w-4' />
+              Back to Home
+            </Link>
+            <Button
+              onClick={handleRefresh}
+              variant='outline'
+              size='icon'
+              className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-[#FAFAFA]'
+              disabled={refreshing}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
+              />
+            </Button>
+          </div>
+
+          <Card className='bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10 mb-6'>
+            <CardHeader>
+              <CardTitle className='text-[#FAFAFA]'>Active Deliveries</CardTitle>
+              <CardDescription className='text-[#FAFAFA]/70'>
+                Click on a delivery to view its details and QR code
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              {loading ? (
-                <div className='space-y-2'>
-                  {[1, 2].map((i) => (
-                    <div
-                      key={i}
-                      className='h-24 bg-gray-100 animate-pulse rounded-md'
-                    ></div>
-                  ))}
-                </div>
-              ) : loadingError ? (
-                <div className='text-center py-8 text-amber-600'>
-                  <p>{loadingError}</p>
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    onClick={handleRefresh}
-                    className='mt-4'
-                  >
-                    Try Again
-                  </Button>
-                </div>
-              ) : deliveries.length === 0 ? (
-                <div className='text-center py-8 text-gray-500'>
-                  <p>You have no active deliveries</p>
-                  <p className='text-sm mt-2'>
-                    Pick up a package from the View Map page
-                  </p>
-                </div>
-              ) : (
-                <div className='space-y-4'>
-                  {deliveries.map((delivery) => (
+              <div className='space-y-4'>
+                {deliveries.length === 0 ? (
+                  <div className='text-center py-8 text-[#FAFAFA]/70'>
+                    No active deliveries
+                  </div>
+                ) : (
+                  deliveries.map((delivery) => (
                     <Card
                       key={delivery.id}
-                      className={`cursor-pointer ${
+                      className={`cursor-pointer transition-all duration-300 hover:-translate-y-1 ${
                         selectedDelivery?.id === delivery.id
-                          ? 'border-primary'
-                          : ''
+                          ? 'bg-blue-400/10 border-blue-400/30'
+                          : 'bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30'
                       }`}
                       onClick={() => {
                         setSelectedDelivery(delivery);
                         setShowQR(false);
                       }}
                     >
-                      <CardContent className='p-4'>
-                        <div className='font-medium'>{delivery.title}</div>
-                        <div className='text-sm text-gray-500 mt-1'>
-                          From: {delivery.pickupLocation}
-                        </div>
-                        <div className='text-sm text-gray-500'>
-                          To: {delivery.destination}
-                        </div>
-                        <div className='flex justify-between items-center mt-2'>
-                          <div className='font-medium'>
+                      <CardHeader className='p-4'>
+                        <div className='flex justify-between items-start'>
+                          <div>
+                            <CardTitle className='text-lg font-semibold mb-1 text-[#FAFAFA]'>
+                              {delivery.title}
+                            </CardTitle>
+                            <CardDescription className='text-sm text-[#FAFAFA]/70'>
+                              {delivery.description || 'No description provided'}
+                            </CardDescription>
+                          </div>
+                          <Badge
+                            variant='outline'
+                            className='bg-blue-400/10 text-blue-400 border-blue-400/30'
+                          >
                             {delivery.cost} sats
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className='p-4 pt-0'>
+                        <div className='flex justify-between items-center'>
+                          <div className='text-sm text-[#FAFAFA]/70'>
+                            {delivery.pickupLocation} → {delivery.destination}
                           </div>
-                          <div className='flex gap-2'>
-                            <Button
-                              size='sm'
-                              variant='outline'
-                              className='cursor-pointer'
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedDelivery(delivery);
-                                setShowQR(true);
-                              }}
-                            >
-                              Show QR
-                            </Button>
-                            <Button
-                              size='sm'
-                              className='bg-gray-50 border border-gray-200 rounded-full font-medium text-gray-700 hover:border-gray-300 transform hover:-translate-y-1 transition-all duration-300 cursor-pointer'
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleComplete(delivery.id);
-                              }}
-                              disabled={completingId === delivery.id}
-                            >
-                              {completingId === delivery.id ? (
-                                <>
-                                  <div className='animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2'></div>
-                                  Completing...
-                                </>
-                              ) : (
-                                'Complete'
-                              )}
-                            </Button>
-                          </div>
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleComplete(delivery.id);
+                            }}
+                            variant='outline'
+                            size='sm'
+                            className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-[#FAFAFA]'
+                            disabled={completingId === delivery.id}
+                          >
+                            {completingId === delivery.id ? (
+                              <span className='animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full' />
+                            ) : (
+                              'Complete'
+                            )}
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
-                </div>
-              )}
+                  ))
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
 
-        <div>
-          <Card className='h-full'>
+        <div className='w-full md:w-1/2 lg:w-3/5'>
+          <Card className='bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10'>
             <CardHeader>
-              <CardTitle className='flex items-center'>
-                <CheckCircle className='mr-2 h-5 w-5' />
-                Delivery Details
-              </CardTitle>
-              <CardDescription>
+              <CardTitle className='text-[#FAFAFA]'>Delivery Details</CardTitle>
+              <CardDescription className='text-[#FAFAFA]/70'>
                 {selectedDelivery
-                  ? 'Show QR code to recipient'
-                  : 'Select a delivery to see details'}
+                  ? 'Show QR code to recipient to confirm delivery'
+                  : 'Select a delivery to view details'}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {!selectedDelivery ? (
-                <div className='text-center py-8 text-gray-500'>
-                  Select a delivery from the list
-                </div>
-              ) : showQR ? (
-                <div className='text-center py-4'>
-                  <div className='mb-4'>
-                    <p className='text-sm text-gray-500 mb-2'>
-                      Show this QR code to the recipient to confirm delivery
-                    </p>
-                    <div className='bg-white p-4 inline-block rounded-md'>
-                      <QRCodeSVG
-                        value={generateQRValue(selectedDelivery.id)}
-                        size={200}
-                      />
-                    </div>
-                  </div>
-                  <Button
-                    variant='outline'
-                    onClick={() => setShowQR(false)}
-                    className='mt-2'
-                  >
-                    Hide QR Code
-                  </Button>
-                </div>
-              ) : (
-                <div className='space-y-4'>
-                  <div>
-                    <h3 className='font-medium'>Package Details</h3>
-                    <p className='text-sm mt-1'>{selectedDelivery.title}</p>
-                    {selectedDelivery.description && (
-                      <p className='text-sm text-gray-500 mt-1'>
-                        {selectedDelivery.description}
-                      </p>
+              {selectedDelivery ? (
+                <div className='space-y-6'>
+                  <div className='flex justify-center'>
+                    {showQR ? (
+                      <div className='bg-white p-4 rounded-lg'>
+                        <QRCodeSVG
+                          value={generateQRValue(selectedDelivery.id)}
+                          size={200}
+                          level='H'
+                          includeMargin={true}
+                        />
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={() => setShowQR(true)}
+                        className='w-full bg-blue-400 hover:bg-blue-400/90 text-[#FAFAFA] font-medium shadow-[0_0_15px_rgba(96,165,250,0.15)] hover:shadow-[0_0_25px_rgba(96,165,250,0.25)] transform hover:-translate-y-1 transition-all duration-300'
+                      >
+                        Show QR Code
+                      </Button>
                     )}
                   </div>
-
-                  <div>
-                    <h3 className='font-medium'>Pickup Location</h3>
-                    <p className='text-sm mt-1'>
-                      {selectedDelivery.pickupLocation}
-                    </p>
+                  <div className='space-y-4'>
+                    <div>
+                      <h3 className='text-sm font-medium text-[#FAFAFA]'>Pickup Location</h3>
+                      <p className='text-[#FAFAFA]/70'>{selectedDelivery.pickupLocation}</p>
+                    </div>
+                    <div>
+                      <h3 className='text-sm font-medium text-[#FAFAFA]'>Destination</h3>
+                      <p className='text-[#FAFAFA]/70'>{selectedDelivery.destination}</p>
+                    </div>
+                    <div>
+                      <h3 className='text-sm font-medium text-[#FAFAFA]'>Cost</h3>
+                      <p className='text-[#FAFAFA]/70'>{selectedDelivery.cost} sats</p>
+                    </div>
+                    {selectedDelivery.description && (
+                      <div>
+                        <h3 className='text-sm font-medium text-[#FAFAFA]'>Description</h3>
+                        <p className='text-[#FAFAFA]/70'>{selectedDelivery.description}</p>
+                      </div>
+                    )}
                   </div>
-
-                  <div>
-                    <h3 className='font-medium'>Destination</h3>
-                    <p className='text-sm mt-1'>
-                      {selectedDelivery.destination}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h3 className='font-medium'>Payment</h3>
-                    <p className='text-sm mt-1'>{selectedDelivery.cost} sats</p>
-                  </div>
-
-                  <div className='pt-4 flex gap-2'>
-                    <Button onClick={() => setShowQR(true)} className='flex-1'>
-                      Show QR Code
-                    </Button>
-                    <Button
-                      onClick={() => handleComplete(selectedDelivery.id)}
-                      variant='outline'
-                      className='flex-1'
-                      disabled={completingId === selectedDelivery.id}
-                    >
-                      {completingId === selectedDelivery.id ? (
-                        <>
-                          <div className='animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2'></div>
-                          Completing...
-                        </>
-                      ) : (
-                        'Mark Delivered'
-                      )}
-                    </Button>
-                  </div>
+                </div>
+              ) : (
+                <div className='text-center py-8 text-[#FAFAFA]/70'>
+                  Select a delivery to view details
                 </div>
               )}
             </CardContent>

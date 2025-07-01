@@ -189,7 +189,28 @@ export function NostrLogin({ onLogin, onSignup, onCancel }: NostrLoginProps) {
           <TabsContent 
             value='extension'
           >
-            <div className='space-y-4'>
+            <div className='space-y-4 h-[116px]'>
+              <p className='text-sm text-[#FAFAFA]/90 text-center'>
+                Login using your Nostr browser extension (
+                <a 
+                  href='https://chromewebstore.google.com/detail/alby-bitcoin-wallet-for-l/iokeahhehimjnekafflcihljlcjccdbe'
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='text-blue-400 hover:text-blue-300 transition-colors duration-200'
+                >
+                  Alby
+                </a>
+                , {' '}
+                <a 
+                  href='https://chrome.google.com/webstore/detail/nos2x/kpgefcfmnafjgpblomihpgmejjdanjjp'
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='text-blue-400 hover:text-blue-300 transition-colors duration-200'
+                >
+                  nos2x
+                </a>
+                ).
+              </p>
               <Button
                 onClick={handleExtensionLogin}
                 className='w-full font-bold text-lg py-6 bg-blue-400 hover:bg-blue-400/90 text-white shadow-[0_0_15px_rgba(96,165,250,0.15)] hover:shadow-[0_0_25px_rgba(96,165,250,0.25)] transition-all duration-300'
@@ -202,45 +223,12 @@ export function NostrLogin({ onLogin, onSignup, onCancel }: NostrLoginProps) {
                 )}
                 Extension Login
               </Button>
-
-              {!hasExtension && (
-                <div className='bg-black/30 border border-amber-400/20 rounded-xl p-4 text-amber-400/90 text-sm backdrop-blur-sm'>
-                  <div className='flex items-start gap-2'>
-                    <AlertCircle className='h-5 w-5 mt-0.5 flex-shrink-0' />
-                    <div>
-                      <p className='font-medium'>No Nostr extension detected</p>
-                      <p className='mt-1 text-xs opacity-90'>
-                        We recommend installing a browser extension like Alby or
-                        nos2x for a better experience.
-                      </p>
-                      <div className='mt-3 flex gap-4 justify-center'>
-                        <a
-                          href='https://getalby.com'
-                          target='_blank'
-                          rel='noopener noreferrer'
-                          className='text-amber-400 hover:text-amber-300 flex items-center gap-1 text-xs transition-colors duration-200'
-                        >
-                          Get Alby <ExternalLink className='h-3 w-3' />
-                        </a>
-                        <a
-                          href='https://github.com/fiatjaf/nos2x'
-                          target='_blank'
-                          rel='noopener noreferrer'
-                          className='text-amber-400 hover:text-amber-300 flex items-center gap-1 text-xs transition-colors duration-200'
-                        >
-                          Get nos2x <ExternalLink className='h-3 w-3' />
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </TabsContent>
           <TabsContent 
             value='nsec'
           >
-            <div className='space-y-4'>
+            <div className='space-y-4 h-[116px]'>
               <div className="relative">
                 <Input
                   type='password'
@@ -296,9 +284,6 @@ export function NostrLogin({ onLogin, onSignup, onCancel }: NostrLoginProps) {
         </div>
       </CardContent>
       <CardFooter className='flex flex-col gap-4 pb-8'>
-        <div className='text-xs uppercase text-[#FAFAFA] text-center'>
-          Or
-        </div>
         <div className='flex flex-col items-center gap-2'>
           <p className='text-sm text-center text-[#FAFAFA]'>
             Don't have a nostr account?

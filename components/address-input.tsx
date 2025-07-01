@@ -218,13 +218,13 @@ export function AddressInput({
         <div className='relative flex-1'>
           <Input
             ref={inputRef}
-            id={id}
+            type='text'
             value={value}
             onChange={handleInputChange}
             placeholder={placeholder}
-            onFocus={() => value && debouncedFetchSuggestions(value)}
+            id={id}
             required={required}
-            className={isLoadingSuggestions ? 'pr-10' : ''}
+            className='bg-black/20 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 placeholder:text-[#FAFAFA]/60 text-[#FAFAFA] pr-10'
           />
           {isLoadingSuggestions && (
             <div className='absolute right-3 top-1/2 transform -translate-y-1/2'>
