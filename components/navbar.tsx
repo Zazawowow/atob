@@ -36,12 +36,42 @@ export function Navbar() {
     return null;
   }
 
-  const ProtectedLink = ({ href, children }: { href: string, children: React.ReactNode }) => {
+  const ProtectedDesktopLink = ({ href, children, hoverColor }: { href: string, children: React.ReactNode, hoverColor: string }) => {
     if (isLoggedIn) {
       return (
         <Link
           href={href}
-          className='py-3 px-4 hover:bg-cyan-500/10 rounded-lg transition-colors text-gray-300 hover:text-cyan-400 border border-transparent hover:border-cyan-500/30'
+          className={`text-gray-300 ${hoverColor} transition-colors font-medium`}
+        >
+          {children}
+        </Link>
+      );
+    }
+    
+    return (
+      <NostrAuthModal
+        trigger={
+          <button className={`text-gray-300 ${hoverColor} transition-colors font-medium`}>
+            {children}
+          </button>
+        }
+        onAuth={login}
+      />
+    );
+  };
+
+  const ProtectedMobileLink = ({ href, children, hoverBg, hoverText, hoverBorder }: { 
+    href: string, 
+    children: React.ReactNode, 
+    hoverBg: string, 
+    hoverText: string, 
+    hoverBorder: string 
+  }) => {
+    if (isLoggedIn) {
+      return (
+        <Link
+          href={href}
+          className={`py-3 px-4 ${hoverBg} rounded-lg transition-colors text-gray-300 ${hoverText} border border-transparent ${hoverBorder}`}
           onClick={() => setIsMenuOpen(false)}
         >
           {children}
@@ -52,7 +82,7 @@ export function Navbar() {
     return (
       <NostrAuthModal
         trigger={
-          <button className='w-full text-left py-3 px-4 hover:bg-cyan-500/10 rounded-lg transition-colors text-gray-300 hover:text-cyan-400 border border-transparent hover:border-cyan-500/30'>
+          <button className={`w-full text-left py-3 px-4 ${hoverBg} rounded-lg transition-colors text-gray-300 ${hoverText} border border-transparent ${hoverBorder}`}>
             {children}
           </button>
         }
@@ -76,24 +106,15 @@ export function Navbar() {
 
         {/* Desktop Navigation */}
         <div className='hidden md:flex items-center gap-6'>
-          <Link
-            href={isLoggedIn ? '/post-package' : '/login'}
-            className='text-gray-300 hover:text-cyan-400 transition-colors font-medium'
-          >
+          <ProtectedDesktopLink href='/post-package' hoverColor='hover:text-cyan-400'>
             Post Package
-          </Link>
-          <Link
-            href={isLoggedIn ? '/view-packages' : '/login'}
-            className='text-gray-300 hover:text-purple-400 transition-colors font-medium'
-          >
+          </ProtectedDesktopLink>
+          <ProtectedDesktopLink href='/view-packages' hoverColor='hover:text-purple-400'>
             View Map
-          </Link>
-          <Link
-            href={isLoggedIn ? '/my-deliveries' : '/login'}
-            className='text-gray-300 hover:text-pink-400 transition-colors font-medium'
-          >
+          </ProtectedDesktopLink>
+          <ProtectedDesktopLink href='/my-deliveries' hoverColor='hover:text-pink-400'>
             My Deliveries
-          </Link>
+          </ProtectedDesktopLink>
           <NostrConnectButton />
         </div>
 
@@ -110,15 +131,30 @@ export function Navbar() {
       {isMenuOpen && (
         <div className='md:hidden bg-black/90 border-t border-cyan-500/20 shadow-lg animate-fade-in backdrop-blur-lg'>
           <div className='container mx-auto px-4 py-4 flex flex-col gap-4'>
-            <ProtectedLink href='/post-package'>
+            <ProtectedMobileLink 
+              href='/post-package' 
+              hoverBg='hover:bg-cyan-500/10' 
+              hoverText='hover:text-cyan-400' 
+              hoverBorder='hover:border-cyan-500/30'
+            >
               Post Package
-            </ProtectedLink>
-            <ProtectedLink href='/view-packages'>
+            </ProtectedMobileLink>
+            <ProtectedMobileLink 
+              href='/view-packages' 
+              hoverBg='hover:bg-purple-500/10' 
+              hoverText='hover:text-purple-400' 
+              hoverBorder='hover:border-purple-500/30'
+            >
               View Map
-            </ProtectedLink>
-            <ProtectedLink href='/my-deliveries'>
+            </ProtectedMobileLink>
+            <ProtectedMobileLink 
+              href='/my-deliveries' 
+              hoverBg='hover:bg-pink-500/10' 
+              hoverText='hover:text-pink-400' 
+              hoverBorder='hover:border-pink-500/30'
+            >
               My Deliveries
-            </ProtectedLink>
+            </ProtectedMobileLink>
             <div className='py-3 px-4'>
               <NostrConnectButton />
             </div>

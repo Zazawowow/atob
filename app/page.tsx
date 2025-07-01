@@ -17,6 +17,8 @@ export default function Home() {
   const [introPhase, setIntroPhase] = useState(0); // 0: none, 1: "Move Packages", 2: "Build Reputation", 3: "Stack Sats", 4: done
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [hasSeenIntro, setHasSeenIntro] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [pendingRedirect, setPendingRedirect] = useState<string>('');
   
   // Array of background images to rotate through
   const backgroundImages = ['/hero.jpeg', 'hero-3.jpeg', '/hero-4.jpeg', '/hero-5.jpeg'];
@@ -116,7 +118,7 @@ export default function Home() {
       title: 'Post a Package',
       description:
         'Create a new delivery request with location and destination',
-      link: isLoggedIn ? '/post-package' : '/login',
+      link: '/post-package',
       color: 'from-cyan-500 to-cyan-400',
       hoverColor: 'hover:border-cyan-400/50',
     },
@@ -124,7 +126,7 @@ export default function Home() {
       icon: <Map size={24} />,
       title: 'View Packages',
       description: 'Browse available packages on an interactive map',
-      link: isLoggedIn ? '/view-packages' : '/login',
+      link: '/view-packages',
       color: 'from-purple-500 to-purple-400',
       hoverColor: 'hover:border-purple-400/50',
     },
@@ -132,7 +134,7 @@ export default function Home() {
       icon: <Truck size={24} />,
       title: 'My Deliveries',
       description: "Track packages you've picked up and confirm deliveries",
-      link: isLoggedIn ? '/my-deliveries' : '/login',
+      link: '/my-deliveries',
       color: 'from-pink-500 to-pink-400',
       hoverColor: 'hover:border-pink-400/50',
     },
@@ -140,7 +142,7 @@ export default function Home() {
       icon: <CheckCircle size={24} />,
       title: 'Confirm Delivery',
       description: 'Scan QR code to confirm package delivery',
-      link: isLoggedIn ? '/confirm-delivery' : '/login',
+      link: '/confirm-delivery',
       color: 'from-emerald-500 to-emerald-400',
       hoverColor: 'hover:border-emerald-400/50',
     },
@@ -148,11 +150,25 @@ export default function Home() {
       icon: <User size={24} />,
       title: 'Profile',
       description: 'View your profile and reputation',
-      link: isLoggedIn ? '/profile' : '/login',
+      link: '/profile',
       color: 'from-amber-500 to-amber-400',
       hoverColor: 'hover:border-amber-400/50',
     },
   ];
+
+  const handleFeatureClick = (e: React.MouseEvent, link: string) => {
+    e.preventDefault();
+    if (!isLoggedIn) {
+      setPendingRedirect(link);
+      // The modal will be shown by clicking its trigger button
+      const loginButton = document.getElementById('nostr-login-trigger');
+      if (loginButton) {
+        loginButton.click();
+      }
+    } else {
+      window.location.href = link;
+    }
+  };
 
   // If not ready yet, show loading
   if (!mounted || !isReady) {
@@ -166,6 +182,16 @@ export default function Home() {
 
   return (
     <main className='min-h-screen bg-gray-900 text-white overflow-hidden'>
+      {/* NostrAuthModal */}
+      <NostrAuthModal 
+        trigger={<button id="nostr-login-trigger" className="hidden" />}
+        onAuth={() => {
+          if (pendingRedirect) {
+            window.location.href = pendingRedirect;
+          }
+        }}
+      />
+
       {/* Hero Section with Cyberpunk Background */}
       <section className='relative min-h-screen flex items-center overflow-hidden'>
         {/* Background Video with Image Transition */}
@@ -286,11 +312,12 @@ export default function Home() {
               {/* Mobile-only login button */}
               <div className='block lg:hidden mt-8'>
                 {isLoggedIn ? (
-                  <Link href='/post-package' className='block w-full'>
-                    <button className='w-full px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'>
-                      Post a Package
-                    </button>
-                  </Link>
+                  <button 
+                    onClick={(e) => handleFeatureClick(e, '/post-package')}
+                    className='w-full px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'
+                  >
+                    Post a Package
+                  </button>
                 ) : (
                   <NostrAuthModal
                     trigger={
@@ -459,47 +486,52 @@ export default function Home() {
           </div>
 
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'>
-            {features.map((feature, index) => (
-              <Link href={feature.link} key={index} className='block group'>
-                <div className={`h-full bg-black/40 border border-gray-700/50 ${feature.hoverColor} rounded-2xl p-6 transition-all duration-300 hover:shadow-cyan-glow relative overflow-hidden group-hover:transform group-hover:-translate-y-2 backdrop-blur-sm`}>
-                  {/* Gradient background that appears on hover */}
-                  <div className='absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0'></div>
+            {features.map((feature) => (
+              <div
+                key={feature.title}
+                onClick={(e) => handleFeatureClick(e, feature.link)}
+                className={`relative group cursor-pointer bg-black/30 backdrop-blur-sm border-2 border-white/10 rounded-xl p-6 transition-all duration-300 transform hover:-translate-y-1 ${feature.hoverColor}`}
+              >
+                {/* Gradient background that appears on hover */}
+                <div className='absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0'></div>
 
-                  {/* Icon with gradient background */}
-                  <div
-                    className={`w-12 h-12 rounded-xl bg-gradient-to-r ${feature.color} flex items-center justify-center mb-4 shadow-cyan-glow`}
-                  >
-                    <div className='text-white'>{feature.icon}</div>
-                  </div>
-
-                  <h3 className='text-xl font-bold mb-2 relative z-10 text-white uppercase'>
-                    {feature.title}
-                  </h3>
-                  <p className='text-gray-300 mb-4 relative z-10'>
-                    {feature.description}
-                  </p>
-
-                  <div className='mt-4 relative z-10'>
-                    <span className='inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/30 text-cyan-300 text-sm font-medium transition-all duration-300 hover:border-cyan-400 hover:shadow-cyan-glow/50 hover:-translate-y-1 backdrop-blur-sm'>
-                      Learn more
-                      <svg
-                        className='ml-2 h-4 w-4'
-                        viewBox='0 0 24 24'
-                        fill='none'
-                        xmlns='http://www.w3.org/2000/svg'
-                      >
-                        <path
-                          d='M5 12H19M19 12L12 5M19 12L12 19'
-                          stroke='currentColor'
-                          strokeWidth='2'
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                        />
-                      </svg>
-                    </span>
-                  </div>
+                {/* Icon with gradient background */}
+                <div
+                  className={`w-12 h-12 rounded-xl bg-gradient-to-r ${feature.color} flex items-center justify-center mb-4 shadow-cyan-glow`}
+                >
+                  <div className='text-white'>{feature.icon}</div>
                 </div>
-              </Link>
+
+                <h3 className='text-xl font-bold mb-2 relative z-10 text-white uppercase'>
+                  {feature.title}
+                </h3>
+                <p className='text-gray-300 mb-4 relative z-10'>
+                  {feature.description}
+                </p>
+
+                <div className='mt-4 relative z-10'>
+                  <button
+                    onClick={(e) => handleFeatureClick(e, feature.link)}
+                    className='inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/30 text-cyan-300 text-sm font-medium transition-all duration-300 hover:border-cyan-400 hover:shadow-cyan-glow/50 hover:-translate-y-1 backdrop-blur-sm'
+                  >
+                    Learn more
+                    <svg
+                      className='ml-2 h-4 w-4'
+                      viewBox='0 0 24 24'
+                      fill='none'
+                      xmlns='http://www.w3.org/2000/svg'
+                    >
+                      <path
+                        d='M5 12H19M19 12L12 5M19 12L12 19'
+                        stroke='currentColor'
+                        strokeWidth='2'
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -530,11 +562,12 @@ export default function Home() {
               </div>
               <div className='w-full md:w-auto'>
                 {isLoggedIn ? (
-                  <Link href='/post-package' className='block w-full md:w-auto'>
-                    <button className='w-full md:w-auto px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'>
-                      Post a Package
-                    </button>
-                  </Link>
+                  <button 
+                    onClick={(e) => handleFeatureClick(e, '/post-package')}
+                    className='w-full md:w-auto px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'
+                  >
+                    Post a Package
+                  </button>
                 ) : (
                   <NostrAuthModal
                     trigger={
