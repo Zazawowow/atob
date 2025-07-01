@@ -105,8 +105,8 @@ export function Navbar() {
             >
               My Deliveries
             </Link>
-            <div className='py-3 px-4 w-full'>
-              <NostrConnectButton fullWidth />
+            <div className='py-3 px-4'>
+              <NostrConnectButton />
             </div>
           </div>
         </div>

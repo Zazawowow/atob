@@ -283,7 +283,7 @@ export default function Home() {
               </h1>
 
               {/* Mobile-only login button */}
-              <div className='block lg:hidden mt-8 w-full self-stretch'>
+              <div className='block lg:hidden mt-8'>
                 <Link href={isLoggedIn ? '/post-package' : '/login'} className='block w-full'>
                   <button className='w-full px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'>
                     {isLoggedIn ? 'Post a Package' : 'Login with Nostr'}
