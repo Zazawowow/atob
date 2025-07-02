@@ -15,13 +15,14 @@ export const metadata: Metadata = {
   description: 'A decentralized package delivery platform built on Nostr technology',
   manifest: '/manifest.json',
   icons: {
-    icon: [{ url: '/favicon.ico', sizes: 'any' }],
-    shortcut: '/icon-512.png',
-    apple: '/icon-512.png',
-    other: {
-      rel: 'apple-touch-icon-precomposed',
-      url: '/icon-512.png',
-    },
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/app-icon.png', sizes: '192x192', type: 'image/png' },
+      { url: '/app-icon.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/app-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
   },
 };
 

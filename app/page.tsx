@@ -28,6 +28,7 @@ export default function Home() {
     
     // Check if user has seen the intro before
     const seenIntro = localStorage.getItem('atob-intro-seen');
+    console.log('Has user seen intro?', seenIntro);
     if (seenIntro === 'true') {
       setHasSeenIntro(true);
       setVideoEnded(true);
@@ -98,18 +99,14 @@ export default function Home() {
             setIntroPhase(1);
           }, 500);
         }).catch(error => {
-          console.log('Video autoplay failed:', error);
-          // If video fails to play, start intro immediately
+          console.error('Video autoplay was prevented:', error);
+          // If video fails to play, skip it and start the intro sequence.
+          setVideoEnded(true); 
           setIntroPhase(1);
         });
-      } else {
-        // Fallback if play() doesn't return a promise
-        setTimeout(() => {
-          setIntroPhase(1);
-        }, 500);
       }
     }
-  }, [videoRef, mounted, hasSeenIntro]);
+  }, [videoRef, mounted, hasSeenIntro, setShowUI]);
 
 
 
