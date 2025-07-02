@@ -153,7 +153,7 @@ export default function Profile() {
                         />
                       ) : (
                         <div className='w-24 h-24 bg-gradient-to-r from-[#FF7170] to-[#FFE57F] rounded-full flex items-center justify-center shadow-md'>
-                          <User className='h-12 w-12 text-white' />
+                          <User className='h-12 w-12 text-off-white' />
                         </div>
                       )}
                     </div>
@@ -194,7 +194,7 @@ export default function Profile() {
                       <div className='flex items-center justify-center'>
                         <div className='bg-gradient-to-r from-[#FF7170] to-[#FFE57F] p-3 rounded-full'>
                           <Star
-                            className='h-6 w-6 text-white'
+                            className='h-6 w-6 text-off-white'
                             fill='currentColor'
                           />
                         </div>

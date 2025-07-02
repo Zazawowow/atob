@@ -101,7 +101,7 @@ export function Navbar() {
     >
       <div className='container mx-auto px-4 py-4 flex justify-between items-center'>
         <Link href='/' className='flex items-center gap-2'>
-          <span className='font-cyber font-bold text-xl text-white drop-shadow-md'>A TO ₿</span>
+          <span className='font-cyber font-bold text-xl text-off-white drop-shadow-md'>A TO ₿</span>
         </Link>
 
         {/* Desktop Navigation */}
@@ -120,7 +120,7 @@ export function Navbar() {
 
         {/* Mobile Menu Button */}
         <button
-          className='md:hidden text-white'
+          className='md:hidden text-off-white'
           onClick={() => setIsMenuOpen(!isMenuOpen)}
         >
           {isMenuOpen ? <X size={24} /> : <Menu size={24} />}

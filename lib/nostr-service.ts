@@ -423,3 +423,40 @@ export function hexToNpub(hex: string): string {
     return '';
   }
 }
+
+// Fetch user profile metadata
+export async function getUserProfile(pubkey: string): Promise<{
+  name?: string;
+  display_name?: string;
+  picture?: string;
+  about?: string;
+} | null> {
+  try {
+    const relays = await getWorkingRelays();
+    const filter: Filter = {
+      kinds: [EVENT_KINDS.METADATA],
+      authors: [pubkey],
+      limit: 1
+    };
+
+    const events = await fetchEventsWithTimeout(relays, filter, 5000);
+    
+    if (events.length === 0) {
+      return null;
+    }
+
+    // Get the most recent metadata event
+    const latestEvent = events.sort((a: NostrEvent, b: NostrEvent) => b.created_at - a.created_at)[0];
+    
+    try {
+      const metadata = JSON.parse(latestEvent.content);
+      return metadata;
+    } catch (error) {
+      console.error('Failed to parse metadata content:', error);
+      return null;
+    }
+  } catch (error) {
+    console.error('Failed to fetch user profile:', error);
+    return null;
+  }
+}

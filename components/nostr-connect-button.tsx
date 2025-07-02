@@ -6,6 +6,7 @@ import { getNpub } from '@/lib/nostr-keys';
 import { useNostr } from '@/components/nostr-provider';
 import { Key, LogOut, User } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,10 +16,17 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { NostrAuthModal } from './nostr-auth-modal';
+import { getUserProfile } from '@/lib/nostr-service';
 
 export function NostrConnectButton() {
   const { publicKey, isReady, isLoggedIn, logout, login } = useNostr();
   const [npub, setNpub] = useState<string>('');
+  const [profile, setProfile] = useState<{
+    name?: string;
+    display_name?: string;
+    picture?: string;
+  } | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState<boolean>(false);
 
   useEffect(() => {
     if (publicKey) {
@@ -32,9 +40,27 @@ export function NostrConnectButton() {
     }
   }, [publicKey]);
 
-  // Custom hollow button style with blue outline
-  const gradientButtonClass =
-    'bg-transparent text-blue-400 border border-blue-400 hover:border-blue-300 hover:text-blue-300 hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300';
+  // Fetch user profile when publicKey changes
+  useEffect(() => {
+    if (publicKey && isLoggedIn) {
+      setLoadingProfile(true);
+      getUserProfile(publicKey)
+        .then((profileData) => {
+          setProfile(profileData);
+        })
+        .catch((error) => {
+          console.error('Failed to fetch profile:', error);
+        })
+        .finally(() => {
+          setLoadingProfile(false);
+        });
+    } else {
+      setProfile(null);
+    }
+  }, [publicKey, isLoggedIn]);
+
+  // Custom hollow button style with purple outline
+  const gradientButtonClass = 'btn-outline-purple';
 
   if (!isReady) {
     return (
@@ -46,14 +72,35 @@ export function NostrConnectButton() {
   }
 
   if (isLoggedIn) {
+    const displayName = profile?.display_name || profile?.name || npub;
+    
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             className={`flex items-center gap-2 cursor-pointer ${gradientButtonClass}`}
           >
-            <User className='h-4 w-4' />
-            {npub}
+            {profile?.picture ? (
+              <div className='w-4 h-4 rounded-full overflow-hidden bg-gray-300 flex-shrink-0'>
+                <Image
+                  src={profile.picture}
+                  alt='Profile'
+                  width={16}
+                  height={16}
+                  className='w-full h-full object-cover'
+                  onError={(e) => {
+                    // Fallback to user icon if image fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    target.nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+                <User className='h-4 w-4 hidden' />
+              </div>
+            ) : (
+              <User className='h-4 w-4' />
+            )}
+            {loadingProfile ? 'Loading...' : displayName}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align='end' className='bg-black/90 border border-cyan-500/30 backdrop-blur-lg'>

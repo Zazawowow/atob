@@ -12,7 +12,7 @@ export function Footer() {
       <div className='container mx-auto px-4 relative z-10'>
         <div className='flex flex-col md:flex-row justify-between items-center'>
           <div className='flex items-center gap-2 mb-6 md:mb-0'>
-            <span className='font-cyber font-bold text-xl text-white drop-shadow-md'>A TO ₿</span>
+            <span className='font-cyber font-bold text-xl text-off-white drop-shadow-md'>A TO ₿</span>
           </div>
 
           <div className='flex flex-col items-center md:items-end gap-2'>

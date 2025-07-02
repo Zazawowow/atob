@@ -181,7 +181,7 @@ export default function Home() {
   }
 
   return (
-    <main className='min-h-screen bg-gray-900 text-white overflow-hidden'>
+    <main className='min-h-screen bg-gray-900 text-off-white overflow-hidden'>
       {/* NostrAuthModal */}
       <NostrAuthModal 
         trigger={<button id="nostr-login-trigger" className="hidden" />}
@@ -258,12 +258,12 @@ export default function Home() {
           <div className='absolute inset-0 z-30'>
             <div className='absolute left-1/2 top-1/2 w-full -translate-x-1/2 -translate-y-1/2 text-center'>
               {introPhase === 1 && (
-                <h1 className='text-4xl md:text-6xl font-cyber font-bold text-white uppercase animate-center-fade'>
+                <h1 className='text-4xl md:text-6xl font-cyber font-bold text-off-white uppercase animate-center-fade'>
                   Move Packages
                 </h1>
               )}
               {introPhase === 2 && (
-                <h1 className='text-4xl md:text-6xl font-cyber font-bold text-white uppercase animate-center-fade'>
+                <h1 className='text-4xl md:text-6xl font-cyber font-bold text-off-white uppercase animate-center-fade'>
                   Build Reputation
                 </h1>
               )}
@@ -293,10 +293,10 @@ export default function Home() {
               </div>
 
               <h1 className='text-4xl sm:text-7xl md:text-6xl lg:text-5xl font-cyber font-bold mb-6 leading-tight uppercase'>
-                <span className={`block text-white drop-shadow-lg transition-all duration-1500 ${showUI ? 'animate-slide-in-right animation-delay-300 opacity-100' : 'opacity-0'}`}>
+                <span className={`block text-off-white drop-shadow-lg transition-all duration-1500 ${showUI ? 'animate-slide-in-right animation-delay-300 opacity-100' : 'opacity-0'}`}>
                   Move Packages,
                 </span>
-                <span className={`block text-white drop-shadow-lg transition-all duration-1500 ${showUI ? 'animate-slide-in-right animation-delay-600 opacity-100' : 'opacity-0'}`}>
+                <span className={`block text-off-white drop-shadow-lg transition-all duration-1500 ${showUI ? 'animate-slide-in-right animation-delay-600 opacity-100' : 'opacity-0'}`}>
                   Build Reputation,
                 </span>
                 <span
@@ -415,10 +415,10 @@ export default function Home() {
             {/* Step 1 */}
             <div className='relative'>
               <div className='bg-black/40 border border-cyan-500/30 rounded-2xl p-6 h-full backdrop-blur-sm hover:border-cyan-400/50 transition-all duration-300 hover:shadow-cyan-glow'>
-                <div className='w-12 h-12 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 flex items-center justify-center mb-6 text-white font-bold shadow-cyan-glow'>
+                <div className='w-12 h-12 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 flex items-center justify-center mb-6 text-off-white font-bold shadow-cyan-glow'>
                   1
                 </div>
-                <h3 className='text-xl font-bold mb-4 text-white'>
+                <h3 className='text-xl font-bold mb-4 text-off-white'>
                   Post Your Package
                 </h3>
                 <p className='text-gray-300'>
@@ -431,10 +431,10 @@ export default function Home() {
             {/* Step 2 */}
             <div className='relative'>
               <div className='bg-black/40 border border-purple-500/30 rounded-2xl p-6 h-full backdrop-blur-sm hover:border-purple-400/50 transition-all duration-300 hover:shadow-purple-glow'>
-                <div className='w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-purple-400 flex items-center justify-center mb-6 text-white font-bold shadow-purple-glow'>
+                <div className='w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-purple-400 flex items-center justify-center mb-6 text-off-white font-bold shadow-purple-glow'>
                   2
                 </div>
-                <h3 className='text-xl font-bold mb-4 text-white'>
+                <h3 className='text-xl font-bold mb-4 text-off-white'>
                   Courier Picks Up
                 </h3>
                 <p className='text-gray-300'>
@@ -447,10 +447,10 @@ export default function Home() {
             {/* Step 3 */}
             <div>
               <div className='bg-black/40 border border-pink-500/30 rounded-2xl p-6 h-full backdrop-blur-sm hover:border-pink-400/50 transition-all duration-300 hover:shadow-pink-glow'>
-                <div className='w-12 h-12 rounded-full bg-gradient-to-r from-pink-500 to-pink-400 flex items-center justify-center mb-6 text-white font-bold shadow-pink-glow'>
+                <div className='w-12 h-12 rounded-full bg-gradient-to-r from-pink-500 to-pink-400 flex items-center justify-center mb-6 text-off-white font-bold shadow-pink-glow'>
                   3
                 </div>
-                <h3 className='text-xl font-bold mb-4 text-white'>
+                <h3 className='text-xl font-bold mb-4 text-off-white'>
                   Delivery Confirmation
                 </h3>
                 <p className='text-gray-300'>
@@ -499,10 +499,10 @@ export default function Home() {
                 <div
                   className={`w-12 h-12 rounded-xl bg-gradient-to-r ${feature.color} flex items-center justify-center mb-4 shadow-cyan-glow`}
                 >
-                  <div className='text-white'>{feature.icon}</div>
+                  <div className='text-off-white'>{feature.icon}</div>
                 </div>
 
-                <h3 className='text-xl font-bold mb-2 relative z-10 text-white uppercase'>
+                <h3 className='text-xl font-bold mb-2 relative z-10 text-off-white uppercase'>
                   {feature.title}
                 </h3>
                 <p className='text-gray-300 mb-4 relative z-10'>

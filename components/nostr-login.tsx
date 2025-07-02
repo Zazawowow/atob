@@ -163,9 +163,29 @@ export function NostrLogin({ onLogin, onSignup, onCancel }: NostrLoginProps) {
   }
 
   return (
-    <Card className='w-full max-w-sm mx-auto bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10'>
-      <CardHeader className='flex flex-col items-center justify-center text-center pt-8'>
-        <h1 className='font-cyber text-3xl font-bold mb-2 text-blue-400'>A TO ₿</h1>
+    <Card className='w-full max-w-sm mx-auto bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10 p-0 overflow-hidden'>
+      <CardHeader className='flex flex-col items-center justify-center text-center pt-8 pb-8 relative overflow-hidden bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-cyan-900/20'>
+        {/* Circuit-like pattern overlay */}
+        <div className='absolute inset-0 opacity-10'>
+          <div className='absolute top-2 left-4 w-8 h-8 border border-cyan-400 transform rotate-45'></div>
+          <div className='absolute top-6 right-6 w-6 h-6 border border-purple-400 rounded-full'></div>
+          <div className='absolute bottom-4 left-8 w-4 h-4 bg-blue-400 transform rotate-45'></div>
+          <div className='absolute bottom-2 right-4 w-10 h-1 bg-gradient-to-r from-cyan-400 to-transparent'></div>
+          <div className='absolute top-1/2 left-2 w-1 h-12 bg-gradient-to-b from-purple-400 to-transparent'></div>
+          <div className='absolute top-1/3 right-2 w-12 h-1 bg-gradient-to-l from-blue-400 to-transparent'></div>
+        </div>
+        {/* Grid pattern overlay */}
+        <div 
+          className='absolute inset-0 opacity-5'
+          style={{
+            backgroundImage: `
+              linear-gradient(90deg, rgba(96,165,250,0.3) 1px, transparent 1px),
+              linear-gradient(rgba(96,165,250,0.3) 1px, transparent 1px)
+            `,
+            backgroundSize: '20px 20px'
+          }}
+        ></div>
+        <h1 className='font-cyber text-3xl font-bold mb-2 text-blue-400 relative z-10 drop-shadow-lg'>LOGIN</h1>
       </CardHeader>
       <CardContent className='px-6 pb-6'>
         <Tabs
@@ -177,11 +197,13 @@ export function NostrLogin({ onLogin, onSignup, onCancel }: NostrLoginProps) {
             <TabsTrigger 
               value='extension' 
               disabled={!hasExtension}
+              className='tab-active-black'
             >
               Browser Extension
             </TabsTrigger>
             <TabsTrigger 
               value='nsec'
+              className='tab-active-black'
             >
               Private Key (nsec)
             </TabsTrigger>
@@ -189,8 +211,8 @@ export function NostrLogin({ onLogin, onSignup, onCancel }: NostrLoginProps) {
           <TabsContent 
             value='extension'
           >
-            <div className='space-y-4 h-[116px]'>
-              <p className='text-sm text-[#FAFAFA]/90 text-center'>
+            <div className='space-y-4 h-[130px]'>
+              <p className='text-base text-off-white-90 text-center'>
                 Login using your Nostr browser extension (
                 <a 
                   href='https://chromewebstore.google.com/detail/alby-bitcoin-wallet-for-l/iokeahhehimjnekafflcihljlcjccdbe'
@@ -213,7 +235,7 @@ export function NostrLogin({ onLogin, onSignup, onCancel }: NostrLoginProps) {
               </p>
               <Button
                 onClick={handleExtensionLogin}
-                className='w-full font-bold text-lg py-6 bg-blue-400 hover:bg-blue-400/90 text-white shadow-[0_0_15px_rgba(96,165,250,0.15)] hover:shadow-[0_0_25px_rgba(96,165,250,0.25)] transition-all duration-300'
+                className='btn-purple'
                 disabled={loading}
               >
                 {loading ? (
@@ -228,14 +250,14 @@ export function NostrLogin({ onLogin, onSignup, onCancel }: NostrLoginProps) {
           <TabsContent 
             value='nsec'
           >
-            <div className='space-y-4 h-[116px]'>
+            <div className='space-y-4 h-[130px]'>
               <div className="relative">
                 <Input
                   type='password'
                   placeholder='Enter your nsec...'
                   value={nsecKey}
                   onChange={(e) => setNsecKey(e.target.value)}
-                  className='w-full text-center text-lg py-6 bg-black/20 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 placeholder:text-[#FAFAFA]/60 text-[#FAFAFA] transition-all duration-300 pr-24'
+                  className='w-full text-center text-lg py-6 bg-black/20 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 placeholder:text-off-white-60 text-off-white transition-all duration-300 pr-24'
                 />
                 <button
                   onClick={async () => {
@@ -248,14 +270,14 @@ export function NostrLogin({ onLogin, onSignup, onCancel }: NostrLoginProps) {
                     }
                   }}
                   type="button"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-sm bg-blue-400/10 hover:bg-blue-400/20 text-[#FAFAFA] rounded-md border border-blue-400/20 transition-all duration-200"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-sm bg-blue-400/10 hover:bg-blue-400/20 text-off-white rounded-md border border-blue-400/20 transition-all duration-200"
                 >
                   Paste
                 </button>
               </div>
               <Button
                 onClick={handleNsecLogin}
-                className='w-full font-bold text-lg py-6 bg-blue-400 hover:bg-blue-400/90 text-white shadow-[0_0_15px_rgba(96,165,250,0.15)] hover:shadow-[0_0_25px_rgba(96,165,250,0.25)] transition-all duration-300'
+                className='btn-blue'
                 disabled={loading || !nsecKey}
               >
                 {loading ? (
@@ -273,11 +295,11 @@ export function NostrLogin({ onLogin, onSignup, onCancel }: NostrLoginProps) {
             id='remember'
             checked={rememberMe}
             onCheckedChange={(checked) => setRememberMe(Boolean(checked))}
-            className='border-primary/50 data-[state=checked]:bg-primary bg-[#FAFAFA]'
+            className='border-primary/50 data-[state=checked]:bg-primary bg-off-white'
           />
           <label
             htmlFor='remember'
-            className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-[#FAFAFA]'
+            className='text-base font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-off-white'
           >
             Remember me
           </label>
@@ -285,7 +307,7 @@ export function NostrLogin({ onLogin, onSignup, onCancel }: NostrLoginProps) {
       </CardContent>
       <CardFooter className='flex flex-col gap-4 pb-8'>
         <div className='flex flex-col items-center gap-2'>
-          <p className='text-sm text-center text-[#FAFAFA]'>
+          <p className='text-base text-center text-off-white'>
             Don't have a nostr account?
           </p>
           <button
