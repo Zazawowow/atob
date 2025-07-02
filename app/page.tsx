@@ -355,8 +355,8 @@ export default function Home() {
           <div className='grid grid-cols-1 md:grid-cols-3 gap-8'>
             {/* Step 1 */}
             <div className='relative'>
-              <div className='bg-black/40 border border-cyan-500/30 rounded-2xl p-6 h-full backdrop-blur-sm hover:border-cyan-400/50 transition-all duration-300 hover:shadow-cyan-glow'>
-                <div className='w-12 h-12 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 flex items-center justify-center mb-6 text-off-white font-bold shadow-cyan-glow'>
+              <div className='bg-black/40 border border-cyan-500/30 rounded-2xl p-6 h-full backdrop-blur-sm hover:border-cyan-400/50 transition-all duration-300'>
+                <div className='w-12 h-12 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 flex items-center justify-center mb-6 text-off-white font-bold'>
                   1
                 </div>
                 <h3 className='text-xl font-bold mb-4 text-off-white'>
@@ -371,8 +371,8 @@ export default function Home() {
 
             {/* Step 2 */}
             <div className='relative'>
-              <div className='bg-black/40 border border-purple-500/30 rounded-2xl p-6 h-full backdrop-blur-sm hover:border-purple-400/50 transition-all duration-300 hover:shadow-purple-glow'>
-                <div className='w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-purple-400 flex items-center justify-center mb-6 text-off-white font-bold shadow-purple-glow'>
+              <div className='bg-black/40 border border-purple-500/30 rounded-2xl p-6 h-full backdrop-blur-sm hover:border-purple-400/50 transition-all duration-300'>
+                <div className='w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-purple-400 flex items-center justify-center mb-6 text-off-white font-bold'>
                   2
                 </div>
                 <h3 className='text-xl font-bold mb-4 text-off-white'>
@@ -387,8 +387,8 @@ export default function Home() {
 
             {/* Step 3 */}
             <div>
-              <div className='bg-black/40 border border-pink-500/30 rounded-2xl p-6 h-full backdrop-blur-sm hover:border-pink-400/50 transition-all duration-300 hover:shadow-pink-glow'>
-                <div className='w-12 h-12 rounded-full bg-gradient-to-r from-pink-500 to-pink-400 flex items-center justify-center mb-6 text-off-white font-bold shadow-pink-glow'>
+              <div className='bg-black/40 border border-pink-500/30 rounded-2xl p-6 h-full backdrop-blur-sm hover:border-pink-400/50 transition-all duration-300'>
+                <div className='w-12 h-12 rounded-full bg-gradient-to-r from-pink-500 to-pink-400 flex items-center justify-center mb-6 text-off-white font-bold'>
                   3
                 </div>
                 <h3 className='text-xl font-bold mb-4 text-off-white'>
@@ -408,7 +408,7 @@ export default function Home() {
       {!isLoggedIn && (
         <section className='py-20 bg-gray-900'>
           <div className='container mx-auto px-4'>
-            <div className='bg-gradient-to-r from-black/60 to-gray-900/60 border border-cyan-500/30 rounded-3xl p-8 md:p-12 relative overflow-hidden shadow-cyan-glow backdrop-blur-sm'>
+            <div className='bg-gradient-to-r from-black/60 to-gray-900/60 border border-cyan-500/30 rounded-3xl p-8 md:p-12 relative overflow-hidden backdrop-blur-sm'>
               {/* Background Elements */}
               <div className='absolute inset-0 z-0'>
                 <div className='absolute top-0 right-0 w-[300px] h-[300px] rounded-full bg-cyan-500/10 blur-[100px]'></div>
