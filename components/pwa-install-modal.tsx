@@ -41,10 +41,8 @@ export function PWAInstallModal({ trigger, autoShow = false }: PWAInstallModalPr
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setCanInstall(true);
       
-      // Show floating button if user previously dismissed and we have autoShow enabled
-      if (autoShow && localStorage.getItem('pwa-install-dismissed')) {
-        setShowFloatingButton(true);
-      }
+      // Always show floating button when installation becomes available
+      setShowFloatingButton(true);
       
       // Auto-show modal if enabled and not already dismissed
       if (autoShow && !localStorage.getItem('pwa-install-dismissed')) {
@@ -104,9 +102,9 @@ export function PWAInstallModal({ trigger, autoShow = false }: PWAInstallModalPr
     setIsOpen(false);
     if (!triggeredManually && autoShow) {
       localStorage.setItem('pwa-install-dismissed', 'true');
-      setShowFloatingButton(true); // Show floating button after dismissing
     }
     setTriggeredManually(false);
+    // Keep floating button visible - don't hide it after dismissing modal
   };
 
   const handleTriggerClick = () => {
@@ -119,7 +117,7 @@ export function PWAInstallModal({ trigger, autoShow = false }: PWAInstallModalPr
   const handleFloatingButtonClick = () => {
     setTriggeredManually(true);
     setIsOpen(true);
-    setShowFloatingButton(false); // Hide floating button when opening modal
+    // Keep floating button visible - don't hide it when opening modal
   };
 
   // Don't show if already installed
@@ -253,10 +251,16 @@ export function PWAInstallModal({ trigger, autoShow = false }: PWAInstallModalPr
         </div>
       )}
       
-      {/* Bottom-right positioned modal */}
+      {/* Centered modal with overlay */}
       {isOpen && (
-        <div className="fixed bottom-4 right-4 z-[100] max-w-sm">
-          <div className="animate-slide-up-fade">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          {/* Dark overlay */}
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={handleDismiss}
+          />
+          {/* Modal content */}
+          <div className="relative animate-scale-fade-in max-w-sm w-full mx-4">
             <InstallContent />
           </div>
         </div>
