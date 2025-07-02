@@ -43,75 +43,40 @@ const PackageMap = dynamic(() => import('@/components/package-map'), {
 });
 
 export default function ViewPackages() {
-  const { isReady, publicKey } = useNostr();
-  const [packages, setPackages] = useState<PackageData[]>([]);
+  const {
+    isReady,
+    publicKey,
+    packages,
+    packagesLoading,
+    fetchPackages: refreshPackages,
+  } = useNostr();
   const [selectedPackage, setSelectedPackage] = useState<PackageData | null>(
     null
   );
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<'all' | 'my-packages'>('all');
   const [pickingUpId, setPickingUpId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const fetchPackages = async () => {
-    try {
-      // Debug storage to see what's in localStorage
-      debugStorage();
-
-      // Fetch packages from local storage and Nostr
-      const pkgs = await getPackages();
-      console.log('Fetched packages:', pkgs);
-
-      setPackages(pkgs);
-
-      // Select the first package by default if available and none is selected
-      if (pkgs.length > 0 && !selectedPackage) {
-        setSelectedPackage(pkgs[0]);
-      } else if (
-        selectedPackage &&
-        !pkgs.some((pkg) => pkg.id === selectedPackage.id)
-      ) {
-        // If the selected package is no longer available, clear the selection
-        setSelectedPackage(null);
-      }
-    } catch (error) {
-      toast.error('Error', {
-        description: 'Failed to load packages. Please try again.',
-      });
-      console.error('Error fetching packages:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
   useEffect(() => {
-    if (!isReady) return;
+    // This effect handles the logic for the selected package when the global list updates.
+    if (packages.length > 0 && !selectedPackage) {
+      // If no package is selected, select the first one.
+      setSelectedPackage(packages[0]);
+    } else if (
+      selectedPackage &&
+      !packages.some((pkg) => pkg.id === selectedPackage.id)
+    ) {
+      // If the selected package is no longer in the list,
+      // select the first available package or clear the selection.
+      setSelectedPackage(packages.length > 0 ? packages[0] : null);
+    }
+  }, [packages, selectedPackage]);
 
-    // Initial fetch
-    fetchPackages();
-
-    // Set up regular fetches
-    const fetchInterval = setInterval(() => {
-      fetchPackages();
-    }, 15000); // Refresh every 15 seconds
-
-    // Force a complete status refresh once when the component mounts
-    import('@/lib/nostr').then(({ forceStatusRefresh }) => {
-      forceStatusRefresh().catch((error) => {
-        console.error('Error during initial status refresh:', error);
-      });
-    });
-
-    return () => {
-      clearInterval(fetchInterval);
-    };
-  }, [isReady]);
-
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    fetchPackages();
+    await refreshPackages();
+    setRefreshing(false);
   };
 
   // Update the handlePickup function to ensure packages are properly removed
@@ -134,9 +99,8 @@ export default function ViewPackages() {
       // Pick up package
       await pickupPackage(packageId);
 
-      // IMPORTANT: Always remove the package from the view immediately
-      // This ensures the UI is updated even if Nostr events are delayed
-      setPackages((prev) => prev.filter((pkg) => pkg.id !== packageId));
+      // Immediately trigger a refresh from the global provider
+      await refreshPackages();
 
       if (selectedPackage?.id === packageId) {
         setSelectedPackage(null);
@@ -145,11 +109,6 @@ export default function ViewPackages() {
       toast.success('Package Picked Up', {
         description: 'You have successfully picked up the package.',
       });
-
-      // Refresh the list after a short delay
-      setTimeout(() => {
-        fetchPackages();
-      }, 1000);
     } catch (error) {
       toast.error('Error', {
         description: 'Failed to pick up package. Please try again.',
@@ -174,8 +133,8 @@ export default function ViewPackages() {
       // Delete package
       await deletePackage(packageId);
 
-      // Update local state
-      setPackages((prev) => prev.filter((pkg) => pkg.id !== packageId));
+      // Immediately trigger a refresh from the global provider
+      await refreshPackages();
 
       if (selectedPackage?.id === packageId) {
         setSelectedPackage(null);
@@ -200,12 +159,14 @@ export default function ViewPackages() {
       ? packages.filter((pkg) => getEffectiveStatus(pkg) === 'available')
       : packages.filter((pkg) => pkg.pubkey === publicKey);
 
-  if (!isReady) {
+  if (!isReady || (packagesLoading && packages.length === 0)) {
     return (
       <div className='container mx-auto px-4 pt-24 pb-8'>
         <div className='flex justify-center items-center h-64'>
           <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full'></div>
-          <p className='ml-2'>Loading Nostr...</p>
+          <p className='ml-2'>
+            {!isReady ? 'Loading Nostr...' : 'Loading Packages...'}
+          </p>
         </div>
       </div>
     );

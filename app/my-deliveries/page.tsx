@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -25,132 +25,49 @@ import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 
 export default function MyDeliveries() {
-  const { isReady } = useNostr();
-  const [deliveries, setDeliveries] = useState<PackageData[]>([]);
+  const {
+    isReady,
+    publicKey,
+    packages,
+    packagesLoading,
+    fetchPackages: refreshPackages,
+  } = useNostr();
   const [selectedDelivery, setSelectedDelivery] = useState<PackageData | null>(
     null
   );
   const [showQR, setShowQR] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [loadingError, setLoadingError] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
 
-  // Update the fetchDeliveries function to ensure proper filtering and logging
-  const fetchDeliveries = async () => {
-    try {
-      console.log('Fetching my deliveries...');
-      setLoadingError(null);
-
-      // Debug localStorage to see what's there
-      debugStorage();
-
-      // Set a timeout to prevent getting stuck in loading state
-      const timeoutId = setTimeout(() => {
-        if (loading) {
-          console.log('Fetch timeout reached, using local data only');
-          setLoading(false);
-          setRefreshing(false);
-          setLoadingError('Timeout reached. Some data may not be available.');
-        }
-      }, 5000); // 5 second timeout
-
-      // Fetch deliveries from Nostr
-      const pkgs = await getMyDeliveries();
-      clearTimeout(timeoutId);
-
-      console.log('Raw deliveries returned:', pkgs);
-
-      // Log the status of each package for debugging
-      pkgs.forEach((pkg) => {
-        console.log(
-          `Package ${pkg.id}: status=${
-            pkg.status
-          }, effective=${getEffectiveStatus(pkg)}`
-        );
-      });
-
-      // Only show in_transit deliveries using the effective status
-      const activeDeliveries = pkgs.filter(
-        (pkg) => getEffectiveStatus(pkg) === 'in_transit'
-      );
-      console.log(
-        `Filtered to ${activeDeliveries.length} active deliveries with effective status="in_transit"`
-      );
-
-      setDeliveries(activeDeliveries);
-
-      // Update selected delivery if it's no longer active
-      if (
-        selectedDelivery &&
-        !activeDeliveries.some((d) => d.id === selectedDelivery.id)
-      ) {
-        console.log(
-          `Selected delivery ${selectedDelivery.id} is no longer active, clearing selection`
-        );
-        setSelectedDelivery(null);
-        setShowQR(false);
-      }
-    } catch (error) {
-      console.error('Error fetching deliveries:', error);
-      setLoadingError('Failed to load deliveries. Please try again.');
-      toast.error('Error', {
-        description: 'Failed to load deliveries. Please try again.',
-      });
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  const deliveries = useMemo(() => {
+    return packages.filter(
+      (pkg) =>
+        getEffectiveStatus(pkg) === 'in_transit' && pkg.courier_pubkey === publicKey
+    );
+  }, [packages, publicKey]);
 
   useEffect(() => {
-    if (!isReady) return;
+    // This effect handles the logic for the selected delivery when the filtered list updates.
+    if (
+      selectedDelivery &&
+      !deliveries.some((d) => d.id === selectedDelivery.id)
+    ) {
+      // If the selected delivery is no longer in the active list, clear the selection.
+      setSelectedDelivery(null);
+      setShowQR(false);
+    }
+  }, [deliveries, selectedDelivery]);
 
-    // Fetch deliveries when component mounts
-    fetchDeliveries();
-
-    // Set up a refresh interval to periodically check for new deliveries
-    const refreshInterval = setInterval(() => {
-      console.log('Auto-refreshing deliveries...');
-      fetchDeliveries();
-    }, 30000); // Refresh every 30 seconds
-
-    // Force a complete status refresh once when the component mounts
-    import('@/lib/nostr').then(({ forceStatusRefresh }) => {
-      forceStatusRefresh().catch((error) => {
-        console.error('Error during initial status refresh:', error);
-      });
-    });
-
-    return () => clearInterval(refreshInterval);
-  }, [isReady]);
-
-  // Update the handleComplete function to ensure proper state updates
   const handleComplete = async (packageId: string) => {
     try {
-      console.log(`Marking package ${packageId} as delivered`);
-      setCompletingId(packageId); // Set the loading state for this specific package
+      setCompletingId(packageId);
 
-      // Complete delivery using Nostr
       await completeDelivery(packageId);
-      console.log(
-        `Package ${packageId} marked as delivered in Nostr and localStorage`
-      );
 
-      // Update local state - remove the completed delivery immediately
-      setDeliveries((prev) => {
-        const updated = prev.filter((pkg) => pkg.id !== packageId);
-        console.log(
-          `Removed package ${packageId} from UI, ${updated.length} deliveries remaining`
-        );
-        return updated;
-      });
+      // Immediately trigger a refresh from the global provider
+      await refreshPackages();
 
-      // Clear selection if this was the selected delivery
       if (selectedDelivery?.id === packageId) {
-        console.log(
-          `Clearing selected delivery since ${packageId} was completed`
-        );
         setSelectedDelivery(null);
         setShowQR(false);
       }
@@ -158,12 +75,6 @@ export default function MyDeliveries() {
       toast.success('Delivery Completed', {
         description: 'The delivery has been marked as completed.',
       });
-
-      // Refresh the list after a short delay to ensure everything is in sync
-      setTimeout(() => {
-        console.log('Refreshing deliveries list after completion');
-        fetchDeliveries();
-      }, 1000);
     } catch (error) {
       console.error('Error completing delivery:', error);
       toast.error('Error', {
@@ -179,17 +90,20 @@ export default function MyDeliveries() {
     return `${window.location.origin}/confirm-delivery?id=${packageId}`;
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    fetchDeliveries();
+    await refreshPackages();
+    setRefreshing(false);
   };
 
-  if (!isReady) {
+  if (!isReady || (packagesLoading && packages.length === 0)) {
     return (
       <div className='container mx-auto px-4 pt-24 pb-8'>
         <div className='flex justify-center items-center h-64'>
           <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full'></div>
-          <p className='ml-2'>Loading Nostr...</p>
+          <p className='ml-2'>
+            {!isReady ? 'Loading Nostr...' : 'Loading Deliveries...'}
+          </p>
         </div>
       </div>
     );
