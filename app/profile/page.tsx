@@ -258,7 +258,7 @@ export default function Profile() {
                             <div>
                               <p className='font-semibold text-off-white'>Package Delivered</p>
                               <p className='text-sm text-off-white-70'>
-                                To: {delivery.tags.find((t: [string, string]) => t[0] === 'location')?.[1] || 'Unknown'}
+                                To: {delivery.tags?.find((t: [string, string]) => t[0] === 'location')?.[1] || 'Unknown'}
                               </p>
                             </div>
                           </div>
