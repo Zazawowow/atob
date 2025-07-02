@@ -191,15 +191,12 @@ export default function PackageMap({
   }, [selectedPackage, packageCoordinates]);
 
   return (
-    <div
-      className='relative h-[400px] w-full rounded-md overflow-hidden'
-      style={{ zIndex: 10 }}
-    >
+    <div className='relative h-full w-full' style={{ zIndex: 1 }}>
       <MapContainer
         center={center}
         zoom={2}
-        style={{ height: '100%', width: '100%', zIndex: 10 }}
-        className='z-10'
+        style={{ height: '100%', width: '100%' }}
+        className='z-0'
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

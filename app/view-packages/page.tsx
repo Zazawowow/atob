@@ -224,30 +224,30 @@ export default function ViewPackages() {
         <div className='absolute inset-0 bg-black/30' />
       </div>
 
-      <div className='flex flex-col md:flex-row gap-6'>
-        <div className='w-full md:w-1/2 lg:w-2/5'>
-          <div className='flex items-center justify-end mb-6'>
-            <Button
-              onClick={handleRefresh}
-              variant='outline'
-              size='icon'
-              className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-[#FAFAFA]'
-              disabled={refreshing}
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
-              />
-            </Button>
-          </div>
-
-          <Card className='bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10 mb-6'>
-            <CardHeader>
-              <CardTitle className='text-[#FAFAFA]'>Available Packages</CardTitle>
-              <CardDescription className='text-[#FAFAFA]/70'>
-                Click on a package to view its details on the map
-              </CardDescription>
+      <div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
+        {/* Left Column: Package List */}
+        <div className='h-[calc(100vh-10rem)]'>
+          <Card className='bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10 h-full flex flex-col'>
+            <CardHeader className='flex flex-row justify-between items-start'>
+              <div>
+                <CardTitle className='text-[#FAFAFA]'>Available Packages</CardTitle>
+                <CardDescription className='text-[#FAFAFA]/70'>
+                  Click on a package to view its details on the map
+                </CardDescription>
+              </div>
+              <Button
+                onClick={handleRefresh}
+                variant='outline'
+                size='icon'
+                className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-[#FAFAFA] -mt-2 -mr-2'
+                disabled={refreshing}
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
+                />
+              </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className='flex flex-col flex-grow overflow-hidden'>
               <div className='flex gap-2 mb-4'>
                 <Button
                   onClick={() => setViewMode('all')}
@@ -273,7 +273,7 @@ export default function ViewPackages() {
                 </Button>
               </div>
 
-              <div className='space-y-4'>
+              <div className='space-y-4 overflow-y-auto pr-2 flex-1'>
                 {filteredPackages.length === 0 ? (
                   <div className='text-center py-8 text-[#FAFAFA]/70'>
                     No packages available
@@ -357,15 +357,16 @@ export default function ViewPackages() {
           </Card>
         </div>
 
-        <div className='w-full md:w-1/2 lg:w-3/5'>
-          <Card className='bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10'>
+        {/* Right Column: Package Map */}
+        <div className='h-[calc(100vh-10rem)]'>
+          <Card className='bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10 h-full overflow-hidden'>
             <CardHeader>
               <CardTitle className='text-[#FAFAFA]'>Package Map</CardTitle>
               <CardDescription className='text-[#FAFAFA]/70'>
                 View package locations and delivery routes
               </CardDescription>
             </CardHeader>
-            <CardContent className='p-0'>
+            <CardContent className='p-0 h-[calc(100%-4.5rem)]'>
               <PackageMap
                 packages={filteredPackages}
                 selectedPackage={selectedPackage}
