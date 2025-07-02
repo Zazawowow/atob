@@ -8,13 +8,11 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {
-  ArrowLeft,
   User,
   Star,
   Package,
   CheckCircle,
   Truck,
-  Loader2,
   ServerCrash,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -23,6 +21,10 @@ import { useNostr } from '@/components/nostr-provider';
 import { getNpub } from '@/lib/nostr-keys';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
+
+function Skeleton({ className }: { className?: string }) {
+  return <div className={`animate-pulse rounded-md bg-white/10 ${className}`} />;
+}
 
 export default function Profile() {
   const { publicKey, isReady } = useNostr();
@@ -40,18 +42,22 @@ export default function Profile() {
       return;
     }
 
-    const fetchProfile = async () => {
+    const fetchProfileData = async () => {
       try {
         setLoading(true);
-        const profileData = await getUserProfile(publicKey);
-        setProfile(profileData);
-        calculateReputationScore(profileData);
-        
         const fullNpub = getNpub(publicKey);
         setNpub(fullNpub);
 
-        const deliveries = await getMyDeliveries();
+        // Fetch profile and deliveries in parallel
+        const [profileData, deliveries] = await Promise.all([
+          getUserProfile(publicKey),
+          getMyDeliveries(),
+        ]);
+        
+        setProfile(profileData);
+        calculateReputationScore(profileData);
         setRecentDeliveries(deliveries.slice(0, 5));
+
       } catch (error) {
         toast.error('Error', {
           description: 'Failed to load profile data.',
@@ -62,7 +68,7 @@ export default function Profile() {
       }
     };
 
-    fetchProfile();
+    fetchProfileData();
   }, [publicKey, isReady]);
 
   const calculateReputationScore = (profileData: ProfileData) => {
@@ -89,13 +95,6 @@ export default function Profile() {
     return `${Math.floor(seconds / 86400)}d ago`;
   };
 
-  const renderLoading = () => (
-    <div className='flex items-center justify-center h-64 text-off-white-70'>
-      <Loader2 className='mr-2 h-6 w-6 animate-spin text-cyan-400' />
-      <span className='text-lg'>Loading Profile...</span>
-    </div>
-  );
-
   const renderNotLoggedIn = () => (
     <div className='text-center py-16'>
       <ServerCrash className='mx-auto h-16 w-16 text-pink-500 mb-4' />
@@ -111,14 +110,18 @@ export default function Profile() {
     </div>
   );
 
-  if (!isReady || loading) {
+  if (!isReady) {
+    // A minimal loader while waiting for Nostr to be ready
     return (
-      <main className='container mx-auto px-4 pt-24 pb-12 min-h-screen'>
-        {renderLoading()}
+      <main className='container mx-auto px-4 pt-24 pb-12 min-h-screen flex items-center justify-center'>
+        <div className='flex flex-col items-center gap-4 text-[#FAFAFA]/70'>
+          <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full'></div>
+          <p>Connecting to Nostr...</p>
+        </div>
       </main>
     );
   }
-
+  
   if (!publicKey) {
     return (
       <main className='container mx-auto px-4 pt-24 pb-12 min-h-screen'>
@@ -143,7 +146,9 @@ export default function Profile() {
                 </CardHeader>
                 <CardContent className='pt-2'>
                   <div className='flex flex-col items-center text-center'>
-                    {profile?.picture ? (
+                    {loading ? (
+                      <Skeleton className="w-28 h-28 rounded-full" />
+                    ) : profile?.picture ? (
                       <img
                         src={profile.picture}
                         alt={profile.displayName || profile.name || 'User'}
@@ -155,24 +160,24 @@ export default function Profile() {
                       </div>
                     )}
                     <h2 className='text-2xl font-bold mt-4 text-off-white'>
-                      {profile?.displayName || profile?.name || 'Anonymous Agent'}
+                      {loading ? <Skeleton className="h-8 w-48" /> : profile?.displayName || profile?.name || 'Anonymous Agent'}
                     </h2>
                     <p className='text-sm text-purple-300 break-all mt-1 font-mono'>
-                      {npub.slice(0, 10)}...{npub.slice(-4)}
+                      {loading ? <Skeleton className="h-5 w-32" /> : `${npub.slice(0, 10)}...${npub.slice(-4)}`}
                     </p>
                   </div>
 
                   <div className='grid grid-cols-3 gap-4 text-center pt-6 mt-6 border-t border-white/10'>
                     <div>
-                      <p className='text-2xl font-bold text-off-white'>{profile?.followers || 0}</p>
+                      <p className='text-2xl font-bold text-off-white'>{loading ? <Skeleton className="h-8 w-12 mx-auto" /> : profile?.followers || 0}</p>
                       <p className='text-xs text-off-white-70 uppercase tracking-wider'>Followers</p>
                     </div>
                     <div>
-                      <p className='text-2xl font-bold text-off-white'>{profile?.following || 0}</p>
+                      <p className='text-2xl font-bold text-off-white'>{loading ? <Skeleton className="h-8 w-12 mx-auto" /> : profile?.following || 0}</p>
                       <p className='text-xs text-off-white-70 uppercase tracking-wider'>Following</p>
                     </div>
                     <div>
-                      <p className='text-2xl font-bold text-off-white'>{profile?.deliveries || 0}</p>
+                      <p className='text-2xl font-bold text-off-white'>{loading ? <Skeleton className="h-8 w-12 mx-auto" /> : profile?.deliveries || 0}</p>
                       <p className='text-xs text-off-white-70 uppercase tracking-wider'>Deliveries</p>
                     </div>
                   </div>
@@ -187,21 +192,32 @@ export default function Profile() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className='flex items-center justify-center space-x-4'>
-                    <div className='bg-gradient-to-r from-cyan-500 to-purple-500 p-3 rounded-full'>
-                      <Star className='h-8 w-8 text-off-white' fill='currentColor' />
+                  {loading ? (
+                    <div className="space-y-4">
+                      <div className="flex justify-center">
+                        <Skeleton className="h-16 w-48" />
+                      </div>
+                      <Skeleton className="h-2 w-full" />
                     </div>
-                    <div>
-                      <p className='text-4xl font-bold text-off-white'>
-                        {reputationScore.toFixed(1)}
-                        <span className='text-2xl text-off-white-70'>/5.0</span>
+                  ) : (
+                    <>
+                      <div className='flex items-center justify-center space-x-4'>
+                        <div className='bg-gradient-to-r from-cyan-500 to-purple-500 p-3 rounded-full'>
+                          <Star className='h-8 w-8 text-off-white' fill='currentColor' />
+                        </div>
+                        <div>
+                          <p className='text-4xl font-bold text-off-white'>
+                            {reputationScore.toFixed(1)}
+                            <span className='text-2xl text-off-white-70'>/5.0</span>
+                          </p>
+                        </div>
+                      </div>
+                      <Progress value={reputationScore * 20} className='mt-4 h-2' />
+                      <p className='text-center text-xs mt-2 text-off-white-60'>
+                        Based on deliveries & network trust
                       </p>
-                    </div>
-                  </div>
-                  <Progress value={reputationScore * 20} className='mt-4 h-2' />
-                  <p className='text-center text-xs mt-2 text-off-white-60'>
-                    Based on deliveries & network trust
-                  </p>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -216,7 +232,22 @@ export default function Profile() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {recentDeliveries.length > 0 ? (
+                  {loading ? (
+                    <ul className='space-y-4'>
+                      {[...Array(3)].map((_, i) => (
+                        <li key={i} className='flex items-center justify-between p-4 bg-black/20 rounded-lg border border-white/10'>
+                          <div className='flex items-center gap-4'>
+                            <Skeleton className="h-12 w-12 rounded-md" />
+                            <div className="space-y-2">
+                              <Skeleton className="h-4 w-32" />
+                              <Skeleton className="h-4 w-48" />
+                            </div>
+                          </div>
+                          <Skeleton className="h-6 w-24" />
+                        </li>
+                      ))}
+                    </ul>
+                  ) : recentDeliveries.length > 0 ? (
                     <ul className='space-y-4'>
                       {recentDeliveries.map((delivery, index) => (
                         <li key={index} className='flex items-center justify-between p-4 bg-black/20 rounded-lg border border-white/10'>
@@ -227,7 +258,7 @@ export default function Profile() {
                             <div>
                               <p className='font-semibold text-off-white'>Package Delivered</p>
                               <p className='text-sm text-off-white-70'>
-                                To: {delivery.tags.find(t => t[0] === 'location')?.[1] || 'Unknown'}
+                                To: {delivery.tags.find((t: [string, string]) => t[0] === 'location')?.[1] || 'Unknown'}
                               </p>
                             </div>
                           </div>
@@ -248,11 +279,8 @@ export default function Profile() {
                       <Package className='mx-auto h-12 w-12 text-pink-400/50 mb-4' />
                       <h3 className='text-xl font-semibold text-off-white'>No Deliveries Yet</h3>
                       <p className='text-off-white-70 mt-2'>
-                        Completed deliveries will appear here.
+                        Your completed deliveries will appear here.
                       </p>
-                      <Link href='/view-packages'>
-                        <button className='mt-4 btn-outline-purple'>Find a Package</button>
-                      </Link>
                     </div>
                   )}
                 </CardContent>
