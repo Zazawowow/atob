@@ -90,7 +90,7 @@ export default function PostPackage() {
   }
 
   return (
-    <div className='container mx-auto px-4 pt-24 pb-8 relative z-10'>
+    <main className='min-h-screen'>
       <div className='fixed inset-0 -z-10'>
         <Image
           src='/hero-4.jpeg'
@@ -99,111 +99,94 @@ export default function PostPackage() {
           className='object-cover object-center brightness-[0.3]'
           priority
         />
-        <div className='absolute inset-0 bg-black/30' />
+        <div className='absolute inset-0 bg-black/40' />
       </div>
       
-      <Link href='/' className='flex items-center text-sm mb-6 hover:underline text-[#FAFAFA]'>
-        <ArrowLeft className='mr-2 h-4 w-4' />
-        Back to Home
-      </Link>
+      <div className='container mx-auto px-4 pt-24 pb-12 relative z-10'>
+        <Card className='max-w-2xl mx-auto bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm'>
+          <CardHeader>
+            <CardTitle className='flex items-center text-off-white font-cyber text-2xl'>
+              <div className='p-2 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-md mr-4'>
+                <Package className='h-6 w-6 text-off-white' />
+              </div>
+              POST A PACKAGE
+            </CardTitle>
+          </CardHeader>
+          <form onSubmit={handleSubmit}>
+            <CardContent className='space-y-6 pt-6'>
+              <div className='space-y-2'>
+                <Label htmlFor='title' className='text-off-white-90'>Package Title</Label>
+                <Input
+                  id='title'
+                  name='title'
+                  placeholder='E.g., Box of Cyber-Crystals'
+                  value={formData.title}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
 
-      <Card className='max-w-2xl mx-auto bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10'>
-        <CardHeader className='border-b border-primary/20'>
-          <CardTitle className='flex items-center text-[#FAFAFA]'>
-            <div className='bg-blue-400 rounded-full p-2 mr-2'>
-              <Package className='h-5 w-5 text-[#FAFAFA]' />
-            </div>
-            Post a Package
-          </CardTitle>
-          <CardDescription className='text-[#FAFAFA]/70'>
-            Create a new delivery request with all the necessary details
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className='space-y-4 pt-6'>
-            <div className='space-y-2'>
-              <Label htmlFor='title' className='text-[#FAFAFA]'>Package Title</Label>
-              <Input
-                id='title'
-                name='title'
-                placeholder='Small box of books'
-                value={formData.title}
-                onChange={handleChange}
-                required
-                className='bg-black/20 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 placeholder:text-[#FAFAFA]/60 text-[#FAFAFA]'
-              />
-            </div>
+              <div className='space-y-2'>
+                <Label htmlFor='pickupLocation' className='text-off-white-90'>Pickup Location</Label>
+                <AddressInput
+                  id='pickupLocation'
+                  value={formData.pickupLocation}
+                  onChange={(value) => handleAddressChange('pickupLocation', value)}
+                  placeholder='E.g., Neo-Kyoto, Sector 7'
+                  required
+                />
+              </div>
 
-            <div className='space-y-2'>
-              <Label htmlFor='pickupLocation' className='text-[#FAFAFA]'>Pickup Location</Label>
-              <AddressInput
-                id='pickupLocation'
-                value={formData.pickupLocation}
-                onChange={(value) =>
-                  handleAddressChange('pickupLocation', value)
-                }
-                placeholder='123 Main St, City'
-                required
-              />
-            </div>
+              <div className='space-y-2'>
+                <Label htmlFor='destination' className='text-off-white-90'>Destination</Label>
+                <AddressInput
+                  id='destination'
+                  value={formData.destination}
+                  onChange={(value) => handleAddressChange('destination', value)}
+                  placeholder='E.g., Arakis, The Great Flat'
+                  required
+                />
+              </div>
 
-            <div className='space-y-2'>
-              <Label htmlFor='destination' className='text-[#FAFAFA]'>Destination</Label>
-              <AddressInput
-                id='destination'
-                value={formData.destination}
-                onChange={(value) => handleAddressChange('destination', value)}
-                placeholder='456 Oak Ave, City'
-                required
-              />
-            </div>
+              <div className='grid grid-cols-2 gap-4'>
+                <div className='space-y-2'>
+                  <Label htmlFor='cost' className='text-off-white-90'>Cost (sats)</Label>
+                  <Input
+                    id='cost'
+                    name='cost'
+                    type='number'
+                    placeholder='10000'
+                    value={formData.cost}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+              </div>
 
-            <div className='space-y-2'>
-              <Label htmlFor='cost' className='text-[#FAFAFA]'>Cost (sats)</Label>
-              <Input
-                id='cost'
-                name='cost'
-                type='number'
-                placeholder='10000'
-                value={formData.cost}
-                onChange={handleChange}
-                required
-                className='bg-black/20 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 placeholder:text-[#FAFAFA]/60 text-[#FAFAFA]'
-              />
-            </div>
-
-            <div className='space-y-2'>
-              <Label htmlFor='description' className='text-[#FAFAFA]'>Description (optional)</Label>
-              <Textarea
-                id='description'
-                name='description'
-                placeholder='Additional details about the package...'
-                value={formData.description}
-                onChange={handleChange}
-                rows={3}
-                className='bg-black/20 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 placeholder:text-[#FAFAFA]/60 text-[#FAFAFA]'
-              />
-            </div>
-          </CardContent>
-          <CardFooter className='flex flex-col gap-4 p-6'>
-            <Button
-              type='submit'
-              className='w-full bg-blue-400 hover:bg-blue-400/90 text-[#FAFAFA] font-medium shadow-[0_0_15px_rgba(96,165,250,0.15)] hover:shadow-[0_0_25px_rgba(96,165,250,0.25)] transform hover:-translate-y-1 transition-all duration-300'
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Posting...' : 'Post Package'}
-            </Button>
-            <Button
-              type='button'
-              variant='outline'
-              className='w-full bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-[#FAFAFA] transform hover:-translate-y-1 transition-all duration-300'
-              onClick={() => router.push('/')}
-            >
-              Cancel
-            </Button>
-          </CardFooter>
-        </form>
-      </Card>
-    </div>
+              <div className='space-y-2'>
+                <Label htmlFor='description' className='text-off-white-90'>Description (optional)</Label>
+                <Textarea
+                  id='description'
+                  name='description'
+                  placeholder='Additional instructions or package details...'
+                  value={formData.description}
+                  onChange={handleChange}
+                  rows={3}
+                />
+              </div>
+            </CardContent>
+            <CardFooter className='p-6 bg-black/20 border-t border-white/10'>
+              <Button
+                type='submit'
+                className='w-full btn-purple'
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Posting...' : 'Post Package'}
+              </Button>
+            </CardFooter>
+          </form>
+        </Card>
+      </div>
+    </main>
   );
 }

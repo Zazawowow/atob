@@ -63,14 +63,34 @@ export function NostrSignup({ onSignup, onBackToLogin }: NostrSignupProps) {
 
   if (generatedKeys) {
     return (
-      <Card className='w-full max-w-sm mx-auto bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10'>
-        <CardHeader className='flex flex-col items-center justify-center text-center pt-8'>
-          <h1 className='font-cyber text-3xl font-bold mb-2 text-pink-400'>SAVE YOUR ACCOUNT KEY</h1>
+      <Card className='w-full max-w-sm mx-auto bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10 p-0 overflow-hidden'>
+        <CardHeader className='flex flex-col items-center justify-center text-center px-6 pt-8 pb-8 relative overflow-hidden bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-cyan-900/20'>
+          {/* Circuit-like pattern overlay */}
+          <div className='absolute inset-0 opacity-10'>
+            <div className='absolute top-2 left-4 w-8 h-8 border border-cyan-400 transform rotate-45'></div>
+            <div className='absolute top-6 right-6 w-6 h-6 border border-purple-400 rounded-full'></div>
+            <div className='absolute bottom-4 left-8 w-4 h-4 bg-blue-400 transform rotate-45'></div>
+            <div className='absolute bottom-2 right-4 w-10 h-1 bg-gradient-to-r from-cyan-400 to-transparent'></div>
+            <div className='absolute top-1/2 left-2 w-1 h-12 bg-gradient-to-b from-purple-400 to-transparent'></div>
+            <div className='absolute top-1/3 right-2 w-12 h-1 bg-gradient-to-l from-blue-400 to-transparent'></div>
+          </div>
+          {/* Grid pattern overlay */}
+          <div 
+            className='absolute inset-0 opacity-5'
+            style={{
+              backgroundImage: `
+                linear-gradient(90deg, rgba(96,165,250,0.3) 1px, transparent 1px),
+                linear-gradient(rgba(96,165,250,0.3) 1px, transparent 1px)
+              `,
+              backgroundSize: '20px 20px'
+            }}
+          ></div>
+          <h1 className='font-cyber text-3xl font-bold mb-2 text-pink-400 drop-shadow-lg relative z-10'>SAVE YOUR ACCOUNT KEY</h1>
         </CardHeader>
         <CardContent className='px-6 pb-6 space-y-6'>
           <div className='text-center'>
             <p className='text-base text-off-white mb-6'>
-              Here is your newly generated account key. It allows you to purchase anonymously, and is stored in your browser on this device only.
+              Here is your newly generated account key. It allows you to use this site anonymously, and is stored in your browser on this device only.
             </p>
             <p className='text-base font-bold text-off-white mb-6'>
               Be sure to save it, or you'll lose access to your account
@@ -110,8 +130,8 @@ export function NostrSignup({ onSignup, onBackToLogin }: NostrSignupProps) {
   }
 
   return (
-    <Card className='w-full max-w-sm mx-auto bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10'>
-      <CardHeader className='flex flex-col items-center justify-center text-center pt-8 pb-8 relative overflow-hidden bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-cyan-900/20'>
+    <Card className='w-full max-w-sm mx-auto bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10 p-0 overflow-hidden'>
+      <CardHeader className='flex flex-col items-center justify-center text-center px-6 pt-8 pb-8 relative overflow-hidden bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-cyan-900/20'>
         {/* Circuit-like pattern overlay */}
         <div className='absolute inset-0 opacity-10'>
           <div className='absolute top-2 left-4 w-8 h-8 border border-cyan-400 transform rotate-45'></div>

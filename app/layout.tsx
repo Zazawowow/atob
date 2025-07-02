@@ -4,9 +4,9 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from 'sonner';
 import { NostrProvider } from '@/components/nostr-provider';
-import { Footer } from '@/components/ui/footer';
 import { Navbar } from '@/components/navbar';
 import { UIAnimationProvider } from '@/components/ui-animation-context';
+import { ConditionalFooter } from '@/components/conditional-footer';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -45,7 +45,7 @@ export default function RootLayout({
             <div className="flex-1 flex flex-col">
               {children}
             </div>
-            <Footer />
+            <ConditionalFooter />
             <Toaster />
           </UIAnimationProvider>
         </NostrProvider>

@@ -111,64 +111,7 @@ export default function Home() {
     }
   }, [videoRef, mounted, hasSeenIntro]);
 
-  // Feature cards data
-  const features = [
-    {
-      icon: <Package size={24} />,
-      title: 'Post a Package',
-      description:
-        'Create a new delivery request with location and destination',
-      link: '/post-package',
-      color: 'from-cyan-500 to-cyan-400',
-      hoverColor: 'hover:border-cyan-400/50',
-    },
-    {
-      icon: <Map size={24} />,
-      title: 'View Packages',
-      description: 'Browse available packages on an interactive map',
-      link: '/view-packages',
-      color: 'from-purple-500 to-purple-400',
-      hoverColor: 'hover:border-purple-400/50',
-    },
-    {
-      icon: <Truck size={24} />,
-      title: 'My Deliveries',
-      description: "Track packages you've picked up and confirm deliveries",
-      link: '/my-deliveries',
-      color: 'from-pink-500 to-pink-400',
-      hoverColor: 'hover:border-pink-400/50',
-    },
-    {
-      icon: <CheckCircle size={24} />,
-      title: 'Confirm Delivery',
-      description: 'Scan QR code to confirm package delivery',
-      link: '/confirm-delivery',
-      color: 'from-emerald-500 to-emerald-400',
-      hoverColor: 'hover:border-emerald-400/50',
-    },
-    {
-      icon: <User size={24} />,
-      title: 'Profile',
-      description: 'View your profile and reputation',
-      link: '/profile',
-      color: 'from-amber-500 to-amber-400',
-      hoverColor: 'hover:border-amber-400/50',
-    },
-  ];
 
-  const handleFeatureClick = (e: React.MouseEvent, link: string) => {
-    e.preventDefault();
-    if (!isLoggedIn) {
-      setPendingRedirect(link);
-      // The modal will be shown by clicking its trigger button
-      const loginButton = document.getElementById('nostr-login-trigger');
-      if (loginButton) {
-        loginButton.click();
-      }
-    } else {
-      window.location.href = link;
-    }
-  };
 
   // If not ready yet, show loading
   if (!mounted || !isReady) {
@@ -313,7 +256,7 @@ export default function Home() {
               <div className='block lg:hidden mt-8'>
                 {isLoggedIn ? (
                   <button 
-                    onClick={(e) => handleFeatureClick(e, '/post-package')}
+                    onClick={() => window.location.href = '/post-package'}
                     className='w-full px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'
                   >
                     Post a Package
@@ -463,112 +406,31 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className='py-20 relative features-section bg-gray-900'>
-        {/* Cyberpunk background effects */}
-        <div className='absolute inset-0 z-0'>
-          <div className='absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-cyan-500/10 blur-3xl animate-pulse-slow'></div>
-          <div className='absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-purple-500/10 blur-3xl animate-pulse-slow animation-delay-2000'></div>
-          <div className='absolute top-3/4 left-1/2 w-64 h-64 rounded-full bg-pink-500/10 blur-3xl animate-pulse-slow'></div>
-        </div>
-
-        <div className='container mx-auto px-4 relative z-10'>
-          <div className='text-center mb-16'>
-            <h2 className='text-4xl md:text-5xl font-cyber font-extrabold mb-4 tracking-tight uppercase'>
-              <span className='bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 text-transparent bg-clip-text'>
-                Powerful Features
-              </span>
-            </h2>
-            <p className='text-gray-300 max-w-2xl mx-auto'>
-              Everything you need to send and receive packages in a
-              <span className='text-cyan-400 font-semibold'> decentralized way</span>
-            </p>
-          </div>
-
-          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'>
-            {features.map((feature) => (
-              <div
-                key={feature.title}
-                onClick={(e) => handleFeatureClick(e, feature.link)}
-                className={`relative group cursor-pointer bg-black/30 backdrop-blur-sm border-2 border-white/10 rounded-xl p-6 transition-all duration-300 transform hover:-translate-y-1 ${feature.hoverColor}`}
-              >
-                {/* Gradient background that appears on hover */}
-                <div className='absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0'></div>
-
-                {/* Icon with gradient background */}
-                <div
-                  className={`w-12 h-12 rounded-xl bg-gradient-to-r ${feature.color} flex items-center justify-center mb-4 shadow-cyan-glow`}
-                >
-                  <div className='text-off-white'>{feature.icon}</div>
-                </div>
-
-                <h3 className='text-xl font-bold mb-2 relative z-10 text-off-white uppercase'>
-                  {feature.title}
-                </h3>
-                <p className='text-gray-300 mb-4 relative z-10'>
-                  {feature.description}
-                </p>
-
-                <div className='mt-4 relative z-10'>
-                  <button
-                    onClick={(e) => handleFeatureClick(e, feature.link)}
-                    className='inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/30 text-cyan-300 text-sm font-medium transition-all duration-300 hover:border-cyan-400 hover:shadow-cyan-glow/50 hover:-translate-y-1 backdrop-blur-sm'
-                  >
-                    Learn more
-                    <svg
-                      className='ml-2 h-4 w-4'
-                      viewBox='0 0 24 24'
-                      fill='none'
-                      xmlns='http://www.w3.org/2000/svg'
-                    >
-                      <path
-                        d='M5 12H19M19 12L12 5M19 12L12 19'
-                        stroke='currentColor'
-                        strokeWidth='2'
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                      />
-                    </svg>
-                  </button>
-                </div>
+      {/* CTA Section - Only show when not logged in */}
+      {!isLoggedIn && (
+        <section className='py-20 bg-gray-900'>
+          <div className='container mx-auto px-4'>
+            <div className='bg-gradient-to-r from-black/60 to-gray-900/60 border border-cyan-500/30 rounded-3xl p-8 md:p-12 relative overflow-hidden shadow-cyan-glow backdrop-blur-sm'>
+              {/* Background Elements */}
+              <div className='absolute inset-0 z-0'>
+                <div className='absolute top-0 right-0 w-[300px] h-[300px] rounded-full bg-cyan-500/10 blur-[100px]'></div>
+                <div className='absolute bottom-0 left-0 w-[300px] h-[300px] rounded-full bg-purple-500/10 blur-[100px]'></div>
+                <div className='absolute top-1/2 left-1/2 w-[200px] h-[200px] rounded-full bg-pink-500/10 blur-[80px]'></div>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* CTA Section */}
-      <section className='py-20 bg-gray-900'>
-        <div className='container mx-auto px-4'>
-          <div className='bg-gradient-to-r from-black/60 to-gray-900/60 border border-cyan-500/30 rounded-3xl p-8 md:p-12 relative overflow-hidden shadow-cyan-glow backdrop-blur-sm'>
-            {/* Background Elements */}
-            <div className='absolute inset-0 z-0'>
-              <div className='absolute top-0 right-0 w-[300px] h-[300px] rounded-full bg-cyan-500/10 blur-[100px]'></div>
-              <div className='absolute bottom-0 left-0 w-[300px] h-[300px] rounded-full bg-purple-500/10 blur-[100px]'></div>
-              <div className='absolute top-1/2 left-1/2 w-[200px] h-[200px] rounded-full bg-pink-500/10 blur-[80px]'></div>
-            </div>
-
-            <div className='relative z-10 flex flex-col md:flex-row items-center justify-between gap-8'>
-              <div>
-                <h2 className='text-3xl md:text-4xl font-cyber font-bold mb-4 text-center md:text-left'>
-                  <span className='bg-gradient-to-r from-cyan-400 to-purple-400 text-transparent bg-clip-text'>
-                    Ready to get started?
-                  </span>
-                </h2>
-                <p className='text-gray-300 max-w-lg text-center md:text-left'>
-                  Join the <span className='text-cyan-400 font-semibold'>decentralized delivery revolution</span> today and
-                  experience the future of package delivery.
-                </p>
-              </div>
-              <div className='w-full md:w-auto'>
-                {isLoggedIn ? (
-                  <button 
-                    onClick={(e) => handleFeatureClick(e, '/post-package')}
-                    className='w-full md:w-auto px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'
-                  >
-                    Post a Package
-                  </button>
-                ) : (
+              <div className='relative z-10 flex flex-col md:flex-row items-center justify-between gap-8'>
+                <div>
+                  <h2 className='text-3xl md:text-4xl font-cyber font-bold mb-4 text-center md:text-left'>
+                    <span className='bg-gradient-to-r from-cyan-400 to-purple-400 text-transparent bg-clip-text'>
+                      Ready to get started?
+                    </span>
+                  </h2>
+                  <p className='text-gray-300 max-w-lg text-center md:text-left'>
+                    Join the <span className='text-cyan-400 font-semibold'>decentralized delivery revolution</span> today and
+                    experience the future of package delivery.
+                  </p>
+                </div>
+                <div className='w-full md:w-auto'>
                   <NostrAuthModal
                     trigger={
                       <button className='w-full md:w-auto px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'>
@@ -576,12 +438,12 @@ export default function Home() {
                       </button>
                     }
                   />
-                )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
     
     </main>

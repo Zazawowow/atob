@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -15,6 +14,8 @@ import {
   Package,
   CheckCircle,
   Truck,
+  Loader2,
+  ServerCrash,
 } from 'lucide-react';
 import Link from 'next/link';
 import { getUserProfile, type ProfileData, getMyDeliveries } from '@/lib/nostr';
@@ -34,24 +35,23 @@ export default function Profile() {
   useEffect(() => {
     if (!isReady) return;
 
+    if (!publicKey) {
+      setLoading(false);
+      return;
+    }
+
     const fetchProfile = async () => {
       try {
-        // Fetch profile from Nostr
+        setLoading(true);
         const profileData = await getUserProfile(publicKey);
         setProfile(profileData);
-
-        // Calculate reputation score
         calculateReputationScore(profileData);
+        
+        const fullNpub = getNpub(publicKey);
+        setNpub(fullNpub);
 
-        // Format npub for display
-        if (publicKey) {
-          const fullNpub = getNpub(publicKey);
-          setNpub(fullNpub);
-        }
-
-        // Fetch recent deliveries
         const deliveries = await getMyDeliveries();
-        setRecentDeliveries(deliveries.slice(0, 5)); // Get the 5 most recent deliveries
+        setRecentDeliveries(deliveries.slice(0, 5));
       } catch (error) {
         toast.error('Error', {
           description: 'Failed to load profile data.',
@@ -66,281 +66,201 @@ export default function Profile() {
   }, [publicKey, isReady]);
 
   const calculateReputationScore = (profileData: ProfileData) => {
-    // Simple reputation calculation based on deliveries and Nostr metrics
     const deliveryCount = profileData.deliveries || 0;
     const followers = profileData.followers || 0;
     const following = profileData.following || 0;
 
-    // Base score from deliveries (max 4 points)
     let score = Math.min(4, deliveryCount * 0.4);
-
-    // Add follower ratio bonus (max 1 point)
     if (following > 0) {
       const ratio = followers / following;
       score += Math.min(1, ratio * 0.5);
     } else if (followers > 0) {
-      score += 1; // Max bonus if they have followers but don't follow anyone
+      score += 1;
     }
-
-    // Ensure score is between 0-5
     score = Math.max(0, Math.min(5, score));
-
     setReputationScore(score);
   };
 
-  // Format date for display
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp * 1000);
-    return date.toLocaleDateString();
-  };
-
-  // Get time ago string
   const getTimeAgo = (timestamp: number) => {
     const seconds = Math.floor(Date.now() / 1000 - timestamp);
-
-    if (seconds < 60) return `${seconds} seconds ago`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
-    if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`;
-    if (seconds < 2592000) return `${Math.floor(seconds / 604800)} weeks ago`;
-
-    return formatDate(timestamp);
+    if (seconds < 60) return `${seconds}s ago`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    return `${Math.floor(seconds / 86400)}d ago`;
   };
 
-  if (!isReady) {
+  const renderLoading = () => (
+    <div className='flex items-center justify-center h-64 text-off-white-70'>
+      <Loader2 className='mr-2 h-6 w-6 animate-spin text-cyan-400' />
+      <span className='text-lg'>Loading Profile...</span>
+    </div>
+  );
+
+  const renderNotLoggedIn = () => (
+    <div className='text-center py-16'>
+      <ServerCrash className='mx-auto h-16 w-16 text-pink-500 mb-4' />
+      <h2 className='text-2xl font-bold font-cyber text-off-white mb-2'>
+        Not Logged In
+      </h2>
+      <p className='text-off-white-70 mb-6'>
+        You need to log in to view your profile.
+      </p>
+      <Link href='/'>
+        <button className='btn-outline-purple'>Go to Homepage</button>
+      </Link>
+    </div>
+  );
+
+  if (!isReady || loading) {
     return (
-      <div className='container mx-auto px-4 pt-24 pb-8'>
-        <div className='flex justify-center items-center h-64'>
-          <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full'></div>
-          <p className='ml-2'>Loading Nostr...</p>
-        </div>
-      </div>
+      <main className='container mx-auto px-4 pt-24 pb-12 min-h-screen'>
+        {renderLoading()}
+      </main>
+    );
+  }
+
+  if (!publicKey) {
+    return (
+      <main className='container mx-auto px-4 pt-24 pb-12 min-h-screen'>
+        {renderNotLoggedIn()}
+      </main>
     );
   }
 
   return (
-    <div className='container mx-auto px-4 pt-24 pb-8'>
-      <Link href='/' className='flex items-center text-sm mb-6 hover:underline'>
-        <ArrowLeft className='mr-2 h-4 w-4' />
-        Back to Home
-      </Link>
-
-      <div className='max-w-4xl mx-auto'>
-        <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
-          {/* Profile Card */}
-          <div className='md:col-span-1'>
-            <Card className='border border-gray-100 shadow-md'>
-              <CardHeader className='bg-gradient-to-r from-[#F8FAFC] to-[#F1F5F9] border-b border-gray-100'>
-                <CardTitle className='flex items-center text-gray-900'>
-                  <User className='mr-2 h-5 w-5' />
-                  Profile
-                </CardTitle>
-                <CardDescription>Your Nostr identity</CardDescription>
-              </CardHeader>
-              <CardContent className='space-y-4 pt-6 pb-6'>
-                {loading ? (
-                  <div className='flex justify-center py-8'>
-                    <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full'></div>
-                  </div>
-                ) : profile ? (
-                  <>
-                    <div className='flex justify-center mb-4'>
-                      {profile.picture ? (
-                        <img
-                          src={profile.picture || '/placeholder.svg'}
-                          alt={profile.displayName || profile.name || 'User'}
-                          className='w-24 h-24 rounded-full object-cover border-2 border-white shadow-md'
-                        />
-                      ) : (
-                        <div className='w-24 h-24 bg-gradient-to-r from-[#FF7170] to-[#FFE57F] rounded-full flex items-center justify-center shadow-md'>
-                          <User className='h-12 w-12 text-off-white' />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className='text-center'>
-                      <h2 className='text-xl font-bold text-gray-900'>
-                        {profile.displayName ||
-                          profile.name ||
-                          'Anonymous User'}
-                      </h2>
-                      <p className='text-sm text-gray-500 break-all mt-1'>
-                        {npub.slice(0, 10)}...{npub.slice(-4)}
-                      </p>
-                    </div>
-
-                    <div className='grid grid-cols-3 gap-4 text-center pt-4'>
-                      <div>
-                        <p className='text-2xl font-bold text-gray-900'>
-                          {profile.followers || 0}
-                        </p>
-                        <p className='text-sm text-gray-500'>Followers</p>
-                      </div>
-                      <div>
-                        <p className='text-2xl font-bold text-gray-900'>
-                          {profile.following || 0}
-                        </p>
-                        <p className='text-sm text-gray-500'>Following</p>
-                      </div>
-                      <div>
-                        <p className='text-2xl font-bold text-gray-900'>
-                          {profile.deliveries || 0}
-                        </p>
-                        <p className='text-sm text-gray-500'>Deliveries</p>
-                      </div>
-                    </div>
-
-                    <div className='pt-4'>
-                      <div className='flex items-center justify-center'>
-                        <div className='bg-gradient-to-r from-[#FF7170] to-[#FFE57F] p-3 rounded-full'>
-                          <Star
-                            className='h-6 w-6 text-off-white'
-                            fill='currentColor'
-                          />
-                        </div>
-                        <div className='ml-3'>
-                          <span className='text-3xl font-bold text-gray-900'>
-                            {reputationScore.toFixed(1)}
-                          </span>
-                          <span className='text-lg text-gray-500 ml-1'>/5</span>
-                        </div>
-                      </div>
-                      <p className='text-center text-sm text-gray-500 mt-1'>
-                        Reputation Score
-                      </p>
-                    </div>
-                  </>
-                ) : (
-                  <div className='text-center py-8 text-gray-500'>
-                    Failed to load profile data
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Reputation and Activity Cards */}
-          <div className='md:col-span-2 space-y-6'>
-            {/* Reputation Card */}
-            <Card className='border border-gray-100 shadow-md'>
-              <CardHeader className='bg-gradient-to-r from-[#F8FAFC] to-[#F1F5F9] border-b border-gray-100'>
-                <CardTitle className='flex items-center text-gray-900'>
-                  <Star className='mr-2 h-5 w-5' />
-                  Reputation
-                </CardTitle>
-                <CardDescription>
-                  Your reputation is based on your delivery history and Nostr
-                  activity
-                </CardDescription>
-              </CardHeader>
-              <CardContent className='space-y-4 pt-6'>
-                {loading ? (
-                  <div className='flex justify-center py-8'>
-                    <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full'></div>
-                  </div>
-                ) : (
-                  <div className='space-y-4'>
-                    <div className='space-y-2'>
-                      <div className='flex justify-between items-center'>
-                        <div className='flex items-center'>
-                          <Package className='h-4 w-4 mr-2 text-[#FF7170]' />
-                          <span className='text-sm font-medium'>
-                            Delivery History
-                          </span>
-                        </div>
-                        <span className='text-sm font-bold'>
-                          {profile?.deliveries || 0} deliveries
-                        </span>
-                      </div>
-                      <Progress
-                        value={((profile?.deliveries || 0) / 10) * 100}
-                        className='h-2'
+    <main className='min-h-screen bg-gray-900/50'>
+      <div className='container mx-auto px-4 pt-24 pb-12'>
+        <div className='max-w-5xl mx-auto'>
+          <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
+            {/* Left Column: Profile Card */}
+            <div className='lg:col-span-1 space-y-8'>
+              <Card className='bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm'>
+                <CardHeader>
+                  <CardTitle className='flex items-center text-off-white font-cyber text-2xl'>
+                    <User className='mr-3 h-5 w-5 text-purple-400' />
+                    AGENT PROFILE
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className='pt-2'>
+                  <div className='flex flex-col items-center text-center'>
+                    {profile?.picture ? (
+                      <img
+                        src={profile.picture}
+                        alt={profile.displayName || profile.name || 'User'}
+                        className='w-28 h-28 rounded-full object-cover border-2 border-purple-400/50 shadow-lg'
                       />
-                      <p className='text-xs text-gray-500'>
-                        Based on your successful delivery count
+                    ) : (
+                      <div className='w-28 h-28 bg-gradient-to-br from-purple-500 to-cyan-500 rounded-full flex items-center justify-center shadow-lg border-2 border-purple-400/50'>
+                        <User className='h-14 w-14 text-off-white' />
+                      </div>
+                    )}
+                    <h2 className='text-2xl font-bold mt-4 text-off-white'>
+                      {profile?.displayName || profile?.name || 'Anonymous Agent'}
+                    </h2>
+                    <p className='text-sm text-purple-300 break-all mt-1 font-mono'>
+                      {npub.slice(0, 10)}...{npub.slice(-4)}
+                    </p>
+                  </div>
+
+                  <div className='grid grid-cols-3 gap-4 text-center pt-6 mt-6 border-t border-white/10'>
+                    <div>
+                      <p className='text-2xl font-bold text-off-white'>{profile?.followers || 0}</p>
+                      <p className='text-xs text-off-white-70 uppercase tracking-wider'>Followers</p>
+                    </div>
+                    <div>
+                      <p className='text-2xl font-bold text-off-white'>{profile?.following || 0}</p>
+                      <p className='text-xs text-off-white-70 uppercase tracking-wider'>Following</p>
+                    </div>
+                    <div>
+                      <p className='text-2xl font-bold text-off-white'>{profile?.deliveries || 0}</p>
+                      <p className='text-xs text-off-white-70 uppercase tracking-wider'>Deliveries</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className='bg-black/30 border border-cyan-500/20 rounded-2xl shadow-cyan-glow/10 backdrop-blur-sm'>
+                <CardHeader>
+                  <CardTitle className='flex items-center text-off-white font-cyber text-2xl'>
+                    <Star className='mr-3 h-5 w-5 text-cyan-400' />
+                    REPUTATION
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className='flex items-center justify-center space-x-4'>
+                    <div className='bg-gradient-to-r from-cyan-500 to-purple-500 p-3 rounded-full'>
+                      <Star className='h-8 w-8 text-off-white' fill='currentColor' />
+                    </div>
+                    <div>
+                      <p className='text-4xl font-bold text-off-white'>
+                        {reputationScore.toFixed(1)}
+                        <span className='text-2xl text-off-white-70'>/5.0</span>
                       </p>
                     </div>
+                  </div>
+                  <Progress value={reputationScore * 20} className='mt-4 h-2' />
+                  <p className='text-center text-xs mt-2 text-off-white-60'>
+                    Based on deliveries & network trust
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
 
-                    <div className='space-y-2'>
-                      <div className='flex justify-between items-center'>
-                        <div className='flex items-center'>
-                          <User className='h-4 w-4 mr-2 text-[#8B5CF6]' />
-                          <span className='text-sm font-medium'>
-                            Nostr Network
-                          </span>
-                        </div>
-                        <span className='text-sm font-bold'>
-                          {profile?.followers || 0} followers
-                        </span>
-                      </div>
-                      <Progress
-                        value={((profile?.followers || 0) / 20) * 100}
-                        className='h-2'
-                      />
-                      <p className='text-xs text-gray-500'>
-                        Based on your Nostr network connections
+            {/* Right Column: Recent Deliveries */}
+            <div className='lg:col-span-2'>
+              <Card className='bg-black/30 border border-pink-500/20 rounded-2xl shadow-pink-glow/10 backdrop-blur-sm h-full'>
+                <CardHeader>
+                  <CardTitle className='flex items-center text-off-white font-cyber text-2xl'>
+                    <Truck className='mr-3 h-5 w-5 text-pink-400' />
+                    DELIVERY LOG
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {recentDeliveries.length > 0 ? (
+                    <ul className='space-y-4'>
+                      {recentDeliveries.map((delivery, index) => (
+                        <li key={index} className='flex items-center justify-between p-4 bg-black/20 rounded-lg border border-white/10'>
+                          <div className='flex items-center'>
+                            <div className='p-2 bg-gradient-to-r from-pink-500 to-orange-500 rounded-md mr-4'>
+                              <Package className='h-6 w-6 text-off-white' />
+                            </div>
+                            <div>
+                              <p className='font-semibold text-off-white'>Package Delivered</p>
+                              <p className='text-sm text-off-white-70'>
+                                To: {delivery.tags.find(t => t[0] === 'location')?.[1] || 'Unknown'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className='text-right'>
+                            <div className='flex items-center text-sm text-green-400'>
+                              <CheckCircle className='h-4 w-4 mr-1' />
+                              Completed
+                            </div>
+                            <p className='text-xs text-off-white-60 mt-1'>
+                              {getTimeAgo(delivery.created_at)}
+                            </p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className='text-center py-12'>
+                      <Package className='mx-auto h-12 w-12 text-pink-400/50 mb-4' />
+                      <h3 className='text-xl font-semibold text-off-white'>No Deliveries Yet</h3>
+                      <p className='text-off-white-70 mt-2'>
+                        Completed deliveries will appear here.
                       </p>
+                      <Link href='/view-packages'>
+                        <button className='mt-4 btn-outline-purple'>Find a Package</button>
+                      </Link>
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Recent Activity Card */}
-            <Card className='border border-gray-100 shadow-md'>
-              <CardHeader className='bg-gradient-to-r from-[#F8FAFC] to-[#F1F5F9] border-b border-gray-100'>
-                <CardTitle className='flex items-center text-gray-900'>
-                  <CheckCircle className='mr-2 h-5 w-5' />
-                  Recent Deliveries
-                </CardTitle>
-                <CardDescription>
-                  Your most recent package deliveries
-                </CardDescription>
-              </CardHeader>
-              <CardContent className='pt-6'>
-                {loading ? (
-                  <div className='flex justify-center py-8'>
-                    <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full'></div>
-                  </div>
-                ) : recentDeliveries.length > 0 ? (
-                  <div className='space-y-3'>
-                    {recentDeliveries.map((delivery, index) => (
-                      <div
-                        key={index}
-                        className='flex items-center p-3 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors'
-                      >
-                        {delivery.status === 'delivered' ? (
-                          <CheckCircle className='h-4 w-4 mr-3 text-green-500' />
-                        ) : (
-                          <Truck className='h-4 w-4 mr-3 text-blue-500' />
-                        )}
-                        <div className='flex-1'>
-                          <p className='text-sm font-medium'>
-                            {delivery.title}
-                          </p>
-                          <p className='text-xs text-gray-500'>
-                            {delivery.pickupLocation} → {delivery.destination}
-                          </p>
-                        </div>
-                        <span className='text-xs text-gray-500'>
-                          {delivery.created_at
-                            ? getTimeAgo(delivery.created_at)
-                            : 'Recently'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className='text-center py-8 text-gray-500'>
-                    <Package className='h-8 w-8 mx-auto mb-2 text-gray-400' />
-                    <p>No recent deliveries</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

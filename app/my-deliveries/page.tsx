@@ -210,11 +210,7 @@ export default function MyDeliveries() {
 
       <div className='flex flex-col md:flex-row gap-6'>
         <div className='w-full md:w-1/2 lg:w-2/5'>
-          <div className='flex items-center justify-between mb-6'>
-            <Link href='/' className='flex items-center text-sm hover:underline text-[#FAFAFA]'>
-              <ArrowLeft className='mr-2 h-4 w-4' />
-              Back to Home
-            </Link>
+          <div className='flex items-center justify-end mb-6'>
             <Button
               onClick={handleRefresh}
               variant='outline'

@@ -15,6 +15,7 @@ import { ArrowLeft, Plus, Trash2, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { getRelays, setRelays, checkRelay } from '@/lib/nostr-service';
 import { Badge } from '@/components/ui/badge';
+import { SettingsIcon } from 'lucide-react';
 
 export default function Settings() {
   const [relays, setRelaysList] = useState<string[]>([]);
@@ -159,110 +160,95 @@ export default function Settings() {
   };
 
   return (
-    <div className='container mx-auto px-4 pt-24 pb-8'>
-      <Link href='/' className='flex items-center text-sm mb-6 hover:underline'>
-        <ArrowLeft className='mr-2 h-4 w-4' />
-        Back to Home
-      </Link>
-
-      <Card className='max-w-2xl mx-auto border border-gray-100 shadow-lg overflow-hidden'>
-        <CardHeader className='bg-gradient-to-r from-[#F8FAFC] to-[#F1F5F9] border-b border-gray-100'>
-          <CardTitle className='text-gray-900'>Nostr Settings</CardTitle>
-          <CardDescription>
-            Configure your Nostr relays and other settings
-          </CardDescription>
-        </CardHeader>
-        <CardContent className='space-y-6 pt-6'>
-          <div className='space-y-4'>
-            <div className='flex justify-between items-center'>
-              <h3 className='text-lg font-medium'>Nostr Relays</h3>
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={checkRelays}
-                disabled={isChecking}
-                className='flex items-center gap-1'
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${isChecking ? 'animate-spin' : ''}`}
-                />
-                {isChecking ? 'Checking...' : 'Check All'}
-              </Button>
-            </div>
-
-            <div className='space-y-2'>
-              {relays.map((relay) => (
-                <div
-                  key={relay}
-                  className='flex items-center justify-between p-2 border rounded-md'
+    <main className='min-h-screen bg-gray-900/50'>
+      <div className='container mx-auto px-4 pt-24 pb-12'>
+        <Card className='max-w-2xl mx-auto bg-black/30 border border-cyan-500/20 rounded-2xl shadow-cyan-glow/10 backdrop-blur-sm'>
+          <CardHeader>
+            <CardTitle className='flex items-center text-off-white font-cyber text-2xl'>
+              <SettingsIcon className='mr-3 h-5 w-5 text-cyan-400' />
+              NOSTR SETTINGS
+            </CardTitle>
+          </CardHeader>
+          <CardContent className='space-y-8 pt-6'>
+            <div className='space-y-4'>
+              <div className='flex justify-between items-center'>
+                <h3 className='text-lg font-medium text-off-white'>Nostr Relays</h3>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={checkRelays}
+                  disabled={isChecking}
+                  className='btn-outline-blue'
                 >
-                  <div className='flex items-center gap-2 overflow-hidden'>
-                    <span className='truncate'>{relay}</span>
-                    {relayStatus[relay] === true && (
-                      <Badge
-                        variant='outline'
-                        className='bg-green-50 text-green-700 border-green-200'
-                      >
-                        Connected
-                      </Badge>
-                    )}
-                    {relayStatus[relay] === false && (
-                      <Badge
-                        variant='outline'
-                        className='bg-red-50 text-red-700 border-red-200'
-                      >
-                        Failed
-                      </Badge>
-                    )}
-                  </div>
-                  <Button
-                    variant='ghost'
-                    size='sm'
-                    onClick={() => handleRemoveRelay(relay)}
-                    className='text-gray-500 hover:text-red-500'
-                  >
-                    <Trash2 className='h-4 w-4' />
-                  </Button>
-                </div>
-              ))}
-            </div>
+                  <RefreshCw
+                    className={`mr-2 h-4 w-4 ${isChecking ? 'animate-spin' : ''}`}
+                  />
+                  {isChecking ? 'Checking...' : 'Check All'}
+                </Button>
+              </div>
 
-            <div className='flex gap-2'>
-              <Input
-                placeholder='wss://relay.example.com'
-                value={newRelay}
-                onChange={(e) => setNewRelay(e.target.value)}
-              />
-              <Button
-                onClick={handleAddRelay}
-                className='flex items-center gap-1'
-              >
-                <Plus className='h-4 w-4' />
-                Add
-              </Button>
-            </div>
-          </div>
-
-          <div className='space-y-4'>
-            <h3 className='text-lg font-medium'>Suggested Relays</h3>
-            <div className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
-              {suggestedRelays
-                .filter((relay) => !relays.includes(relay))
-                .map((relay) => (
-                  <Button
+              <div className='space-y-3'>
+                {relays.map((relay) => (
+                  <div
                     key={relay}
-                    variant='outline'
-                    className='justify-start overflow-hidden'
-                    onClick={() => handleAddSuggestedRelay(relay)}
+                    className='flex items-center justify-between p-3 bg-black/20 rounded-lg border border-white/10'
                   >
-                    <Plus className='h-4 w-4 mr-2 flex-shrink-0' />
-                    <span className='truncate'>{relay}</span>
-                  </Button>
+                    <div className='flex items-center gap-2 overflow-hidden'>
+                      <span className='truncate text-off-white-90'>{relay}</span>
+                      {relayStatus[relay] === true && (
+                        <Badge variant='success'>Connected</Badge>
+                      )}
+                      {relayStatus[relay] === false && (
+                        <Badge variant='destructive'>Failed</Badge>
+                      )}
+                    </div>
+                    <Button
+                      variant='ghost'
+                      size='icon'
+                      onClick={() => handleRemoveRelay(relay)}
+                      className='text-off-white-60 hover:text-pink-400'
+                    >
+                      <Trash2 className='h-4 w-4' />
+                    </Button>
+                  </div>
                 ))}
+              </div>
+
+              <div className='flex gap-2 pt-2'>
+                <Input
+                  placeholder='wss://relay.damus.io'
+                  value={newRelay}
+                  onChange={(e) => setNewRelay(e.target.value)}
+                  className='bg-black/20 border-white/20 text-off-white focus:ring-cyan-400'
+                />
+                <Button onClick={handleAddRelay} className='btn-blue'>
+                  <Plus className='h-4 w-4 mr-2' />
+                  Add
+                </Button>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+
+            <div className='space-y-4 border-t border-white/10 pt-6'>
+              <h3 className='text-lg font-medium text-off-white'>Suggested Relays</h3>
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
+                {suggestedRelays
+                  .filter((relay) => !relays.includes(relay))
+                  .map((relay) => (
+                    <Button
+                      key={relay}
+                      variant='outline'
+                      className='justify-start overflow-hidden btn-outline-purple text-off-white'
+                      onClick={() => handleAddSuggestedRelay(relay)}
+                    >
+                      <Plus className='h-4 w-4 mr-2 flex-shrink-0' />
+                      <span className='truncate'>{relay}</span>
+                    </Button>
+                  ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </main>
   );
 }

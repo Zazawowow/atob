@@ -114,11 +114,6 @@ export default function ConfirmDelivery() {
 
   return (
     <div className='container mx-auto px-4 py-8'>
-      <Link href='/' className='flex items-center text-sm mb-6 hover:underline'>
-        <ArrowLeft className='mr-2 h-4 w-4' />
-        Back to Home
-      </Link>
-
       <Card className='max-w-md mx-auto'>
         <CardHeader>
           <CardTitle className='flex items-center'>
