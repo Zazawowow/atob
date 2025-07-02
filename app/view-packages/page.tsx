@@ -186,7 +186,7 @@ export default function ViewPackages() {
               </CardHeader>
               <CardContent className='flex-grow flex items-center justify-center'>
                 <div className='flex flex-col items-center gap-4 text-[#FAFAFA]/70'>
-                  <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full'></div>
+          <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full'></div>
                   <p>{!isReady ? 'Connecting to Nostr...' : 'Loading Packages...'}</p>
                 </div>
               </CardContent>

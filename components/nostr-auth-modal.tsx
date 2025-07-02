@@ -4,7 +4,9 @@ import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { NostrLogin } from './nostr-login';
 import { NostrSignup } from './nostr-signup';
@@ -18,6 +20,7 @@ interface NostrAuthModalProps {
 export function NostrAuthModal({ trigger, onAuth }: NostrAuthModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState<'login' | 'signup'>('login');
+  const [title, setTitle] = useState<string>('Login');
 
   const handleLogin = (publicKey: string) => {
     if (onAuth) {
@@ -47,16 +50,23 @@ export function NostrAuthModal({ trigger, onAuth }: NostrAuthModalProps) {
         className="sm:max-w-[425px] p-0 bg-transparent border-none"
         showCloseButton={false}
       >
+        <DialogTitle className="sr-only">{title}</DialogTitle>
         {view === 'login' ? (
           <NostrLogin
             onLogin={handleLogin}
-            onSignup={() => setView('signup')}
+            onSignup={() => {
+              setView('signup');
+              setTitle('Sign Up');
+            }}
             onCancel={() => setIsOpen(false)}
           />
         ) : (
           <NostrSignup
             onSignup={handleSignup}
-            onBackToLogin={() => setView('login')}
+            onBackToLogin={() => {
+              setView('login');
+              setTitle('Login');
+            }}
             onCancel={() => setIsOpen(false)}
           />
         )}

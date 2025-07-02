@@ -95,8 +95,7 @@ async function getCoordinates(address: string): Promise<[number, number] | null>
       )}&limit=1`,
       {
         headers: {
-          'Accept-Language': 'en-US,en;q=0.9',
-          'User-Agent': 'Bfleet/1.0',
+          'User-Agent': 'AtoBApp/1.0',
         },
       }
     );
