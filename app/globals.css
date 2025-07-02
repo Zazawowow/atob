@@ -748,3 +748,25 @@
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+.custom-package-marker {
+  background-color: #3b82f6;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+
+.selected-package-marker {
+  background-color: #ef4444;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0 15px rgba(239,68,68,0.5);
+}

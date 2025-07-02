@@ -113,7 +113,7 @@ export default function PostPackage() {
             </CardTitle>
           </CardHeader>
           <form onSubmit={handleSubmit}>
-            <CardContent className='space-y-6 pt-6'>
+            <CardContent className='space-y-6 pt-6 pb-4'>
               <div className='space-y-2'>
                 <Label htmlFor='title' className='text-off-white-90'>Package Title</Label>
                 <Input
@@ -123,6 +123,7 @@ export default function PostPackage() {
                   value={formData.title}
                   onChange={handleChange}
                   required
+                  className="placeholder:text-gray-400"
                 />
               </div>
 
@@ -159,6 +160,7 @@ export default function PostPackage() {
                     value={formData.cost}
                     onChange={handleChange}
                     required
+                    className="placeholder:text-gray-400"
                   />
                 </div>
               </div>
@@ -172,6 +174,7 @@ export default function PostPackage() {
                   value={formData.description}
                   onChange={handleChange}
                   rows={3}
+                  className="placeholder:text-gray-400"
                 />
               </div>
             </CardContent>
