@@ -227,8 +227,8 @@ export default function ViewPackages() {
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
         {/* Left Column: Package List */}
         <div className='h-[calc(100vh-10rem)]'>
-          <Card className='bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10 h-full flex flex-col'>
-            <CardHeader className='flex flex-row justify-between items-start'>
+          <Card className='bg-background/90 backdrop-blur-sm border border-primary/10 shadow-2xl shadow-primary/10 h-full flex flex-col p-0 gap-0'>
+            <CardHeader className='flex flex-row justify-between items-start py-6 px-6'>
               <div>
                 <CardTitle className='text-[#FAFAFA]'>Available Packages</CardTitle>
                 <CardDescription className='text-[#FAFAFA]/70'>
@@ -247,7 +247,7 @@ export default function ViewPackages() {
                 />
               </Button>
             </CardHeader>
-            <CardContent className='flex flex-col flex-grow overflow-hidden'>
+            <CardContent className='flex flex-col flex-grow overflow-hidden px-6 pb-6'>
               <div className='flex gap-2 mb-4'>
                 <Button
                   onClick={() => setViewMode('all')}
@@ -359,14 +359,14 @@ export default function ViewPackages() {
 
         {/* Right Column: Package Map */}
         <div className='h-[calc(100vh-10rem)]'>
-          <Card className='bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10 h-full overflow-hidden'>
-            <CardHeader>
+          <Card className='bg-background/90 backdrop-blur-sm border border-primary/10 shadow-2xl shadow-primary/10 h-full overflow-hidden flex flex-col p-0 gap-0'>
+            <CardHeader className='py-6 px-6'>
               <CardTitle className='text-[#FAFAFA]'>Package Map</CardTitle>
               <CardDescription className='text-[#FAFAFA]/70'>
                 View package locations and delivery routes
               </CardDescription>
             </CardHeader>
-            <CardContent className='p-0 h-[calc(100%-4.5rem)]'>
+            <CardContent className='relative p-0 flex-grow'>
               <PackageMap
                 packages={filteredPackages}
                 selectedPackage={selectedPackage}

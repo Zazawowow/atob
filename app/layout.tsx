@@ -6,7 +6,7 @@ import { Toaster } from 'sonner';
 import { NostrProvider } from '@/components/nostr-provider';
 import { Navbar } from '@/components/navbar';
 import { UIAnimationProvider } from '@/components/ui-animation-context';
-import { ConditionalFooter } from '@/components/conditional-footer';
+import { ConditionalNavigation } from '@/components/conditional-navigation';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -42,10 +42,10 @@ export default function RootLayout({
         <NostrProvider>
           <UIAnimationProvider>
             <Navbar />
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col pb-24 md:pb-0">
               {children}
             </div>
-            <ConditionalFooter />
+            <ConditionalNavigation />
             <Toaster />
           </UIAnimationProvider>
         </NostrProvider>

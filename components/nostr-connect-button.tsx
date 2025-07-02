@@ -59,6 +59,14 @@ export function NostrConnectButton() {
     }
   }, [publicKey, isLoggedIn]);
 
+  const handleLogin = (publicKey: string, privateKey?: string) => {
+    login(publicKey, privateKey);
+    // Redirect on mobile after login
+    if (window.innerWidth < 768) { // 768px is a common breakpoint for md
+      window.location.href = '/view-packages';
+    }
+  };
+
   // Custom hollow button style with purple outline
   const gradientButtonClass = 'btn-outline-purple';
 
@@ -131,7 +139,7 @@ export function NostrConnectButton() {
           Login with Nostr
         </Button>
       }
-      onAuth={login}
+      onAuth={handleLogin}
     />
   );
 }

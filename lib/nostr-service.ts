@@ -113,7 +113,7 @@ export async function getWorkingRelays(): Promise<string[]> {
 // Update the listEvents function to filter out non-package/delivery events
 export async function listEvents(
   filters: Filter[],
-  timeoutMs = 5000
+  timeoutMs = 10000
 ): Promise<NostrEvent[]> {
   // Get only working relays
   const allRelays = getRelays();

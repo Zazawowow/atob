@@ -2,13 +2,13 @@
 
 import { useNostr } from '@/components/nostr-provider';
 import { Footer } from '@/components/ui/footer';
+import { BottomNavbar } from './bottom-navbar';
 
-export function ConditionalFooter() {
+export function ConditionalNavigation() {
   const { isLoggedIn } = useNostr();
   
-  // Only show footer when user is not logged in
   if (isLoggedIn) {
-    return null;
+    return <BottomNavbar />;
   }
   
   return <Footer />;

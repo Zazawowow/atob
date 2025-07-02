@@ -712,3 +712,27 @@
 .bg-off-white {
   background-color: #C3C3C3;
 }
+
+/* Leaflet map container overrides */
+.leaflet-container {
+  height: 100% !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+}
+
+/* Ensure map fills the card content completely */
+[data-slot="card-content"] .leaflet-container {
+  border-radius: 0 !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+}
+
+/* Fix for Leaflet attribution positioning */
+.leaflet-control-attribution {
+  margin: 0 !important;
+}

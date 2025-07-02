@@ -211,8 +211,8 @@ export default function MyDeliveries() {
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
         {/* Left Column: Delivery List */}
         <div className='h-[calc(100vh-10rem)]'>
-          <Card className='bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10 h-full flex flex-col'>
-            <CardHeader className='flex flex-row justify-between items-start'>
+          <Card className='bg-background/90 backdrop-blur-sm border border-primary/10 shadow-2xl shadow-primary/10 h-full flex flex-col p-0 gap-0'>
+            <CardHeader className='flex flex-row justify-between items-start py-6 px-6'>
               <div>
                 <CardTitle className='text-[#FAFAFA]'>Active Deliveries</CardTitle>
                 <CardDescription className='text-[#FAFAFA]/70'>
@@ -231,7 +231,7 @@ export default function MyDeliveries() {
                 />
               </Button>
             </CardHeader>
-            <CardContent className='flex flex-col flex-grow overflow-hidden'>
+            <CardContent className='flex flex-col flex-grow overflow-hidden px-6 pb-6'>
               <div className='space-y-4 overflow-y-auto pr-2 flex-1'>
                 {deliveries.length === 0 ? (
                   <div className='text-center py-8 text-[#FAFAFA]/70'>
@@ -302,8 +302,8 @@ export default function MyDeliveries() {
 
         {/* Right Column: Delivery Details */}
         <div className='h-[calc(100vh-10rem)]'>
-          <Card className='bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10 h-full'>
-            <CardHeader>
+          <Card className='bg-background/90 backdrop-blur-sm border border-primary/10 shadow-2xl shadow-primary/10 h-full flex flex-col p-0 gap-0'>
+            <CardHeader className='py-6 px-6'>
               <CardTitle className='text-[#FAFAFA]'>Delivery Details</CardTitle>
               <CardDescription className='text-[#FAFAFA]/70'>
                 {selectedDelivery
@@ -311,7 +311,7 @@ export default function MyDeliveries() {
                   : 'Select a delivery to view details'}
               </CardDescription>
             </CardHeader>
-            <CardContent className='flex items-center justify-center p-0 h-[calc(100%-4.5rem)]'>
+            <CardContent className='flex items-center justify-center p-0 flex-grow'>
               {selectedDelivery ? (
                 <div className='space-y-6 w-full p-6'>
                   <div className='flex justify-center'>

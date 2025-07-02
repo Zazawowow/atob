@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Package, Menu, X } from 'lucide-react';
 import { NostrConnectButton } from '@/components/nostr-connect-button';
 import { useNostr } from '@/components/nostr-provider';
 import { useUIAnimation } from '@/components/ui-animation-context';
@@ -12,7 +11,6 @@ import { NostrAuthModal } from './nostr-auth-modal';
 export function Navbar() {
   const { isLoggedIn, isReady, login } = useNostr();
   const { showUI } = useUIAnimation();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
@@ -39,8 +37,13 @@ export function Navbar() {
   }
 
   const ProtectedDesktopLink = ({ href, children, hoverColor, activeColor }: { href: string, children: React.ReactNode, hoverColor: string, activeColor: string }) => {
-    const isActive = isLoggedIn && pathname.startsWith(href);
-    
+    let isActive = isLoggedIn && pathname.startsWith(href);
+
+    // Special case for post-package, since startsWith isn't working reliably
+    if (href === '/post-package' && isLoggedIn && pathname.includes('post-package')) {
+      isActive = true;
+    }
+
     if (isLoggedIn) {
       return (
         <Link
@@ -64,40 +67,6 @@ export function Navbar() {
     );
   };
 
-  const ProtectedMobileLink = ({ href, children, hoverBg, hoverText, hoverBorder, activeClasses }: { 
-    href: string, 
-    children: React.ReactNode, 
-    hoverBg: string, 
-    hoverText: string, 
-    hoverBorder: string,
-    activeClasses: string
-  }) => {
-    const isActive = isLoggedIn && pathname.startsWith(href);
-
-    if (isLoggedIn) {
-      return (
-        <Link
-          href={href}
-          className={`py-3 px-4 rounded-lg transition-colors text-gray-300 border border-transparent ${hoverBg} ${hoverText} ${hoverBorder} ${isActive ? activeClasses : ''}`}
-          onClick={() => setIsMenuOpen(false)}
-        >
-          {children}
-        </Link>
-      );
-    }
-    
-    return (
-      <NostrAuthModal
-        trigger={
-          <button className={`w-full text-left py-3 px-4 rounded-lg transition-colors text-gray-300 border border-transparent ${hoverBg} ${hoverText} ${hoverBorder}`}>
-            {children}
-          </button>
-        }
-        onAuth={login}
-      />
-    );
-  };
-
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-1000 ${
@@ -111,66 +80,24 @@ export function Navbar() {
           <span className='font-cyber font-bold text-xl text-off-white drop-shadow-md'>A TO ₿</span>
         </Link>
 
-        {/* Desktop Navigation */}
-        <div className='hidden md:flex items-center gap-6'>
-          <ProtectedDesktopLink href='/post-package' hoverColor='hover:text-cyan-400' activeColor='text-cyan-400'>
-            Post Package
-          </ProtectedDesktopLink>
-          <ProtectedDesktopLink href='/view-packages' hoverColor='hover:text-purple-400' activeColor='text-purple-400'>
-            View Map
-          </ProtectedDesktopLink>
-          <ProtectedDesktopLink href='/my-deliveries' hoverColor='hover:text-pink-400' activeColor='text-pink-400'>
-            My Deliveries
-          </ProtectedDesktopLink>
+        <div className='flex items-center gap-6'>
+          {/* Desktop-only Navigation Links */}
+          <div className='hidden md:flex items-center gap-6'>
+            <ProtectedDesktopLink href='/post-package' hoverColor='hover:text-cyan-400' activeColor='text-cyan-400'>
+              Post Package
+            </ProtectedDesktopLink>
+            <ProtectedDesktopLink href='/view-packages' hoverColor='hover:text-purple-400' activeColor='text-purple-400'>
+              View Map
+            </ProtectedDesktopLink>
+            <ProtectedDesktopLink href='/my-deliveries' hoverColor='hover:text-pink-400' activeColor='text-pink-400'>
+              My Deliveries
+            </ProtectedDesktopLink>
+          </div>
+          
+          {/* Login button visible on all screen sizes */}
           <NostrConnectButton />
         </div>
-
-        {/* Mobile Menu Button */}
-        <button
-          className='md:hidden text-off-white'
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-        >
-          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
       </div>
-
-      {/* Mobile Navigation */}
-      {isMenuOpen && (
-        <div className='md:hidden bg-black/90 border-t border-cyan-500/20 shadow-lg animate-fade-in backdrop-blur-lg'>
-          <div className='container mx-auto px-4 py-4 flex flex-col gap-4'>
-            <ProtectedMobileLink 
-              href='/post-package' 
-              hoverBg='hover:bg-cyan-500/10' 
-              hoverText='hover:text-cyan-400' 
-              hoverBorder='hover:border-cyan-500/30'
-              activeClasses='bg-cyan-500/10 text-cyan-400 border-cyan-500/30'
-            >
-              Post Package
-            </ProtectedMobileLink>
-            <ProtectedMobileLink 
-              href='/view-packages' 
-              hoverBg='hover:bg-purple-500/10' 
-              hoverText='hover:text-purple-400' 
-              hoverBorder='hover:border-purple-500/30'
-              activeClasses='bg-purple-500/10 text-purple-400 border-purple-500/30'
-            >
-              View Map
-            </ProtectedMobileLink>
-            <ProtectedMobileLink 
-              href='/my-deliveries' 
-              hoverBg='hover:bg-pink-500/10' 
-              hoverText='hover:text-pink-400' 
-              hoverBorder='hover:border-pink-500/30'
-              activeClasses='bg-pink-500/10 text-pink-400 border-pink-500/30'
-            >
-              My Deliveries
-            </ProtectedMobileLink>
-            <div className='py-3 px-4'>
-              <NostrConnectButton />
-            </div>
-          </div>
-        </div>
-      )}
     </nav>
   );
 }

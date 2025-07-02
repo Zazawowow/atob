@@ -195,8 +195,9 @@ export default function PackageMap({
       <MapContainer
         center={center}
         zoom={2}
-        style={{ height: '100%', width: '100%' }}
+        style={{ height: '100%', width: '100%', display: 'block' }}
         className='z-0'
+        attributionControl={true}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
