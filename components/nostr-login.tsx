@@ -37,9 +37,6 @@ export function NostrLogin({ onLogin, onSignup, onCancel }: NostrLoginProps) {
     const extensionExists =
       typeof window !== 'undefined' && window.nostr !== undefined;
     setHasExtension(extensionExists);
-    if (!extensionExists) {
-      setActiveTab('nsec');
-    }
     setMounted(true);
   }, []);
 
@@ -204,8 +201,7 @@ export function NostrLogin({ onLogin, onSignup, onCancel }: NostrLoginProps) {
         >
           <TabsList className='grid w-full grid-cols-2'>
             <TabsTrigger 
-              value='extension' 
-              disabled={!hasExtension}
+              value='extension'
               className='tab-active-black'
             >
               Browser Extension
@@ -222,30 +218,55 @@ export function NostrLogin({ onLogin, onSignup, onCancel }: NostrLoginProps) {
           >
             <div className='space-y-4 h-[130px]'>
               <p className='text-base text-off-white-90 text-center'>
-                Login using your Nostr browser extension (
-                <a 
-                  href='https://chromewebstore.google.com/detail/alby-bitcoin-wallet-for-l/iokeahhehimjnekafflcihljlcjccdbe'
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  className='text-blue-400 hover:text-blue-300 transition-colors duration-200'
-                >
-                  Alby
-                </a>
-                , {' '}
-                <a 
-                  href='https://chrome.google.com/webstore/detail/nos2x/kpgefcfmnafjgpblomihpgmejjdanjjp'
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  className='text-blue-400 hover:text-blue-300 transition-colors duration-200'
-                >
-                  nos2x
-                </a>
-                ).
+                {hasExtension ? (
+                  <>
+                    Login using your Nostr browser extension (
+                    <a 
+                      href='https://chromewebstore.google.com/detail/alby-bitcoin-wallet-for-l/iokeahhehimjnekafflcihljlcjccdbe'
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='text-blue-400 hover:text-blue-300 transition-colors duration-200'
+                    >
+                      Alby
+                    </a>
+                    , {' '}
+                    <a 
+                      href='https://chrome.google.com/webstore/detail/nos2x/kpgefcfmnafjgpblomihpgmejjdanjjp'
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='text-blue-400 hover:text-blue-300 transition-colors duration-200'
+                    >
+                      nos2x
+                    </a>
+                    ).
+                  </>
+                ) : (
+                  <>
+                    You don't seem to have a browser extension, try{' '}
+                    <a 
+                      href='https://chrome.google.com/webstore/detail/nos2x/kpgefcfmnafjgpblomihpgmejjdanjjp'
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='text-blue-400 hover:text-blue-300 transition-colors duration-200'
+                    >
+                      nos2x
+                    </a>
+                    {' '}or{' '}
+                    <a 
+                      href='https://chromewebstore.google.com/detail/alby-bitcoin-wallet-for-l/iokeahhehimjnekafflcihljlcjccdbe'
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='text-blue-400 hover:text-blue-300 transition-colors duration-200'
+                    >
+                      Alby
+                    </a>
+                  </>
+                )}
               </p>
               <Button
                 onClick={handleExtensionLogin}
                 className='btn-purple'
-                disabled={loading}
+                disabled={loading || !hasExtension}
               >
                 {loading ? (
                   <span className='animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full'></span>
@@ -299,20 +320,6 @@ export function NostrLogin({ onLogin, onSignup, onCancel }: NostrLoginProps) {
             </div>
           </TabsContent>
         </Tabs>
-        <div className='flex items-center space-x-2 mt-6'>
-          <Checkbox
-            id='remember'
-            checked={rememberMe}
-            onCheckedChange={(checked) => setRememberMe(Boolean(checked))}
-            className='border-primary/50 data-[state=checked]:bg-primary bg-off-white'
-          />
-          <label
-            htmlFor='remember'
-            className='text-base font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-off-white'
-          >
-            Remember me
-          </label>
-        </div>
       </CardContent>
       <CardFooter className='flex flex-col gap-4 pb-8'>
         <div className='flex flex-col items-center gap-2'>
