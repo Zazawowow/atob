@@ -98,12 +98,44 @@ export default function MyDeliveries() {
 
   if (!isReady || (packagesLoading && packages.length === 0)) {
     return (
-      <div className='container mx-auto px-4 pt-24 pb-8'>
-        <div className='flex justify-center items-center h-64'>
-          <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full'></div>
-          <p className='ml-2'>
-            {!isReady ? 'Loading Nostr...' : 'Loading Deliveries...'}
-          </p>
+      <div className='container mx-auto px-4 pt-24 pb-8 relative z-10'>
+        <div className='fixed inset-0 -z-10'>
+          <Image
+            src='/hero-3.jpeg'
+            alt='Background'
+            fill
+            className='object-cover object-center brightness-[0.3]'
+            priority
+          />
+          <div className='absolute inset-0 bg-black/30' />
+        </div>
+
+        <div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
+          <div className='h-[calc(100vh-10rem)]'>
+            <Card className='bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10 h-full flex flex-col p-0 gap-0'>
+              <CardHeader className='flex flex-row justify-between items-start py-6 px-6'>
+                <div>
+                  <CardTitle className='text-[#FAFAFA]'>Active Deliveries</CardTitle>
+                  <CardDescription className='text-[#FAFAFA]/70'>
+                    Loading deliveries...
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className='flex-grow flex items-center justify-center'>
+                <div className='flex flex-col items-center gap-4 text-[#FAFAFA]/70'>
+                  <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full'></div>
+                  <p>{!isReady ? 'Connecting to Nostr...' : 'Loading Deliveries...'}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Right Column: Details placeholder during loading */}
+          <div className='h-[calc(100vh-10rem)] hidden lg:block'>
+            <Card className='bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10 h-full'>
+              <div className='h-full animate-pulse bg-gray-800/50'></div>
+            </Card>
+          </div>
         </div>
       </div>
     );
