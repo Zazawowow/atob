@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Package, Menu, X } from 'lucide-react';
 import { NostrConnectButton } from '@/components/nostr-connect-button';
 import { useNostr } from '@/components/nostr-provider';
@@ -14,6 +15,7 @@ export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
 
   // Handle scroll effect for navbar
   useEffect(() => {
@@ -36,12 +38,14 @@ export function Navbar() {
     return null;
   }
 
-  const ProtectedDesktopLink = ({ href, children, hoverColor }: { href: string, children: React.ReactNode, hoverColor: string }) => {
+  const ProtectedDesktopLink = ({ href, children, hoverColor, activeColor }: { href: string, children: React.ReactNode, hoverColor: string, activeColor: string }) => {
+    const isActive = isLoggedIn && pathname.startsWith(href);
+    
     if (isLoggedIn) {
       return (
         <Link
           href={href}
-          className={`text-gray-300 ${hoverColor} transition-colors font-medium`}
+          className={`text-gray-300 ${hoverColor} transition-colors font-medium ${isActive ? activeColor : ''}`}
         >
           {children}
         </Link>
@@ -60,18 +64,21 @@ export function Navbar() {
     );
   };
 
-  const ProtectedMobileLink = ({ href, children, hoverBg, hoverText, hoverBorder }: { 
+  const ProtectedMobileLink = ({ href, children, hoverBg, hoverText, hoverBorder, activeClasses }: { 
     href: string, 
     children: React.ReactNode, 
     hoverBg: string, 
     hoverText: string, 
-    hoverBorder: string 
+    hoverBorder: string,
+    activeClasses: string
   }) => {
+    const isActive = isLoggedIn && pathname.startsWith(href);
+
     if (isLoggedIn) {
       return (
         <Link
           href={href}
-          className={`py-3 px-4 ${hoverBg} rounded-lg transition-colors text-gray-300 ${hoverText} border border-transparent ${hoverBorder}`}
+          className={`py-3 px-4 rounded-lg transition-colors text-gray-300 border border-transparent ${hoverBg} ${hoverText} ${hoverBorder} ${isActive ? activeClasses : ''}`}
           onClick={() => setIsMenuOpen(false)}
         >
           {children}
@@ -82,7 +89,7 @@ export function Navbar() {
     return (
       <NostrAuthModal
         trigger={
-          <button className={`w-full text-left py-3 px-4 ${hoverBg} rounded-lg transition-colors text-gray-300 ${hoverText} border border-transparent ${hoverBorder}`}>
+          <button className={`w-full text-left py-3 px-4 rounded-lg transition-colors text-gray-300 border border-transparent ${hoverBg} ${hoverText} ${hoverBorder}`}>
             {children}
           </button>
         }
@@ -106,13 +113,13 @@ export function Navbar() {
 
         {/* Desktop Navigation */}
         <div className='hidden md:flex items-center gap-6'>
-          <ProtectedDesktopLink href='/post-package' hoverColor='hover:text-cyan-400'>
+          <ProtectedDesktopLink href='/post-package' hoverColor='hover:text-cyan-400' activeColor='text-cyan-400'>
             Post Package
           </ProtectedDesktopLink>
-          <ProtectedDesktopLink href='/view-packages' hoverColor='hover:text-purple-400'>
+          <ProtectedDesktopLink href='/view-packages' hoverColor='hover:text-purple-400' activeColor='text-purple-400'>
             View Map
           </ProtectedDesktopLink>
-          <ProtectedDesktopLink href='/my-deliveries' hoverColor='hover:text-pink-400'>
+          <ProtectedDesktopLink href='/my-deliveries' hoverColor='hover:text-pink-400' activeColor='text-pink-400'>
             My Deliveries
           </ProtectedDesktopLink>
           <NostrConnectButton />
@@ -136,6 +143,7 @@ export function Navbar() {
               hoverBg='hover:bg-cyan-500/10' 
               hoverText='hover:text-cyan-400' 
               hoverBorder='hover:border-cyan-500/30'
+              activeClasses='bg-cyan-500/10 text-cyan-400 border-cyan-500/30'
             >
               Post Package
             </ProtectedMobileLink>
@@ -144,6 +152,7 @@ export function Navbar() {
               hoverBg='hover:bg-purple-500/10' 
               hoverText='hover:text-purple-400' 
               hoverBorder='hover:border-purple-500/30'
+              activeClasses='bg-purple-500/10 text-purple-400 border-purple-500/30'
             >
               View Map
             </ProtectedMobileLink>
@@ -152,6 +161,7 @@ export function Navbar() {
               hoverBg='hover:bg-pink-500/10' 
               hoverText='hover:text-pink-400' 
               hoverBorder='hover:border-pink-500/30'
+              activeClasses='bg-pink-500/10 text-pink-400 border-pink-500/30'
             >
               My Deliveries
             </ProtectedMobileLink>
