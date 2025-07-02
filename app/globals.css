@@ -744,3 +744,7 @@
 .leaflet-control-attribution {
   margin: 0 !important;
 }
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
