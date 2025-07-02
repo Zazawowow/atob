@@ -1,10 +1,39 @@
 {
-  "name": "A to ₿",
-  "short_name": "A to ₿",
-  "description": "Decentralized package delivery powered by Nostr",
+  "name": "A TO ₿ - Decentralized Package Delivery",
+  "short_name": "A TO ₿",
+  "description": "A decentralized package delivery platform built on Nostr technology.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#000000",
-  "icons": []
+  "background_color": "#0A0A0A",
+  "theme_color": "#0A0A0A",
+  "orientation": "portrait-primary",
+  "categories": ["logistics", "business", "productivity"],
+  "icons": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/logistics-app.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ]
 }
