@@ -211,7 +211,7 @@ export default function MyDeliveries() {
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
         {/* Left Column: Delivery List */}
         <div className='h-[calc(100vh-10rem)]'>
-          <Card className='bg-background/90 backdrop-blur-sm border border-primary/10 shadow-2xl shadow-primary/10 h-full flex flex-col p-0 gap-0'>
+          <Card className='bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10 h-full flex flex-col p-0 gap-0'>
             <CardHeader className='flex flex-row justify-between items-start py-6 px-6'>
               <div>
                 <CardTitle className='text-[#FAFAFA]'>Active Deliveries</CardTitle>
@@ -302,7 +302,7 @@ export default function MyDeliveries() {
 
         {/* Right Column: Delivery Details */}
         <div className='h-[calc(100vh-10rem)]'>
-          <Card className='bg-background/90 backdrop-blur-sm border border-primary/10 shadow-2xl shadow-primary/10 h-full flex flex-col p-0 gap-0'>
+          <Card className='bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10 h-full flex flex-col p-0 gap-0'>
             <CardHeader className='py-6 px-6'>
               <CardTitle className='text-[#FAFAFA]'>Delivery Details</CardTitle>
               <CardDescription className='text-[#FAFAFA]/70'>

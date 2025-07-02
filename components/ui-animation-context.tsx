@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useMemo, type ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 
 interface UIAnimationContextType {
   showUI: boolean;
@@ -10,10 +11,13 @@ interface UIAnimationContextType {
 const UIAnimationContext = createContext<UIAnimationContextType | undefined>(undefined);
 
 export function UIAnimationProvider({ children }: { children: ReactNode }) {
-  const [showUI, setShowUI] = useState(false);
+  const pathname = usePathname();
+  const [showUI, setShowUI] = useState(pathname !== '/');
+
+  const value = useMemo(() => ({ showUI, setShowUI }), [showUI]);
 
   return (
-    <UIAnimationContext.Provider value={{ showUI, setShowUI }}>
+    <UIAnimationContext.Provider value={value}>
       {children}
     </UIAnimationContext.Provider>
   );

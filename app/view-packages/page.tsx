@@ -227,7 +227,7 @@ export default function ViewPackages() {
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
         {/* Left Column: Package List */}
         <div className='h-[calc(100vh-10rem)]'>
-          <Card className='bg-background/90 backdrop-blur-sm border border-primary/10 shadow-2xl shadow-primary/10 h-full flex flex-col p-0 gap-0'>
+          <Card className='bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10 h-full flex flex-col p-0 gap-0'>
             <CardHeader className='flex flex-row justify-between items-start py-6 px-6'>
               <div>
                 <CardTitle className='text-[#FAFAFA]'>Available Packages</CardTitle>
@@ -359,7 +359,7 @@ export default function ViewPackages() {
 
         {/* Right Column: Package Map */}
         <div className='h-[calc(100vh-10rem)]'>
-          <Card className='bg-background/90 backdrop-blur-sm border border-primary/10 shadow-2xl shadow-primary/10 h-full overflow-hidden flex flex-col p-0 gap-0'>
+          <Card className='bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10 h-full overflow-hidden flex flex-col p-0 gap-0'>
             <CardHeader className='py-6 px-6'>
               <CardTitle className='text-[#FAFAFA]'>Package Map</CardTitle>
               <CardDescription className='text-[#FAFAFA]/70'>

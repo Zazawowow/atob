@@ -43,16 +43,21 @@ export function NostrAuthModal({ trigger, onAuth }: NostrAuthModalProps) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] p-0 bg-transparent border-none">
+      <DialogContent
+        className="sm:max-w-[425px] p-0 bg-transparent border-none"
+        showCloseButton={false}
+      >
         {view === 'login' ? (
           <NostrLogin
             onLogin={handleLogin}
             onSignup={() => setView('signup')}
+            onCancel={() => setIsOpen(false)}
           />
         ) : (
           <NostrSignup
             onSignup={handleSignup}
             onBackToLogin={() => setView('login')}
+            onCancel={() => setIsOpen(false)}
           />
         )}
       </DialogContent>

@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Key, AlertCircle, ExternalLink } from 'lucide-react';
+import { Key, AlertCircle, ExternalLink, X } from 'lucide-react';
 import { nip19, getPublicKey } from 'nostr-tools';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -163,7 +163,16 @@ export function NostrLogin({ onLogin, onSignup, onCancel }: NostrLoginProps) {
   }
 
   return (
-    <Card className='w-full max-w-sm mx-auto bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10 p-0 overflow-hidden'>
+    <Card className='relative w-full max-w-sm mx-auto bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10 p-0 overflow-hidden'>
+      {onCancel && (
+        <button
+          onClick={onCancel}
+          className='absolute top-4 right-4 text-gray-400 hover:text-white transition-colors z-20'
+        >
+          <X className='h-6 w-6' />
+          <span className='sr-only'>Close</span>
+        </button>
+      )}
       <CardHeader className='flex flex-col items-center justify-center text-center pt-8 pb-8 relative overflow-hidden bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-cyan-900/20'>
         {/* Circuit-like pattern overlay */}
         <div className='absolute inset-0 opacity-10'>

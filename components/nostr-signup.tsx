@@ -9,16 +9,17 @@ import {
   CardHeader,
 } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Key } from 'lucide-react';
+import { Key, X } from 'lucide-react';
 import * as secp from '@noble/secp256k1';
 import { nip19 } from 'nostr-tools';
 
 interface NostrSignupProps {
   onSignup: (publicKey: string, privateKey: string) => void;
   onBackToLogin: () => void;
+  onCancel?: () => void;
 }
 
-export function NostrSignup({ onSignup, onBackToLogin }: NostrSignupProps) {
+export function NostrSignup({ onSignup, onBackToLogin, onCancel }: NostrSignupProps) {
   const [loading, setLoading] = useState(false);
   const [generatedKeys, setGeneratedKeys] = useState<{
     nsec: string;
@@ -63,7 +64,16 @@ export function NostrSignup({ onSignup, onBackToLogin }: NostrSignupProps) {
 
   if (generatedKeys) {
     return (
-      <Card className='w-full max-w-sm mx-auto bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10 p-0 overflow-hidden'>
+      <Card className='relative w-full max-w-sm mx-auto bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10 p-0 overflow-hidden'>
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            className='absolute top-4 right-4 text-gray-400 hover:text-white transition-colors z-20'
+          >
+            <X className='h-6 w-6' />
+            <span className='sr-only'>Close</span>
+          </button>
+        )}
         <CardHeader className='flex flex-col items-center justify-center text-center px-6 pt-8 pb-8 relative overflow-hidden bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-cyan-900/20'>
           {/* Circuit-like pattern overlay */}
           <div className='absolute inset-0 opacity-10'>
@@ -130,7 +140,16 @@ export function NostrSignup({ onSignup, onBackToLogin }: NostrSignupProps) {
   }
 
   return (
-    <Card className='w-full max-w-sm mx-auto bg-background/90 backdrop-blur-sm border-2 border-primary/20 shadow-2xl shadow-primary/10 p-0 overflow-hidden'>
+    <Card className='relative w-full max-w-sm mx-auto bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10 p-0 overflow-hidden'>
+      {onCancel && (
+        <button
+          onClick={onCancel}
+          className='absolute top-4 right-4 text-gray-400 hover:text-white transition-colors z-20'
+        >
+          <X className='h-6 w-6' />
+          <span className='sr-only'>Close</span>
+        </button>
+      )}
       <CardHeader className='flex flex-col items-center justify-center text-center px-6 pt-8 pb-8 relative overflow-hidden bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-cyan-900/20'>
         {/* Circuit-like pattern overlay */}
         <div className='absolute inset-0 opacity-10'>
