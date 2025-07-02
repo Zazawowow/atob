@@ -70,7 +70,7 @@ export function Navbar() {
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-1000 ${
-        scrolled ? 'bg-black/80 backdrop-blur-lg shadow-lg border-b border-cyan-500/20' : 'bg-transparent'
+        scrolled ? 'bg-[#0A0A0A] backdrop-blur-lg shadow-lg' : 'bg-transparent'
       } ${
         showUI ? 'animate-slide-up-fade opacity-100' : 'opacity-0 -translate-y-4'
       }`}
