@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from 'sonner';
@@ -14,7 +14,6 @@ export const metadata: Metadata = {
   title: 'A TO ₿ - Decentralized Package Delivery',
   description: 'A decentralized package delivery platform built on Nostr technology',
   manifest: '/manifest.json',
-  themeColor: '#0A0A0A',
   icons: {
     icon: [{ url: '/favicon.ico', sizes: 'any' }],
     shortcut: '/icon-512.png',
@@ -26,6 +25,10 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: '#0A0A0A',
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -33,11 +36,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='en'>
-      <head>
-        <meta name="theme-color" content="#0A0A0A" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-      </head>
       <body className={`${inter.className} min-h-screen flex flex-col`}>
         <NostrProvider>
           <UIAnimationProvider>
