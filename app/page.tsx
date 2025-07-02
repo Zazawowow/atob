@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Package, Map, CheckCircle, Truck, User } from 'lucide-react';
+import { Package, Map, CheckCircle, Truck, User, Download } from 'lucide-react';
 import { useNostr } from '@/components/nostr-provider';
 import { useUIAnimation } from '@/components/ui-animation-context';
 import { NostrAuthModal } from '@/components/nostr-auth-modal';
+import { PWAInstallModal } from '@/components/pwa-install-modal';
 
 export default function Home() {
   const { isLoggedIn, isReady } = useNostr();
@@ -427,11 +428,19 @@ export default function Home() {
                     experience the future of package delivery.
                   </p>
                 </div>
-                <div className='w-full md:w-auto'>
+                <div className='w-full md:w-auto flex flex-col sm:flex-row gap-3'>
                   <NostrAuthModal
                     trigger={
                       <button className='w-full md:w-auto px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'>
                         Login with Nostr
+                      </button>
+                    }
+                  />
+                  <PWAInstallModal
+                    trigger={
+                      <button className='w-full md:w-auto px-8 py-4 bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border border-purple-400/30 rounded-full text-purple-400 font-medium hover:shadow-purple-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer hover:border-purple-300 hover:text-purple-300'>
+                        <Download className='h-4 w-4 mr-2 inline' />
+                        Install App
                       </button>
                     }
                   />
@@ -442,7 +451,8 @@ export default function Home() {
         </section>
       )}
 
-    
+      {/* PWA Install Modal with auto-show */}
+      <PWAInstallModal autoShow={true} />
     </main>
   );
 }

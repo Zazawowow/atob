@@ -123,7 +123,7 @@ export default function PostPackage() {
                   value={formData.title}
                   onChange={handleChange}
                   required
-                  className="placeholder:text-gray-400"
+                  className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
                 />
               </div>
 
@@ -160,7 +160,7 @@ export default function PostPackage() {
                     value={formData.cost}
                     onChange={handleChange}
                     required
-                    className="placeholder:text-gray-400"
+                    className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
                   />
                 </div>
               </div>
@@ -174,7 +174,7 @@ export default function PostPackage() {
                   value={formData.description}
                   onChange={handleChange}
                   rows={3}
-                  className="placeholder:text-gray-400"
+                  className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
                 />
               </div>
             </CardContent>

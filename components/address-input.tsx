@@ -224,7 +224,7 @@ export function AddressInput({
             placeholder={placeholder}
             id={id}
             required={required}
-            className='bg-black/20 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 placeholder:text-[#FAFAFA]/60 text-[#FAFAFA] pr-10'
+            className='bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400 pr-10'
           />
           {isLoadingSuggestions && (
             <div className='absolute right-3 top-1/2 transform -translate-y-1/2'>
@@ -239,6 +239,7 @@ export function AddressInput({
           onClick={getCurrentLocation}
           disabled={isLoadingLocation}
           title='Use my current location'
+          className='bg-background/5 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-gray-100'
         >
           {isLoadingLocation ? (
             <Loader2 className='h-4 w-4 animate-spin' />
