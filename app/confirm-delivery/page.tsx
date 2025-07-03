@@ -18,6 +18,7 @@ import { confirmDelivery, getPackageById, getEffectiveStatus } from '@/lib/nostr
 import { useNostr } from '@/components/nostr-provider';
 import { QrScanner } from '@/components/qr-scanner';
 import { type PackageData } from '@/lib/nostr-types';
+import Image from 'next/image';
 
 export default function ConfirmDelivery() {
   const { isReady } = useNostr();
@@ -103,24 +104,44 @@ export default function ConfirmDelivery() {
 
   if (!isReady) {
     return (
-      <div className='container mx-auto px-4 py-8'>
+      <div className='container mx-auto px-4 pt-24 pb-8 relative z-10'>
+        <div className='fixed inset-0 -z-10'>
+          <Image
+            src='/hero-3.jpeg'
+            alt='Background'
+            fill
+            className='object-cover object-center brightness-[0.3]'
+            priority
+          />
+          <div className='absolute inset-0 bg-black/30' />
+        </div>
         <div className='flex justify-center items-center h-64'>
           <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full'></div>
-          <p className='ml-2'>Loading Nostr...</p>
+          <p className='ml-2 text-white'>Loading Nostr...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className='container mx-auto px-4 py-8'>
-      <Card className='max-w-md mx-auto'>
+    <div className='container mx-auto px-4 pt-24 pb-8 relative z-10'>
+       <div className='fixed inset-0 -z-10'>
+        <Image
+          src='/hero-3.jpeg'
+          alt='Background'
+          fill
+          className='object-cover object-center brightness-[0.3]'
+          priority
+        />
+        <div className='absolute inset-0 bg-black/30' />
+      </div>
+      <Card className='max-w-md mx-auto bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10'>
         <CardHeader>
-          <CardTitle className='flex items-center'>
+          <CardTitle className='flex items-center text-white'>
             <CheckCircle className='mr-2 h-5 w-5' />
             Confirm Delivery
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-white/70">
             {packageId
               ? "Confirm that you've received the package"
               : 'Scan a QR code to confirm package delivery'}
@@ -137,33 +158,33 @@ export default function ConfirmDelivery() {
           ) : packageId && loading ? (
             <div className='py-8 text-center'>
               <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto'></div>
-              <p className='mt-4 text-gray-500'>Loading package details...</p>
+              <p className='mt-4 text-gray-400'>Loading package details...</p>
             </div>
           ) : packageId && !packageData ? (
-            <div className='py-8 text-center text-gray-500'>
+            <div className='py-8 text-center text-gray-400'>
               Package not found or already delivered
             </div>
           ) : packageId && packageData ? (
             confirmed ? (
               <div className='py-8 text-center'>
                 <CheckCircle className='h-16 w-16 text-green-500 mx-auto mb-4' />
-                <h3 className='text-xl font-medium mb-2'>
+                <h3 className='text-xl font-medium mb-2 text-white'>
                   Delivery Confirmed!
                 </h3>
-                <p className='text-gray-500'>
+                <p className='text-gray-400'>
                   You have successfully confirmed the delivery of this package.
                 </p>
-                <p className='text-gray-500 mt-4'>
+                <p className='text-gray-400 mt-4'>
                   Payment of {packageData.cost} sats has been simulated.
                 </p>
               </div>
             ) : (
-              <div className='space-y-4'>
+              <div className='space-y-4 text-white'>
                 <div>
                   <h3 className='font-medium'>Package</h3>
                   <p className='text-sm mt-1'>{packageData.title}</p>
                   {packageData.description && (
-                    <p className='text-sm text-gray-500 mt-1'>
+                    <p className='text-sm text-gray-400 mt-1'>
                       {packageData.description}
                     </p>
                   )}
@@ -188,7 +209,7 @@ export default function ConfirmDelivery() {
           ) : (
             <div className='py-8 text-center'>
               <QrCode className='h-16 w-16 text-gray-400 mx-auto mb-4' />
-              <p className='text-gray-500'>
+              <p className='text-gray-400'>
                 Scan a QR code from a courier to confirm package delivery
               </p>
             </div>
@@ -198,7 +219,7 @@ export default function ConfirmDelivery() {
           {showScanner ? (
             <Button
               variant='outline'
-              className='w-full'
+              className='w-full bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-white'
               onClick={() => setShowScanner(false)}
             >
               Cancel Scanning
@@ -208,7 +229,11 @@ export default function ConfirmDelivery() {
               Confirm Delivery
             </Button>
           ) : !packageId ? (
-            <Button className='w-full' onClick={() => setShowScanner(true)}>
+            <Button
+              variant='outline'
+              className='w-full btn-outline-purple'
+              onClick={() => setShowScanner(true)}
+            >
               Scan QR Code
             </Button>
           ) : (
