@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { getNpub } from '@/lib/nostr-keys';
 import { useNostr } from '@/components/nostr-provider';
-import { Key, LogOut, User } from 'lucide-react';
+import { Key, LogOut, User, Settings } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -119,6 +119,12 @@ export function NostrConnectButton() {
               <DropdownMenuItem className='cursor-pointer text-gray-300 hover:bg-cyan-500/10 hover:text-cyan-400 focus:bg-cyan-500/10 focus:text-cyan-400'>
                 <User className='mr-2 h-4 w-4' />
                 <span>Profile</span>
+              </DropdownMenuItem>
+            </Link>
+            <Link href='/settings'>
+              <DropdownMenuItem className='cursor-pointer text-gray-300 hover:bg-cyan-500/10 hover:text-cyan-400 focus:bg-cyan-500/10 focus:text-cyan-400'>
+                <Settings className='mr-2 h-4 w-4' />
+                <span>Settings</span>
               </DropdownMenuItem>
             </Link>
             <DropdownMenuItem onClick={logout} className='cursor-pointer text-gray-300 hover:bg-pink-500/10 hover:text-pink-400 focus:bg-pink-500/10 focus:text-pink-400'>
