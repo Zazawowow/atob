@@ -7,7 +7,6 @@ import { Package, Map, CheckCircle, Truck, User, Download } from 'lucide-react';
 import { useNostr } from '@/components/nostr-provider';
 import { useUIAnimation } from '@/components/ui-animation-context';
 import { NostrAuthModal } from '@/components/nostr-auth-modal';
-import { PWAInstallModal } from '@/components/pwa-install-modal';
 
 export default function Home() {
   const { isLoggedIn, isReady } = useNostr();
@@ -442,9 +441,6 @@ export default function Home() {
           </div>
         </section>
       )}
-
-      {/* PWA Install Modal with auto-show */}
-      <PWAInstallModal autoShow={true} />
     </main>
   );
 }

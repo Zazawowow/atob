@@ -7,6 +7,7 @@ import { NostrProvider } from '@/components/nostr-provider';
 import { Navbar } from '@/components/navbar';
 import { UIAnimationProvider } from '@/components/ui-animation-context';
 import { ConditionalNavigation } from '@/components/conditional-navigation';
+import { PWAInstallModal } from '@/components/pwa-install-modal';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -47,6 +48,7 @@ export default function RootLayout({
             </div>
             <ConditionalNavigation />
             <Toaster />
+            <PWAInstallModal autoShow={true} />
           </UIAnimationProvider>
         </NostrProvider>
       </body>
