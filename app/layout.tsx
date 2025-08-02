@@ -48,7 +48,7 @@ export default function RootLayout({
             </div>
             <ConditionalNavigation />
             <Toaster />
-            <PWAInstallModal autoShow={true} />
+            {process.env.NODE_ENV === 'production' && <PWAInstallModal autoShow={true} />}
           </UIAnimationProvider>
         </NostrProvider>
       </body>

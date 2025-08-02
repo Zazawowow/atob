@@ -62,7 +62,7 @@ export function NostrProvider({ children }: { children: ReactNode }) {
     } finally {
       setPackagesLoading(false);
     }
-  }, []);
+  }, []); // Empty dependency array to prevent recreation
 
   useEffect(() => {
     setMounted(true);
@@ -88,7 +88,7 @@ export function NostrProvider({ children }: { children: ReactNode }) {
 
       return () => clearInterval(interval);
     }
-  }, [isLoggedIn, fetchPackages]);
+  }, [isLoggedIn, fetchPackages]); // Add fetchPackages back to satisfy ESLint
 
   const login = (pubkey: string, privkey?: string) => {
     setPublicKey(pubkey);

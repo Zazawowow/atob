@@ -16,18 +16,6 @@ export function Footer() {
           </div>
 
           <div className='flex flex-col items-center md:items-end gap-2'>
-            <p className='text-gray-400 text-sm'>
-              Built by{' '}
-              <a
-                href='https://github.com/alexandriaroberts'
-                target='_blank'
-                rel='noopener noreferrer'
-                className='text-cyan-400 hover:text-cyan-300 transition-colors font-medium'
-              >
-                Alexandria Roberts
-              </a>
-              {' '}for atob.
-            </p>
             <p className='text-gray-500 text-sm'>
               &copy; {new Date().getFullYear()} A TO ₿. All rights reserved.
             </p>

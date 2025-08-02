@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Package, Map, CheckCircle, Truck, User, Download } from 'lucide-react';
@@ -19,9 +19,10 @@ export default function Home() {
   const [hasSeenIntro, setHasSeenIntro] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingRedirect, setPendingRedirect] = useState<string>('');
+  const [videoOpacity, setVideoOpacity] = useState(1);
   
-  // Array of background images to rotate through
-  const backgroundImages = ['/hero.jpeg', 'hero-3.jpeg', '/hero-4.jpeg', '/hero-5.jpeg'];
+  // Array of background images to rotate through - memoized to prevent constant re-renders
+  const backgroundImages = useMemo(() => ['/hero.jpeg', 'hero-3.jpeg', '/hero-4.jpeg', '/hero-5.jpeg'], []);
 
   useEffect(() => {
     setMounted(true);
@@ -39,7 +40,7 @@ export default function Home() {
       setShowUI(false);
       setIntroPhase(0);
     }
-  }, [setShowUI]);
+  }, []); // Empty dependency array - this should only run once
 
   // Handle intro phase transitions
   useEffect(() => {
@@ -66,7 +67,7 @@ export default function Home() {
     }, duration);
 
     return () => clearTimeout(timer);
-  }, [introPhase, setShowUI, hasSeenIntro]);
+  }, [introPhase, hasSeenIntro]); // Remove setShowUI to prevent constant re-renders
 
   // Handle background image rotation after video ends
   useEffect(() => {
@@ -106,7 +107,7 @@ export default function Home() {
         });
       }
     }
-  }, [videoRef, mounted, hasSeenIntro, setShowUI]);
+  }, [videoRef, mounted, hasSeenIntro]); // Remove setShowUI to prevent constant re-renders
 
 
 
@@ -160,7 +161,8 @@ export default function Home() {
             key={mounted ? 'mounted' : 'loading'} // Force re-render when mounted
             muted
             playsInline
-            className={`w-full h-full object-cover object-center transition-opacity duration-1000 ${videoEnded ? 'opacity-0' : 'opacity-100'}`}
+            className={`w-full h-full object-cover object-center transition-opacity duration-1000`}
+            style={{ opacity: videoEnded ? 0 : videoOpacity }}
             onTimeUpdate={(e) => {
               const video = e.target as HTMLVideoElement;
               const duration = video.duration;
@@ -169,14 +171,12 @@ export default function Home() {
               // Start fading when video is 90% complete
               if (duration && currentTime >= duration * 0.9 && !videoEnded) {
                 const fadeProgress = (currentTime - duration * 0.9) / (duration * 0.1);
-                video.style.opacity = String(1 - fadeProgress);
+                setVideoOpacity(1 - fadeProgress);
               }
             }}
             onEnded={() => {
               setVideoEnded(true);
-              if (videoRef) {
-                videoRef.style.opacity = '0';
-              }
+              setVideoOpacity(0);
             }}
           >
             <source src='/hero-alt.mp4' type='video/mp4' />

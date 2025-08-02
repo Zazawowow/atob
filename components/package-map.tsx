@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -146,21 +146,26 @@ export default function PackageMap({
     }
   }, []);
 
+  // Memoize packages that need geocoding to prevent unnecessary API calls
+  const packagesToGeocode = useMemo(() => {
+    return packages.filter(pkg => !packageCoordinates[pkg.id]);
+  }, [packages, packageCoordinates]);
+
   // Geocode package locations
   useEffect(() => {
+    if (packagesToGeocode.length === 0) return;
+
     const geocodePackages = async () => {
       setIsLoading(true);
       const newCoordinates: Record<string, [number, number]> = {};
       const errors: string[] = [];
 
-      for (const pkg of packages) {
-        if (!packageCoordinates[pkg.id]) {
-          const coords = await getCoordinates(pkg.pickupLocation);
-          if (coords) {
-            newCoordinates[pkg.id] = coords;
-          } else {
-            errors.push(`Could not geocode address: ${pkg.pickupLocation}`);
-          }
+      for (const pkg of packagesToGeocode) {
+        const coords = await getCoordinates(pkg.pickupLocation);
+        if (coords) {
+          newCoordinates[pkg.id] = coords;
+        } else {
+          errors.push(`Could not geocode address: ${pkg.pickupLocation}`);
         }
       }
 
@@ -170,7 +175,7 @@ export default function PackageMap({
     };
 
     geocodePackages();
-  }, [packages]);
+  }, [packagesToGeocode]); // Only depend on packages that need geocoding
 
   // Update center when selected package changes
   useEffect(() => {

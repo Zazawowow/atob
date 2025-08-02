@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 
 export function PwaSplashScreen() {
@@ -9,7 +9,7 @@ export function PwaSplashScreen() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [videoEnded, setVideoEnded] = useState(false);
 
-  const backgroundImages = ['/hero.jpeg', 'hero-3.jpeg', '/hero-4.jpeg', '/hero-5.jpeg'];
+  const backgroundImages = useMemo(() => ['/hero.jpeg', 'hero-3.jpeg', '/hero-4.jpeg', '/hero-5.jpeg'], []);
 
   useEffect(() => {
     // Multiple ways to detect PWA launch
