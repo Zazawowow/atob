@@ -17,24 +17,27 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { ArrowLeft, Package } from 'lucide-react';
+import { ArrowLeft, Briefcase } from 'lucide-react';
 import Link from 'next/link';
-import { createPackage, getEffectiveStatus } from '@/lib/nostr';
+import { createJob } from '@/lib/nostr';
 import { useNostr } from '@/components/nostr-provider';
 import { AddressInput } from '@/components/address-input';
 import Image from 'next/image';
 
-export default function PostPackage() {
+export default function PostJob() {
   const router = useRouter();
   const { isReady } = useNostr();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
-    pickupLocation: '',
-    destination: '',
-    cost: '',
+    location: '',
+    peopleNeeded: 1,
+    compensation: '',
     description: '',
+    requirements: '',
+    duration: '',
+    contactInfo: '',
   });
 
   const handleChange = useCallback((
@@ -44,8 +47,16 @@ export default function PostPackage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   }, []);
 
+  const handleNumberChange = useCallback((
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const { name, value } = e.target;
+    const numValue = parseInt(value) || 1;
+    setFormData((prev) => ({ ...prev, [name]: Math.max(1, numValue) }));
+  }, []);
+
   const handleAddressChange = useCallback((
-    field: 'pickupLocation' | 'destination',
+    field: 'location',
     value: string
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -56,18 +67,18 @@ export default function PostPackage() {
     const errors: Record<string, string> = {};
     
     if (!formData.title.trim()) {
-      errors.title = 'Title is required';
+      errors.title = 'Job title is required';
     }
-    if (!formData.pickupLocation.trim()) {
-      errors.pickupLocation = 'Pickup location is required';
+    if (!formData.location.trim()) {
+      errors.location = 'Job location is required';
     }
-    if (!formData.destination.trim()) {
-      errors.destination = 'Destination is required';
+    if (!formData.compensation.trim()) {
+      errors.compensation = 'Compensation is required';
+    } else if (isNaN(Number(formData.compensation)) || Number(formData.compensation) <= 0) {
+      errors.compensation = 'Compensation must be a positive number';
     }
-    if (!formData.cost.trim()) {
-      errors.cost = 'Cost is required';
-    } else if (isNaN(Number(formData.cost)) || Number(formData.cost) <= 0) {
-      errors.cost = 'Cost must be a positive number';
+    if (formData.peopleNeeded < 1) {
+      errors.peopleNeeded = 'At least 1 person is needed';
     }
     
     return errors;
@@ -88,23 +99,23 @@ export default function PostPackage() {
     setIsSubmitting(true);
 
     try {
-      // Create package using Nostr with localStorage fallback
-      const packageId = await createPackage(formData);
-      console.log('Package created with ID:', packageId);
+      // Create job using Nostr with localStorage fallback
+      const jobId = await createJob(formData);
+      console.log('Job created with ID:', jobId);
 
-      toast.success('Package Posted', {
-        description: 'Your package has been successfully posted for delivery.',
+      toast.success('Job Posted', {
+        description: 'Your job has been successfully posted for workers.',
       });
 
       // Add a small delay before redirecting to ensure the event is propagated
       setTimeout(() => {
-        router.push('/view-packages');
+        router.push('/view-jobs');
       }, 1000);
     } catch (error) {
       toast.error('Error', {
-        description: 'Failed to post package. Please try again.',
+        description: 'Failed to post job. Please try again.',
       });
-      console.error('Error posting package:', error);
+      console.error('Error posting job:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -125,7 +136,7 @@ export default function PostPackage() {
     <main className='min-h-screen'>
       <div className='fixed inset-0 -z-10'>
         <Image
-          src='/hero-4.jpeg'
+          src='/hero-5.jpeg'
           alt='Background'
           fill
           className='object-cover object-center brightness-[0.3]'
@@ -139,19 +150,19 @@ export default function PostPackage() {
           <CardHeader>
             <CardTitle className='flex items-center text-off-white font-cyber text-2xl'>
               <div className='p-2 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-md mr-4'>
-                <Package className='h-6 w-6 text-off-white' />
+                <Briefcase className='h-6 w-6 text-off-white' />
               </div>
-              POST A PACKAGE
+              POST A JOB
             </CardTitle>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className='space-y-6 pt-6 pb-4'>
               <div className='space-y-2'>
-                <Label htmlFor='title' className='text-off-white-90'>Package Title</Label>
+                <Label htmlFor='title' className='text-off-white-90'>Job Title</Label>
                 <Input
                   id='title'
                   name='title'
-                  placeholder='E.g., Box of Cyber-Crystals'
+                  placeholder='E.g., Cyber-Security Specialist Needed'
                   value={formData.title}
                   onChange={handleChange}
                   required
@@ -160,36 +171,39 @@ export default function PostPackage() {
               </div>
 
               <div className='space-y-2'>
-                <Label htmlFor='pickupLocation' className='text-off-white-90'>Pickup Location</Label>
+                <Label htmlFor='location' className='text-off-white-90'>Job Location</Label>
                 <AddressInput
-                  id='pickupLocation'
-                  value={formData.pickupLocation}
-                  onChange={(value) => handleAddressChange('pickupLocation', value)}
-                  placeholder='E.g., Neo-Kyoto, Sector 7'
-                  required
-                />
-              </div>
-
-              <div className='space-y-2'>
-                <Label htmlFor='destination' className='text-off-white-90'>Destination</Label>
-                <AddressInput
-                  id='destination'
-                  value={formData.destination}
-                  onChange={(value) => handleAddressChange('destination', value)}
-                  placeholder='E.g., Arakis, The Great Flat'
+                  id='location'
+                  value={formData.location}
+                  onChange={(value) => handleAddressChange('location', value)}
+                  placeholder='E.g., Neo-Tokyo, Tech District'
                   required
                 />
               </div>
 
               <div className='grid grid-cols-2 gap-4'>
                 <div className='space-y-2'>
-                  <Label htmlFor='cost' className='text-off-white-90'>Cost (sats)</Label>
+                  <Label htmlFor='peopleNeeded' className='text-off-white-90'>People Needed</Label>
                   <Input
-                    id='cost'
-                    name='cost'
+                    id='peopleNeeded'
+                    name='peopleNeeded'
                     type='number'
-                    placeholder='10000'
-                    value={formData.cost}
+                    min='1'
+                    placeholder='1'
+                    value={formData.peopleNeeded}
+                    onChange={handleNumberChange}
+                    required
+                    className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
+                  />
+                </div>
+                <div className='space-y-2'>
+                  <Label htmlFor='compensation' className='text-off-white-90'>Compensation (sats)</Label>
+                  <Input
+                    id='compensation'
+                    name='compensation'
+                    type='number'
+                    placeholder='50000'
+                    value={formData.compensation}
                     onChange={handleChange}
                     required
                     className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
@@ -198,14 +212,51 @@ export default function PostPackage() {
               </div>
 
               <div className='space-y-2'>
-                <Label htmlFor='description' className='text-off-white-90'>Description (optional)</Label>
+                <Label htmlFor='duration' className='text-off-white-90'>Duration (optional)</Label>
+                <Input
+                  id='duration'
+                  name='duration'
+                  placeholder='E.g., 2 weeks, 3 days, Ongoing'
+                  value={formData.duration}
+                  onChange={handleChange}
+                  className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
+                />
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='description' className='text-off-white-90'>Job Description</Label>
                 <Textarea
                   id='description'
                   name='description'
-                  placeholder='Additional instructions or package details...'
+                  placeholder='Describe the job requirements, responsibilities, and what you need done...'
                   value={formData.description}
                   onChange={handleChange}
                   rows={3}
+                  className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
+                />
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='requirements' className='text-off-white-90'>Requirements (optional)</Label>
+                <Textarea
+                  id='requirements'
+                  name='requirements'
+                  placeholder='Skills, experience, or qualifications needed...'
+                  value={formData.requirements}
+                  onChange={handleChange}
+                  rows={2}
+                  className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
+                />
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='contactInfo' className='text-off-white-90'>Contact Info (optional)</Label>
+                <Input
+                  id='contactInfo'
+                  name='contactInfo'
+                  placeholder='E.g., nostr:npub..., email, or other contact method'
+                  value={formData.contactInfo}
+                  onChange={handleChange}
                   className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
                 />
               </div>
@@ -216,7 +267,7 @@ export default function PostPackage() {
                 className='w-full btn-purple'
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Posting...' : 'Post Package'}
+                {isSubmitting ? 'Posting...' : 'Post Job'}
               </Button>
             </CardFooter>
           </form>
@@ -224,4 +275,4 @@ export default function PostPackage() {
       </div>
     </main>
   );
-}
+} 

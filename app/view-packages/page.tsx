@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -73,14 +73,20 @@ export default function ViewPackages() {
     }
   }, [packages, selectedPackage]);
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refreshPackages();
-    setRefreshing(false);
-  };
+    try {
+      await refreshPackages();
+    } catch (error) {
+      console.error('Failed to refresh packages:', error);
+      toast.error('Failed to refresh packages');
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshPackages]);
 
-  // Update the handlePickup function to ensure packages are properly removed
-  const handlePickup = async (packageId: string) => {
+  // Optimized handlePickup function with better error handling
+  const handlePickup = useCallback(async (packageId: string) => {
     try {
       console.log(`Attempting to pick up package: ${packageId}`);
       setPickingUpId(packageId); // Set loading state for this package
@@ -117,16 +123,13 @@ export default function ViewPackages() {
     } finally {
       setPickingUpId(null); // Clear loading state
     }
-  };
+  }, [packages, refreshPackages, selectedPackage]);
 
-  const isOwnPackage = (pkg: PackageData) => {
-    console.log(
-      `Checking package ownership: ${pkg.pubkey} vs current user: ${publicKey}`
-    );
+  const isOwnPackage = useCallback((pkg: PackageData) => {
     return pkg.pubkey === publicKey;
-  };
+  }, [publicKey]);
 
-  const handleDeletePackage = async (packageId: string) => {
+  const handleDeletePackage = useCallback(async (packageId: string) => {
     try {
       setDeletingId(packageId); // Set loading state for this package
 
@@ -151,13 +154,15 @@ export default function ViewPackages() {
     } finally {
       setDeletingId(null); // Clear loading state
     }
-  };
+  }, [refreshPackages, selectedPackage]);
 
-  // Filter packages based on view mode
-  const filteredPackages =
-    viewMode === 'all'
-      ? packages.filter((pkg) => getEffectiveStatus(pkg) === 'available')
-      : packages.filter((pkg) => pkg.pubkey === publicKey);
+  // Filter packages based on view mode with memoization for better performance
+  const filteredPackages = useMemo(() => {
+    if (viewMode === 'all') {
+      return packages.filter((pkg) => getEffectiveStatus(pkg) === 'available');
+    }
+    return packages.filter((pkg) => pkg.pubkey === publicKey);
+  }, [packages, viewMode, publicKey]);
 
   if (!isReady || (packagesLoading && packages.length === 0)) {
     return (

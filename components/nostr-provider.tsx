@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
   useCallback,
+  useMemo,
 } from 'react';
 import { useRouter } from 'next/navigation';
 import { type PackageData } from '@/lib/nostr-types';
@@ -55,9 +56,12 @@ export function NostrProvider({ children }: { children: ReactNode }) {
       const pkgs = await getPackages();
       setPackages(pkgs);
     } catch (error) {
-      toast.error('Error Fetching Packages', {
-        description: 'Could not update package list.',
-      });
+      // Only show error toast if it's not a network timeout or temporary issue
+      if (error instanceof Error && !error.message.includes('timeout')) {
+        toast.error('Error Fetching Packages', {
+          description: 'Could not update package list.',
+        });
+      }
       console.error('Error fetching packages in provider:', error);
     } finally {
       setPackagesLoading(false);
@@ -90,25 +94,25 @@ export function NostrProvider({ children }: { children: ReactNode }) {
     }
   }, [isLoggedIn, fetchPackages]); // Add fetchPackages back to satisfy ESLint
 
-  const login = (pubkey: string, privkey?: string) => {
+  const login = useCallback((pubkey: string, privkey?: string) => {
     setPublicKey(pubkey);
     setIsLoggedIn(true);
     localStorage.setItem('nostr_pubkey', pubkey);
     if (privkey) {
       localStorage.setItem('nostr_privkey', privkey);
     }
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setPublicKey('');
     setIsLoggedIn(false);
     localStorage.removeItem('nostr_pubkey');
     localStorage.removeItem('nostr_privkey');
     setPackages([]); // Clear packages on logout
     router.replace('/');
-  };
+  }, [router]);
 
-  const contextValue = {
+  const contextValue = useMemo(() => ({
     publicKey,
     isReady: mounted && isReady,
     hasExtension: hasExt,
@@ -118,7 +122,7 @@ export function NostrProvider({ children }: { children: ReactNode }) {
     packages,
     packagesLoading,
     fetchPackages,
-  };
+  }), [publicKey, mounted, isReady, hasExt, isLoggedIn, packages, packagesLoading, fetchPackages, login, logout]);
 
   return (
     <NostrContext.Provider value={contextValue}>

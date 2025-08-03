@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -64,8 +64,15 @@ function CenterOnMe() {
   );
 }
 
-// Convert address to coordinates using OpenStreetMap Nominatim
+// Geocoding cache to prevent repeated API calls
+const geocodingCache = new Map<string, [number, number] | null>();
+
+// Convert address to coordinates using OpenStreetMap Nominatim with caching
 async function getCoordinates(address: string): Promise<[number, number] | null> {
+  // Check cache first
+  if (geocodingCache.has(address)) {
+    return geocodingCache.get(address) || null;
+  }
   try {
     // Check if input is already coordinates
     const coordRegex = /^\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*$/;
@@ -103,13 +110,19 @@ async function getCoordinates(address: string): Promise<[number, number] | null>
     const data = await response.json();
     
     if (data && data.length > 0) {
-      return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+      const coords: [number, number] = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+      geocodingCache.set(address, coords);
+      return coords;
     }
     
     console.warn(`Geocoding failed for address: ${address}`);
+    // Cache null results to prevent repeated failed requests
+    geocodingCache.set(address, null);
     return null;
   } catch (error) {
     console.error('Error geocoding address:', error);
+    // Cache null results for failed requests too
+    geocodingCache.set(address, null);
     return null;
   }
 }
@@ -151,7 +164,7 @@ export default function PackageMap({
     return packages.filter(pkg => !packageCoordinates[pkg.id]);
   }, [packages, packageCoordinates]);
 
-  // Geocode package locations
+  // Geocode package locations with debouncing and batch processing
   useEffect(() => {
     if (packagesToGeocode.length === 0) return;
 
@@ -160,12 +173,26 @@ export default function PackageMap({
       const newCoordinates: Record<string, [number, number]> = {};
       const errors: string[] = [];
 
-      for (const pkg of packagesToGeocode) {
-        const coords = await getCoordinates(pkg.pickupLocation);
-        if (coords) {
-          newCoordinates[pkg.id] = coords;
-        } else {
-          errors.push(`Could not geocode address: ${pkg.pickupLocation}`);
+      // Process packages in batches to avoid overwhelming the API
+      const BATCH_SIZE = 3;
+      for (let i = 0; i < packagesToGeocode.length; i += BATCH_SIZE) {
+        const batch = packagesToGeocode.slice(i, i + BATCH_SIZE);
+        
+        // Process batch in parallel but with small delay between batches
+        const batchPromises = batch.map(async (pkg) => {
+          const coords = await getCoordinates(pkg.pickupLocation);
+          if (coords) {
+            newCoordinates[pkg.id] = coords;
+          } else {
+            errors.push(`Could not geocode address: ${pkg.pickupLocation}`);
+          }
+        });
+
+        await Promise.all(batchPromises);
+        
+        // Small delay between batches to be nice to the API
+        if (i + BATCH_SIZE < packagesToGeocode.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
 
@@ -174,7 +201,9 @@ export default function PackageMap({
       setIsLoading(false);
     };
 
-    geocodePackages();
+    // Debounce geocoding requests
+    const timeoutId = setTimeout(geocodePackages, 300);
+    return () => clearTimeout(timeoutId);
   }, [packagesToGeocode]); // Only depend on packages that need geocoding
 
   // Update center when selected package changes

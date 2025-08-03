@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -10,17 +10,18 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { ArrowLeft, CheckCircle, RefreshCw, Truck } from 'lucide-react';
+import { ArrowLeft, CheckCircle, RefreshCw, Truck, Briefcase } from 'lucide-react';
 import Link from 'next/link';
 import {
   getMyDeliveries,
   completeDelivery,
   getEffectiveStatus,
+  getMyJobs,
 } from '@/lib/nostr';
 import { useNostr } from '@/components/nostr-provider';
 import { QRCodeSVG } from 'qrcode.react';
 import { debugStorage } from '@/lib/local-package-service';
-import { type PackageData } from '@/lib/nostr-types';
+import { type PackageData, type JobData } from '@/lib/nostr-types';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 
@@ -38,6 +39,9 @@ export default function MyDeliveries() {
   const [showQR, setShowQR] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'deliveries' | 'jobs'>('deliveries');
+  const [myJobs, setMyJobs] = useState<JobData[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
 
   const deliveries = useMemo(() => {
     return packages.filter(
@@ -58,7 +62,7 @@ export default function MyDeliveries() {
     }
   }, [deliveries, selectedDelivery]);
 
-  const handleComplete = async (packageId: string) => {
+  const handleComplete = useCallback(async (packageId: string) => {
     try {
       setCompletingId(packageId);
 
@@ -83,18 +87,45 @@ export default function MyDeliveries() {
     } finally {
       setCompletingId(null); // Clear the loading state
     }
-  };
+  }, [refreshPackages, selectedDelivery]);
 
-  const generateQRValue = (packageId: string) => {
+  const generateQRValue = useCallback((packageId: string) => {
     // Generate a URL to the confirmation page
     return `${window.location.origin}/confirm-delivery?id=${packageId}`;
-  };
+  }, []);
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refreshPackages();
-    setRefreshing(false);
-  };
+    try {
+      await refreshPackages();
+    } catch (error) {
+      console.error('Failed to refresh deliveries:', error);
+      toast.error('Failed to refresh deliveries');
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshPackages]);
+
+  const loadMyJobs = useCallback(async () => {
+    if (!isReady) return;
+    
+    try {
+      setJobsLoading(true);
+      const jobsData = await getMyJobs();
+      setMyJobs(jobsData);
+    } catch (error) {
+      console.error('Failed to load my jobs:', error);
+      toast.error('Failed to load your jobs');
+    } finally {
+      setJobsLoading(false);
+    }
+  }, [isReady]);
+
+  useEffect(() => {
+    if (activeTab === 'jobs') {
+      loadMyJobs();
+    }
+  }, [activeTab, loadMyJobs]);
 
   if (!isReady || (packagesLoading && packages.length === 0)) {
     return (
@@ -159,32 +190,67 @@ export default function MyDeliveries() {
         <div className='h-[calc(100vh-10rem)]'>
           <Card className='bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10 h-full flex flex-col p-0 gap-0'>
             <CardHeader className='flex flex-row justify-between items-start py-6 px-6'>
-              <div>
-                <CardTitle className='text-[#FAFAFA]'>Active Deliveries</CardTitle>
+              <div className='flex-1'>
+                <div className='flex space-x-1 mb-4'>
+                  <Button
+                    variant={activeTab === 'deliveries' ? 'default' : 'outline'}
+                    size='sm'
+                    onClick={() => setActiveTab('deliveries')}
+                    className={`font-cyber ${
+                      activeTab === 'deliveries'
+                        ? 'bg-blue-400/20 text-blue-400 border-blue-400/30'
+                        : 'bg-black/20 text-[#FAFAFA]/70 border-blue-400/20 hover:bg-blue-400/10'
+                    }`}
+                  >
+                    <Truck className='h-4 w-4 mr-2' />
+                    Deliveries
+                  </Button>
+                  <Button
+                    variant={activeTab === 'jobs' ? 'default' : 'outline'}
+                    size='sm'
+                    onClick={() => setActiveTab('jobs')}
+                    className={`font-cyber ${
+                      activeTab === 'jobs'
+                        ? 'bg-blue-400/20 text-blue-400 border-blue-400/30'
+                        : 'bg-black/20 text-[#FAFAFA]/70 border-blue-400/20 hover:bg-blue-400/10'
+                    }`}
+                  >
+                    <Briefcase className='h-4 w-4 mr-2' />
+                    Jobs
+                  </Button>
+                </div>
+                <CardTitle className='text-[#FAFAFA]'>
+                  {activeTab === 'deliveries' ? 'Active Deliveries' : 'My Jobs'}
+                </CardTitle>
                 <CardDescription className='text-[#FAFAFA]/70'>
-                  Click on a delivery to view its details and QR code
+                  {activeTab === 'deliveries' 
+                    ? 'Click on a delivery to view its details and QR code'
+                    : 'Manage your posted jobs'
+                  }
                 </CardDescription>
               </div>
               <Button
-                onClick={handleRefresh}
+                onClick={activeTab === 'deliveries' ? handleRefresh : loadMyJobs}
                 variant='outline'
                 size='icon'
                 className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-[#FAFAFA] -mt-2 -mr-2'
-                disabled={refreshing}
+                disabled={refreshing || jobsLoading}
               >
                 <RefreshCw
-                  className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
+                  className={`h-4 w-4 ${(refreshing || jobsLoading) ? 'animate-spin' : ''}`}
                 />
               </Button>
             </CardHeader>
             <CardContent className='flex flex-col flex-grow overflow-hidden px-6 pb-6'>
               <div className='space-y-4 overflow-y-auto pr-2 flex-1'>
-                {deliveries.length === 0 ? (
-                  <div className='text-center py-8 text-[#FAFAFA]/70'>
-                    No active deliveries
-                  </div>
-                ) : (
-                  deliveries.map((delivery) => (
+                {activeTab === 'deliveries' ? (
+                  <>
+                    {deliveries.length === 0 ? (
+                      <div className='text-center py-8 text-[#FAFAFA]/70'>
+                        No active deliveries
+                      </div>
+                    ) : (
+                      deliveries.map((delivery) => (
                     <Card
                       key={delivery.id}
                       className={`cursor-pointer transition-all duration-300 hover:-translate-y-1 ${
@@ -240,6 +306,66 @@ export default function MyDeliveries() {
                       </CardContent>
                     </Card>
                   ))
+                )}
+              </>
+                ) : (
+                  <>
+                    {jobsLoading ? (
+                      <div className='text-center py-8 text-[#FAFAFA]/70'>
+                        <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4'></div>
+                        Loading jobs...
+                      </div>
+                    ) : myJobs.length === 0 ? (
+                      <div className='text-center py-8 text-[#FAFAFA]/70'>
+                        No jobs posted yet
+                      </div>
+                    ) : (
+                      myJobs.map((job) => (
+                        <Card
+                          key={job.id}
+                          className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 transition-all duration-300'
+                        >
+                          <CardHeader className='p-4'>
+                            <div className='flex justify-between items-start'>
+                              <div>
+                                <CardTitle className='text-lg font-semibold mb-1 text-[#FAFAFA]'>
+                                  {job.title}
+                                </CardTitle>
+                                <CardDescription className='text-sm text-[#FAFAFA]/70'>
+                                  {job.description || 'No description provided'}
+                                </CardDescription>
+                              </div>
+                              <Badge
+                                variant='outline'
+                                className='bg-blue-400/10 text-blue-400 border-blue-400/30'
+                              >
+                                {job.compensation} sats
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent className='p-4 pt-0'>
+                            <div className='flex justify-between items-center'>
+                              <div className='text-sm text-[#FAFAFA]/70'>
+                                {job.location} • {job.peopleNeeded} needed
+                              </div>
+                              <Badge
+                                variant='outline'
+                                className={`text-xs ${
+                                  job.status === 'open'
+                                    ? 'bg-green-400/10 text-green-400 border-green-400/30'
+                                    : job.status === 'in_progress'
+                                    ? 'bg-blue-400/10 text-blue-400 border-blue-400/30'
+                                    : 'bg-gray-400/10 text-gray-400 border-gray-400/30'
+                                }`}
+                              >
+                                {job.status === 'open' ? 'Open' : job.status === 'in_progress' ? 'In Progress' : 'Completed'}
+                              </Badge>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    )}
+                  </>
                 )}
               </div>
             </CardContent>

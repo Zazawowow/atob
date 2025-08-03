@@ -1,5 +1,5 @@
 import { getUserKeys } from './nostr-keys';
-import { EVENT_KINDS, type PackageData, type ProfileData } from './nostr-types';
+import { EVENT_KINDS, type PackageData, type JobData, type ProfileData } from './nostr-types';
 import {
   listEvents,
   createSignedEvent,
@@ -16,6 +16,16 @@ import {
   deleteLocalPackage,
   getAllLocalDeliveries,
 } from './local-package-service';
+import {
+  saveLocalJob,
+  getLocalJobs,
+  getMyLocalJobs,
+  getLocalJobById,
+  deleteLocalJob,
+  updateLocalJobStatus,
+  applyForLocalJob,
+  completeLocalJob,
+} from './local-job-service';
 import { getRelays } from './nostr-service';
 import type { Event as NostrEvent } from 'nostr-tools';
 import { SimplePool } from 'nostr-tools';
@@ -95,6 +105,67 @@ function parsePackageFromEvent(event: any): PackageData | null {
     };
   } catch (error) {
     console.error('Failed to parse package from event:', error);
+    return null;
+  }
+}
+
+// Parse job from Nostr event
+function parseJobFromEvent(event: any): JobData | null {
+  try {
+    // Check if event has content
+    if (
+      !event.content ||
+      typeof event.content !== 'string' ||
+      event.content.trim() === ''
+    ) {
+      console.log('Skipping event with empty content:', event.id);
+      return null;
+    }
+
+    // Try to parse the content
+    let content;
+    try {
+      // First check if the content starts with a { character to avoid obvious non-JSON
+      if (!event.content.trim().startsWith('{')) {
+        console.log(`Skipping non-JSON content in event ${event.id}`);
+        return null;
+      }
+
+      content = JSON.parse(event.content);
+    } catch (parseError) {
+      console.log(`Invalid JSON in event ${event.id}:`, parseError);
+      return null;
+    }
+
+    // Validate required fields
+    if (
+      !content.title ||
+      !content.location ||
+      !content.peopleNeeded ||
+      !content.compensation
+    ) {
+      console.log(`Event ${event.id} is missing required fields:`, content);
+      return null;
+    }
+
+    return {
+      id: event.id,
+      title: content.title,
+      location: content.location,
+      peopleNeeded: content.peopleNeeded,
+      compensation: content.compensation,
+      description: content.description || '',
+      requirements: content.requirements || '',
+      duration: content.duration || '',
+      contactInfo: content.contactInfo || '',
+      status: content.status || 'open',
+      pubkey: event.pubkey,
+      created_at: event.created_at,
+      // Parse additional fields if present
+      assignedWorkers: content.assignedWorkers || [],
+    };
+  } catch (error) {
+    console.error('Failed to parse job from event:', error);
     return null;
   }
 }
@@ -197,6 +268,279 @@ export async function createPackage(
     // Last resort fallback
     return saveLocalPackage({
       ...packageData,
+      created_at: Math.floor(Date.now() / 1000),
+    });
+  }
+}
+
+// Get all jobs
+export async function getJobs(): Promise<JobData[]> {
+  try {
+    // First try to get jobs from Nostr
+    try {
+      const events = await listEvents([EVENT_KINDS.JOB]);
+      const jobs: JobData[] = [];
+
+      for (const event of events) {
+        const job = parseJobFromEvent(event);
+        if (job) {
+          jobs.push(job);
+        }
+      }
+
+      // Also get from localStorage
+      const localJobs = getLocalJobs();
+
+      // Merge and deduplicate
+      const allJobs = [...jobs, ...localJobs];
+      const uniqueJobs = allJobs.filter((job, index, self) => 
+        index === self.findIndex(j => j.id === job.id)
+      );
+
+      // Sort by creation date (newest first)
+      uniqueJobs.sort((a, b) => b.created_at - a.created_at);
+
+      return uniqueJobs;
+    } catch (nostrError) {
+      console.error('Nostr error, falling back to localStorage only:', nostrError);
+      // Fall back to localStorage only
+      return getLocalJobs();
+    }
+  } catch (error) {
+    console.error('Failed to get jobs:', error);
+    return [];
+  }
+}
+
+// Apply for a job
+export async function applyForJob(jobId: string): Promise<void> {
+  try {
+    const userPubkey = getUserPubkey();
+    
+    // Update local storage
+    applyForLocalJob(jobId, userPubkey);
+
+    // Try to update Nostr
+    try {
+      // Create an application event
+      const tags = [
+        ['t', 'job-application'],
+        ['e', jobId], // Reference to the job
+        ['p', userPubkey], // Applicant
+        ['status', 'applied'],
+        ['created_at', Math.floor(Date.now() / 1000).toString()]
+      ];
+
+      const event = await createSignedEvent(
+        EVENT_KINDS.JOB,
+        JSON.stringify({
+          jobId,
+          applicant: userPubkey,
+          status: 'applied',
+          timestamp: Math.floor(Date.now() / 1000)
+        }),
+        tags
+      );
+
+      await publishNostrEvent(event);
+      console.log('Job application published to Nostr');
+    } catch (nostrError) {
+      console.error('Nostr error, application saved locally only:', nostrError);
+    }
+  } catch (error) {
+    console.error('Failed to apply for job:', error);
+    throw new Error('Failed to apply for job');
+  }
+}
+
+// Get jobs posted by the current user
+export async function getMyJobs(): Promise<JobData[]> {
+  try {
+    const userPubkey = getUserPubkey();
+    
+    // Get from localStorage
+    const myJobs = getMyLocalJobs();
+    
+    // Filter to only show jobs posted by the current user
+    const userJobs = myJobs.filter(job => job.pubkey === userPubkey);
+    
+    // Sort by creation date (newest first)
+    userJobs.sort((a, b) => b.created_at - a.created_at);
+    
+    return userJobs;
+  } catch (error) {
+    console.error('Failed to get my jobs:', error);
+    return [];
+  }
+}
+
+// Delete a job
+export async function deleteJob(jobId: string): Promise<void> {
+  try {
+    console.log(`Deleting job with ID: ${jobId}`);
+
+    // First, delete the job from localStorage
+    deleteLocalJob(jobId);
+    console.log('Job deleted from localStorage');
+
+    // Then try to update Nostr
+    try {
+      // Create a deletion event for the job
+      const tags = [
+        ['t', 'job-deletion'],
+        ['e', jobId], // Reference to the job being deleted
+        ['status', 'deleted'],
+        ['created_at', Math.floor(Date.now() / 1000).toString()]
+      ];
+
+      const event = await createSignedEvent(
+        EVENT_KINDS.JOB,
+        JSON.stringify({
+          jobId,
+          action: 'delete',
+          timestamp: Math.floor(Date.now() / 1000)
+        }),
+        tags
+      );
+
+      await publishNostrEvent(event);
+      console.log('Job deletion published to Nostr');
+    } catch (nostrError) {
+      console.error('Nostr error, job deleted locally only:', nostrError);
+    }
+  } catch (error) {
+    console.error('Failed to delete job:', error);
+    throw new Error('Failed to delete job');
+  }
+}
+
+// Complete a job
+export async function completeJob(jobId: string): Promise<void> {
+  try {
+    console.log(`Completing job with ID: ${jobId}`);
+
+    // Update local storage
+    updateLocalJobStatus(jobId, 'completed');
+
+    // Try to update Nostr
+    try {
+      // Create a completion event for the job
+      const tags = [
+        ['t', 'job-completion'],
+        ['e', jobId], // Reference to the job being completed
+        ['status', 'completed'],
+        ['created_at', Math.floor(Date.now() / 1000).toString()]
+      ];
+
+      const event = await createSignedEvent(
+        EVENT_KINDS.JOB,
+        JSON.stringify({
+          jobId,
+          action: 'complete',
+          timestamp: Math.floor(Date.now() / 1000)
+        }),
+        tags
+      );
+
+      await publishNostrEvent(event);
+      console.log('Job completion published to Nostr');
+    } catch (nostrError) {
+      console.error('Nostr error, job completed locally only:', nostrError);
+    }
+  } catch (error) {
+    console.error('Failed to complete job:', error);
+    throw new Error('Failed to complete job');
+  }
+}
+
+// Create a job
+export async function createJob(
+  jobData: {
+    title: string;
+    location: string;
+    peopleNeeded: number;
+    compensation: string;
+    description?: string;
+    requirements?: string;
+    duration?: string;
+    contactInfo?: string;
+  }
+): Promise<string> {
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    // Create the content object with all required fields
+    const content: JobData = {
+      ...jobData,
+      id: '', // Will be set by Nostr
+      status: 'open',
+      pubkey: getUserPubkey(),
+      created_at: now,
+    };
+
+    // Try to create and sign the event with Nostr first
+    try {
+      // Add more specific tags for better event discovery
+      const tags = [
+        ['t', 'job'],
+        ['t', 'work'],
+        ['t', 'open'],
+        ['status', 'open'],
+        ['title', jobData.title],
+        ['location', jobData.location],
+        ['people_needed', jobData.peopleNeeded.toString()],
+        ['compensation', jobData.compensation],
+        ['created_at', content.created_at.toString()],
+        ['expires_at', (content.created_at + 30 * 24 * 60 * 60).toString()] // 30 days expiry
+      ];
+
+      const event = await createSignedEvent(
+        EVENT_KINDS.JOB,
+        JSON.stringify(content),
+        tags
+      );
+
+      // Try to publish the event with increased retries
+      const results = await publishNostrEvent(event);
+      console.log('Job published to relays:', results);
+
+      // Count successful publishes
+      const successCount = results.filter((r) => r === 'ok').length;
+
+      // Save to localStorage with the same ID as Nostr to avoid duplicates
+      const localJob: JobData = {
+        ...content,
+        id: event.id,
+      };
+
+      // Get existing jobs
+      const jobs = getLocalJobs();
+
+      // Check if this job already exists (avoid duplicates)
+      if (!jobs.some((job) => job.id === event.id)) {
+        jobs.push(localJob);
+        localStorage.setItem('shared_jobs_v1', JSON.stringify(jobs));
+        console.log('Job saved to localStorage with Nostr ID:', event.id);
+      }
+
+      return event.id;
+    } catch (nostrError) {
+      console.error(
+        'Nostr error, falling back to localStorage only:',
+        nostrError
+      );
+      // Fall back to localStorage only
+      const localId = saveLocalJob({
+        ...jobData,
+        created_at: now,
+      });
+      console.log('Job saved to localStorage with ID:', localId);
+      return localId;
+    }
+  } catch (error) {
+    console.error('Failed to create job:', error);
+    // Last resort fallback
+    return saveLocalJob({
+      ...jobData,
       created_at: Math.floor(Date.now() / 1000),
     });
   }

@@ -4,6 +4,7 @@ export const EVENT_KINDS = {
   TEXT_NOTE: 1, // Standard Nostr text note
   PACKAGE: 30001, // Custom event kind for packages
   DELIVERY: 30002, // Custom event kind for deliveries
+  JOB: 30003, // Custom event kind for jobs
 };
 
 // Package data interface
@@ -23,6 +24,26 @@ export interface PackageData {
   courier_pubkey?: string;
   pickup_time?: number;
   delivery_time?: number;
+}
+
+// Job data interface
+export interface JobData {
+  // Required fields
+  id: string;
+  title: string;
+  location: string;
+  peopleNeeded: number;
+  compensation: string;
+  pubkey: string;
+  created_at: number;
+  status: 'open' | 'in_progress' | 'completed' | 'expired';
+
+  // Optional fields
+  description?: string;
+  requirements?: string;
+  duration?: string;
+  contactInfo?: string;
+  assignedWorkers?: string[];
 }
 
 // Profile data interface

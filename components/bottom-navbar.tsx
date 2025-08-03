@@ -10,7 +10,7 @@ export function BottomNavbar() {
   const pathname = usePathname();
 
   // This navbar should only be visible on pages that require login
-  const protectedPages = ['/post-package', '/view-packages', '/my-deliveries', '/profile', '/settings'];
+  const protectedPages = ['/post-package', '/post-job', '/view-packages', '/view-jobs', '/my-deliveries', '/my-jobs', '/profile', '/settings'];
   const shouldShowNavbar = isLoggedIn && protectedPages.some(page => pathname.startsWith(page));
 
   if (!shouldShowNavbar) {
@@ -18,15 +18,24 @@ export function BottomNavbar() {
   }
 
   const navItems = [
-    { href: '/post-package', label: 'Post' },
+    { href: '/post-package', label: 'Package' },
+    { href: '/post-job', label: 'Job' },
     { href: '/view-packages', label: 'Map' },
     { href: '/my-deliveries', label: 'Me' },
+  ];
+
+  // Add job-related pages to the navbar when on job pages
+  const isOnJobPage = pathname.startsWith('/post-job') || pathname.startsWith('/view-jobs') || pathname.startsWith('/my-jobs');
+  const jobNavItems = [
+    { href: '/post-job', label: 'Post Job' },
+    { href: '/view-jobs', label: 'Browse' },
+    { href: '/my-jobs', label: 'My Jobs' },
   ];
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-lg border-t border-cyan-500/10 z-40 pb-safe">
       <div className="container mx-auto px-4 py-2 flex justify-around items-center">
-        {navItems.map((item) => {
+        {(isOnJobPage ? jobNavItems : navItems).map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (
             <Link
