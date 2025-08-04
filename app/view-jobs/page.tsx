@@ -13,94 +13,70 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Briefcase, MapPin, Users, Bitcoin, Clock, User } from 'lucide-react';
+import { Briefcase, MapPin, Users, Bitcoin, Clock, Eye } from 'lucide-react';
+import Link from 'next/link';
+import { getJobs, applyForJob, getEffectiveStatus } from '@/lib/nostr';
 import { useNostr } from '@/components/nostr-provider';
-import { getJobs, applyForJob } from '@/lib/nostr';
-import type { JobData } from '@/lib/nostr-types';
 import Image from 'next/image';
+
+// Force dynamic rendering to avoid SSR issues
+export const dynamic = 'force-dynamic';
 
 export default function ViewJobs() {
   const router = useRouter();
   const { isReady, isLoggedIn } = useNostr();
-  const [jobs, setJobs] = useState<JobData[]>([]);
+  const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [applyingJobs, setApplyingJobs] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
 
   const loadJobs = useCallback(async () => {
-    if (!isReady) return;
-    
+    if (!isReady || !isLoggedIn) return;
+
+    setLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
-      const jobsData = await getJobs();
-      setJobs(jobsData);
-    } catch (error) {
-      console.error('Failed to load jobs:', error);
+      const allJobs = await getJobs();
+      setJobs(allJobs);
+      console.log('Loaded jobs:', allJobs.length);
+    } catch (err) {
+      console.error('Failed to load jobs:', err);
+      setError('Failed to load jobs. Please try again.');
       toast.error('Failed to load jobs');
     } finally {
       setLoading(false);
     }
-  }, [isReady]);
+  }, [isReady, isLoggedIn]);
 
   useEffect(() => {
     loadJobs();
   }, [loadJobs]);
 
-  const handleApplyForJob = useCallback(async (jobId: string) => {
-    if (!isLoggedIn) {
-      toast.error('Please log in to apply for jobs');
-      return;
-    }
+  const handleRefresh = () => {
+    loadJobs();
+  };
 
-    setApplyingJobs(prev => new Set(prev).add(jobId));
-    
+  const handleApplyForJob = async (jobId: string) => {
     try {
       await applyForJob(jobId);
       toast.success('Application submitted successfully');
-      // Reload jobs to update the UI
-      await loadJobs();
+      loadJobs(); // Refresh the list
     } catch (error) {
       console.error('Failed to apply for job:', error);
       toast.error('Failed to apply for job');
-    } finally {
-      setApplyingJobs(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(jobId);
-        return newSet;
-      });
-    }
-  }, [isLoggedIn, loadJobs]);
-
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString();
-  };
-
-  const getStatusColor = (status: JobData['status']) => {
-    switch (status) {
-      case 'open':
-        return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'in_progress':
-        return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'completed':
-        return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
-      case 'expired':
-        return 'bg-red-500/20 text-red-400 border-red-500/30';
-      default:
-        return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
     }
   };
 
-  const getStatusText = (status: JobData['status']) => {
-    switch (status) {
-      case 'open':
-        return 'Open';
-      case 'in_progress':
-        return 'In Progress';
-      case 'completed':
-        return 'Completed';
-      case 'expired':
-        return 'Expired';
-      default:
-        return 'Unknown';
+  const formatCompensation = (compensation: string) => {
+    const amount = parseInt(compensation);
+    if (isNaN(amount)) return compensation;
+    
+    if (amount >= 100000000) {
+      return `${(amount / 100000000).toFixed(2)} BTC`;
+    } else if (amount >= 1000) {
+      return `${(amount / 1000).toFixed(1)}k sats`;
+    } else {
+      return `${amount} sats`;
     }
   };
 
@@ -115,11 +91,30 @@ export default function ViewJobs() {
     );
   }
 
+  if (!isLoggedIn) {
+    return (
+      <div className='container mx-auto px-4 pt-24 pb-8'>
+        <Card className='max-w-2xl mx-auto bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm'>
+          <CardContent className='p-8 text-center'>
+            <Briefcase className='h-16 w-16 mx-auto mb-4 text-gray-400' />
+            <h3 className='text-xl font-cyber text-off-white mb-2'>Authentication Required</h3>
+            <p className='text-gray-400 mb-6'>
+              You must be logged in with Nostr to view jobs.
+            </p>
+            <Button onClick={() => router.push('/')} className='btn-purple'>
+              Go to Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <main className='min-h-screen'>
       <div className='fixed inset-0 -z-10'>
         <Image
-          src='/hero-3.jpeg'
+          src='/hero-4.jpeg'
           alt='Background'
           fill
           className='object-cover object-center brightness-[0.3]'
@@ -129,127 +124,133 @@ export default function ViewJobs() {
       </div>
       
       <div className='container mx-auto px-4 pt-24 pb-12 relative z-10'>
-        <div className='flex justify-between items-center mb-8'>
-          <h1 className='text-3xl font-cyber text-off-white flex items-center'>
-            <Briefcase className='h-8 w-8 mr-3 text-cyan-400' />
-            AVAILABLE JOBS
-          </h1>
-          <Button
-            onClick={() => router.push('/post-job')}
-            className='btn-purple'
-          >
-            Post Job
-          </Button>
-        </div>
-
-        {loading ? (
-          <div className='flex justify-center items-center h-64'>
-            <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full'></div>
-            <p className='ml-2 text-off-white'>Loading jobs...</p>
-          </div>
-        ) : jobs.length === 0 ? (
-          <Card className='max-w-2xl mx-auto bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm'>
-            <CardContent className='p-8 text-center'>
-              <Briefcase className='h-16 w-16 mx-auto mb-4 text-gray-400' />
-              <h3 className='text-xl font-cyber text-off-white mb-2'>No Jobs Available</h3>
-              <p className='text-gray-400 mb-6'>
-                There are currently no jobs posted. Be the first to post a job!
+        <div className='max-w-6xl mx-auto space-y-6'>
+          {/* Header */}
+          <div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-4'>
+            <div>
+              <h1 className='text-3xl md:text-4xl font-cyber text-off-white mb-2'>
+                Available Jobs
+              </h1>
+              <p className='text-purple-300 text-lg'>
+                Browse and apply for available jobs
               </p>
-              <Button
-                onClick={() => router.push('/post-job')}
-                className='btn-purple'
-              >
-                Post First Job
+            </div>
+            <div className='flex gap-2'>
+              <Button onClick={handleRefresh} variant='outline' className='btn-outline-purple'>
+                Refresh
               </Button>
+              <Link href='/post-job'>
+                <Button className='btn-purple'>
+                  Post Job
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          {/* Jobs List */}
+          <Card className='bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm'>
+            <CardHeader>
+              <CardTitle className='text-off-white font-cyber text-xl'>
+                All Jobs ({jobs.length})
+              </CardTitle>
+              <CardDescription className='text-purple-300'>
+                List of all available jobs
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className='flex justify-center items-center h-32'>
+                  <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full'></div>
+                  <p className='ml-2'>Loading jobs...</p>
+                </div>
+              ) : error ? (
+                <div className='text-center text-red-400 py-8'>
+                  <p>{error}</p>
+                  <Button onClick={handleRefresh} className='mt-4 btn-purple'>
+                    Try Again
+                  </Button>
+                </div>
+              ) : jobs.length === 0 ? (
+                <div className='text-center text-gray-400 py-8'>
+                  <Briefcase className='h-16 w-16 mx-auto mb-4 opacity-50' />
+                  <p>No jobs available</p>
+                  <Link href='/post-job'>
+                    <Button className='mt-4 btn-purple'>
+                      Post First Job
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                  {jobs.map((job) => {
+                    const effectiveStatus = getEffectiveStatus(job);
+                    
+                    return (
+                      <Card key={job.id} className='bg-black/20 border border-purple-500/10 hover:border-purple-500/30 transition-all duration-300'>
+                        <CardHeader className='pb-3'>
+                          <div className='flex justify-between items-start'>
+                            <CardTitle className='text-off-white text-lg line-clamp-2'>
+                              {job.title}
+                            </CardTitle>
+                            <Badge className='bg-green-500/10 text-green-400 border-green-500/30'>
+                              {effectiveStatus === 'available' ? 'Available' : 'Filled'}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className='space-y-3'>
+                          <div className='flex items-center gap-2 text-sm'>
+                            <MapPin className='h-4 w-4 text-purple-400' />
+                            <span className='text-gray-300'>{job.location}</span>
+                          </div>
+                          
+                          <div className='flex items-center gap-2 text-sm'>
+                            <Users className='h-4 w-4 text-blue-400' />
+                            <span className='text-gray-300'>
+                              {job.peopleNeeded} person{job.peopleNeeded > 1 ? 's' : ''} needed
+                            </span>
+                          </div>
+                          
+                          <div className='flex items-center gap-2 text-sm'>
+                            <Bitcoin className='h-4 w-4 text-yellow-400' />
+                            <span className='text-gray-300'>
+                              {formatCompensation(job.compensation)}
+                            </span>
+                          </div>
+                          
+                          {job.duration && (
+                            <div className='flex items-center gap-2 text-sm'>
+                              <Clock className='h-4 w-4 text-cyan-400' />
+                              <span className='text-gray-300'>{job.duration}</span>
+                            </div>
+                          )}
+                          
+                          {job.description && (
+                            <p className='text-sm text-gray-400 line-clamp-2'>
+                              {job.description}
+                            </p>
+                          )}
+                        </CardContent>
+                        <CardFooter className='pt-3'>
+                          <div className='flex gap-2 w-full'>
+                            <Button 
+                              variant='outline' 
+                              size='sm' 
+                              className='flex-1 btn-outline-purple'
+                              onClick={() => handleApplyForJob(job.id)}
+                            >
+                              <Eye className='h-4 w-4 mr-1' />
+                              Apply
+                            </Button>
+                          </div>
+                        </CardFooter>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
-        ) : (
-          <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
-            {jobs.map((job) => (
-              <Card
-                key={job.id}
-                className='bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm hover:border-purple-500/40 transition-all duration-300'
-              >
-                <CardHeader>
-                  <div className='flex justify-between items-start mb-2'>
-                    <CardTitle className='text-off-white font-cyber text-lg line-clamp-2'>
-                      {job.title}
-                    </CardTitle>
-                    <Badge className={`${getStatusColor(job.status)} font-cyber text-xs`}>
-                      {getStatusText(job.status)}
-                    </Badge>
-                  </div>
-                  <CardDescription className='text-gray-400 text-sm'>
-                    Posted {formatDate(job.created_at)}
-                  </CardDescription>
-                </CardHeader>
-                
-                <CardContent className='space-y-4'>
-                  <div className='flex items-center text-gray-300 text-sm'>
-                    <MapPin className='h-4 w-4 mr-2 text-cyan-400' />
-                    <span className='line-clamp-1'>{job.location}</span>
-                  </div>
-                  
-                  <div className='flex items-center justify-between text-sm'>
-                    <div className='flex items-center text-gray-300'>
-                      <Users className='h-4 w-4 mr-2 text-cyan-400' />
-                      <span>{job.peopleNeeded} needed</span>
-                    </div>
-                    <div className='flex items-center text-gray-300'>
-                      <Bitcoin className='h-4 w-4 mr-2 text-yellow-400' />
-                      <span>{job.compensation} sats</span>
-                    </div>
-                  </div>
-
-                  {job.duration && (
-                    <div className='flex items-center text-gray-300 text-sm'>
-                      <Clock className='h-4 w-4 mr-2 text-cyan-400' />
-                      <span>{job.duration}</span>
-                    </div>
-                  )}
-
-                  {job.description && (
-                    <p className='text-gray-400 text-sm line-clamp-3'>
-                      {job.description}
-                    </p>
-                  )}
-
-                  {job.requirements && (
-                    <div className='text-gray-400 text-sm'>
-                      <strong className='text-gray-300'>Requirements:</strong>
-                      <p className='line-clamp-2 mt-1'>{job.requirements}</p>
-                    </div>
-                  )}
-
-                  {job.assignedWorkers && job.assignedWorkers.length > 0 && (
-                    <div className='flex items-center text-gray-300 text-sm'>
-                      <User className='h-4 w-4 mr-2 text-cyan-400' />
-                      <span>{job.assignedWorkers.length} applied</span>
-                    </div>
-                  )}
-                </CardContent>
-
-                <CardFooter>
-                  {job.status === 'open' ? (
-                    <Button
-                      onClick={() => handleApplyForJob(job.id)}
-                      disabled={applyingJobs.has(job.id)}
-                      className='w-full btn-cyan'
-                    >
-                      {applyingJobs.has(job.id) ? 'Applying...' : 'Apply for Job'}
-                    </Button>
-                  ) : (
-                    <div className='w-full text-center text-gray-400 text-sm'>
-                      {job.status === 'in_progress' && 'Job in progress'}
-                      {job.status === 'completed' && 'Job completed'}
-                      {job.status === 'expired' && 'Job expired'}
-                    </div>
-                  )}
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        )}
+        </div>
       </div>
     </main>
   );

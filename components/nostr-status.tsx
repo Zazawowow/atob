@@ -9,37 +9,33 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { getRelays, checkRelay } from '@/lib/nostr-service';
-import { Wifi, WifiOff } from 'lucide-react';
+import { Wifi, WifiOff, Shield } from 'lucide-react';
 
 export function NostrStatus() {
   const [status, setStatus] = useState<
     'checking' | 'connected' | 'disconnected'
   >('checking');
-  const [workingRelays, setWorkingRelays] = useState<string[]>([]);
-  const [totalRelays, setTotalRelays] = useState<string[]>([]);
+  const [relayUrl, setRelayUrl] = useState<string>('');
 
   useEffect(() => {
-    const checkRelays = async () => {
+    const checkRelayStatus = async () => {
       const relays = getRelays();
-      setTotalRelays(relays);
+      const relay = relays[0]; // We only have one relay
+      setRelayUrl(relay);
 
-      // Check all relays in parallel
-      const results = await Promise.all(
-        relays.map((relay) => checkRelay(relay))
-      );
-
-      // Filter working relays
-      const working = relays.filter((_, index) => results[index]);
-      setWorkingRelays(working);
-
-      // Update status
-      setStatus(working.length > 0 ? 'connected' : 'disconnected');
+      try {
+        const isWorking = await checkRelay(relay);
+        setStatus(isWorking ? 'connected' : 'disconnected');
+      } catch (error) {
+        console.error('Error checking relay status:', error);
+        setStatus('disconnected');
+      }
     };
 
-    checkRelays();
+    checkRelayStatus();
 
-    // Check relays periodically
-    const interval = setInterval(checkRelays, 30000); // Every 30 seconds
+    // Check relay periodically
+    const interval = setInterval(checkRelayStatus, 30000); // Every 30 seconds
 
     return () => clearInterval(interval);
   }, []);
@@ -60,9 +56,7 @@ export function NostrStatus() {
                 className='gap-1 px-2 py-0 h-6 bg-green-50 text-green-700 border-green-200'
               >
                 <Wifi className='h-3 w-3' />
-                <span>
-                  {workingRelays.length}/{totalRelays.length}
-                </span>
+                <span>Connected</span>
               </Badge>
             ) : (
               <Badge
@@ -77,27 +71,25 @@ export function NostrStatus() {
         </TooltipTrigger>
         <TooltipContent>
           <div className='space-y-2 max-w-xs'>
-            <p className='font-medium'>Nostr Relay Status</p>
-            <div className='text-xs space-y-1'>
-              {totalRelays.map((relay, index) => {
-                const isWorking = workingRelays.includes(relay);
-                return (
-                  <div
-                    key={relay}
-                    className='flex items-center justify-between'
-                  >
-                    <span className='truncate'>{relay}</span>
-                    {status === 'checking' ? (
-                      <span className='text-gray-500'>Checking...</span>
-                    ) : isWorking ? (
-                      <span className='text-green-600'>Connected</span>
-                    ) : (
-                      <span className='text-red-600'>Failed</span>
-                    )}
-                  </div>
-                );
-              })}
+            <div className='flex items-center gap-2'>
+              <Shield className='h-4 w-4 text-blue-400' />
+              <p className='font-medium'>Custom Nostr Relay</p>
             </div>
+            <div className='text-xs space-y-1'>
+              <div className='flex items-center justify-between'>
+                <span className='truncate text-gray-600'>{relayUrl}</span>
+                {status === 'checking' ? (
+                  <span className='text-gray-500'>Checking...</span>
+                ) : status === 'connected' ? (
+                  <span className='text-green-600'>Connected</span>
+                ) : (
+                  <span className='text-red-600'>Failed</span>
+                )}
+              </div>
+            </div>
+            <p className='text-xs text-gray-500 mt-2'>
+              Secure dedicated relay for enhanced privacy
+            </p>
           </div>
         </TooltipContent>
       </Tooltip>

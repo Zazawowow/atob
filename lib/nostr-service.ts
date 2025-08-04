@@ -1,7 +1,5 @@
-import { SimplePool, type Event as NostrEvent, type Filter, nip19, getEventHash, getPublicKey, nip04 } from 'nostr-tools';
-
-// Initialize relay pool
-const pool = new SimplePool();
+// Use wrapper for nostr-tools to handle SSR issues
+import { getNostrTools, getSimplePool, getNip19, getEventHash, getPublicKey, getNip04 } from './nostr-wrapper';
 
 // Define event kinds for our application
 export const EVENT_KINDS = {
@@ -9,44 +7,44 @@ export const EVENT_KINDS = {
   TEXT_NOTE: 1, // Standard Nostr text note
   PACKAGE: 30001, // Custom event kind for packages
   DELIVERY: 30002, // Custom event kind for deliveries
+  JOB: 30003, // Custom event kind for jobs
 };
 
-// Update the RELAYS array with more reliable relays
+// Use only our custom relay
 const RELAYS = [
-  'wss://relay.damus.io',
-  'wss://nos.lol',
-  'wss://relay.snort.social',
-  'wss://nostr.wine',
-  'wss://relay.nostr.band',
-  'wss://relay.current.fyi',
-  'wss://nostr-pub.wellorder.net',
-  'wss://relay.nostr.bg',
-  'wss://nostr.bitcoiner.social',
-  'wss://relay.nostr.info',
+  'wss://nostr.l484.com',
 ];
 
-// Get relays from localStorage or use defaults
-export function getRelays(): string[] {
+// Clear any existing relay settings from localStorage
+function clearExistingRelaySettings(): void {
   try {
-    const storedRelays = localStorage.getItem('relays');
-    if (storedRelays) {
-      const parsedRelays = JSON.parse(storedRelays);
-      // Ensure we have at least 3 relays
-      return Array.isArray(parsedRelays) && parsedRelays.length >= 3
-        ? parsedRelays
-        : [...RELAYS];
+    // Only run in browser environment
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      // Remove any stored relay configurations
+      localStorage.removeItem('relays');
+      console.log('Cleared existing relay settings from localStorage');
     }
   } catch (error) {
-    console.error('Failed to parse stored relays:', error);
+    console.error('Error clearing relay settings:', error);
   }
+}
+
+// Initialize by clearing old settings - only in browser
+if (typeof window !== 'undefined') {
+  // Use setTimeout to ensure this runs after the module is loaded
+  setTimeout(clearExistingRelaySettings, 0);
+}
+
+// Get relays - always return our custom relay only
+export function getRelays(): string[] {
   return [...RELAYS];
 }
 
-// Set available relays
+// Set available relays - disabled, always use our custom relay
 export function setRelays(relays: string[]): void {
-  // Ensure we have at least 3 relays
-  const validRelays = relays.length >= 3 ? relays : [...RELAYS];
-  localStorage.setItem('relays', JSON.stringify(validRelays));
+  // This function is disabled - we only use our custom relay
+  console.warn('setRelays is disabled - using custom relay only');
+  // Don't actually set anything, always use our custom relay
 }
 
 // Check if a relay is responsive with improved timeout handling
@@ -56,6 +54,12 @@ export async function checkRelay(
 ): Promise<boolean> {
   return new Promise((resolve) => {
     try {
+      // Only run in browser environment
+      if (typeof window === 'undefined') {
+        resolve(false);
+        return;
+      }
+
       // Detect browser for appropriate timeout
       const isFirefox = typeof navigator !== 'undefined' && navigator.userAgent.includes('Firefox');
       const isChrome = typeof navigator !== 'undefined' && navigator.userAgent.includes('Chrome');
@@ -84,37 +88,28 @@ export async function checkRelay(
   });
 }
 
-// Get working relays
+// Get working relays - simplified to only check our custom relay
 export async function getWorkingRelays(): Promise<string[]> {
   const relays = getRelays();
   const workingRelays: string[] = [];
 
-  // Check all relays in parallel
-  const results = await Promise.all(relays.map((relay) => checkRelay(relay)));
-
-  // Filter out non-working relays
-  relays.forEach((relay, index) => {
-    if (results[index]) {
-      workingRelays.push(relay);
-    } else {
-      console.warn(`Relay ${relay} is not responding, skipping`);
-    }
-  });
-
-  // If no relays are working, return all relays as a fallback
-  if (workingRelays.length === 0) {
-    console.warn('No working relays found, using all relays as fallback');
-    return relays;
+  // Check our custom relay
+  const isWorking = await checkRelay(relays[0]);
+  if (isWorking) {
+    workingRelays.push(relays[0]);
+  } else {
+    console.warn(`Custom relay ${relays[0]} is not responding`);
   }
 
-  return workingRelays;
+  // Always return our relay even if it's not working (for fallback behavior)
+  return relays;
 }
 
 // Update the listEvents function to filter out non-package/delivery events
 export async function listEvents(
-  filters: Filter[],
+  filters: any[], // Changed from Filter[] to any[] to avoid SSR issues
   timeoutMs = 15000
-): Promise<NostrEvent[]> {
+): Promise<any[]> { // Changed from NostrEvent[] to any[] to avoid SSR issues
   // Get only working relays
   const allRelays = getRelays();
   console.log(`Checking relays: ${allRelays.join(', ')}`);
@@ -125,7 +120,7 @@ export async function listEvents(
   console.log(`Using relays: ${relays.join(', ')}`);
 
   // Fix: Ensure filter is properly formatted
-  let fixedFilter: Filter = { kinds: [EVENT_KINDS.PACKAGE] };
+  let fixedFilter: any = { kinds: [EVENT_KINDS.PACKAGE] }; // Changed from Filter to any
 
   if (filters.length > 0 && filters[0].kinds && filters[0].kinds.length > 0) {
     fixedFilter = filters[0];
@@ -208,29 +203,41 @@ export async function listEvents(
 // Helper function to fetch events with timeout
 async function fetchEventsWithTimeout(
   relays: string[],
-  filter: Filter,
+  filter: any, // Changed from Filter to any to avoid SSR issues
   timeoutMs: number
-): Promise<NostrEvent[]> {
+): Promise<any[]> { // Changed from NostrEvent[] to any[] to avoid SSR issues
   return new Promise((resolve, reject) => {
     const timeoutId = setTimeout(() => {
       reject(new Error('Fetch timeout'));
     }, timeoutMs);
 
-    const events: NostrEvent[] = [];
+    const events: any[] = []; // Changed from NostrEvent[] to any[]
     const seen = new Set<string>();
 
     try {
-      const sub = pool.subscribe(relays, filter, {
-        onevent: (event: NostrEvent) => {
-          if (!seen.has(event.id)) {
-            seen.add(event.id);
-            events.push(event);
-          }
-        },
-        oneose: () => {
+      getSimplePool().then(async (SimplePool) => {
+        if (!SimplePool) {
           clearTimeout(timeoutId);
-          resolve(events);
+          resolve([]);
+          return;
         }
+        
+        const pool = new SimplePool();
+        const sub = pool.subscribe(relays, filter, {
+          onevent: (event: any) => { // Changed from NostrEvent to any
+            if (!seen.has(event.id)) {
+              seen.add(event.id);
+              events.push(event);
+            }
+          },
+          oneose: () => {
+            clearTimeout(timeoutId);
+            resolve(events);
+          }
+        });
+      }).catch((error) => {
+        clearTimeout(timeoutId);
+        reject(error);
       });
 
       // The timeout will automatically reject the promise if it takes too long
@@ -242,7 +249,7 @@ async function fetchEventsWithTimeout(
 }
 
 // Get a specific event by ID with retry logic
-export async function getEventById(id: string): Promise<NostrEvent | null> {
+export async function getEventById(id: string): Promise<any | null> { // Changed from NostrEvent to any to avoid SSR issues
   try {
     const relays = getRelays();
 
@@ -253,6 +260,12 @@ export async function getEventById(id: string): Promise<NostrEvent | null> {
     while (retries < maxRetries) {
       try {
         console.log(`Attempt ${retries + 1} to get event ${id}`);
+        const SimplePool = await getSimplePool();
+        if (!SimplePool) {
+          return null;
+        }
+        
+        const pool = new SimplePool();
         const event = await pool.get(relays, { ids: [id] });
         if (event) {
           console.log(
@@ -288,9 +301,13 @@ export async function createSignedEvent(
   kind: number,
   content: string,
   tags: string[][] = []
-): Promise<NostrEvent> {
-  // Get the public key
-  const pubkey = localStorage.getItem('nostr_pubkey');
+): Promise<any> { // Changed from NostrEvent to any to avoid SSR issues
+  // Get the public key - only in browser environment
+  let pubkey: string | null = null;
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+    pubkey = localStorage.getItem('nostr_pubkey');
+  }
+  
   if (!pubkey) {
     throw new Error('No public key found');
   }
@@ -308,7 +325,7 @@ export async function createSignedEvent(
 
   try {
     // First try using the extension if available
-    if (window.nostr) {
+    if (typeof window !== 'undefined' && window.nostr) {
       try {
         const signedEvent = await window.nostr.signEvent(event);
         return signedEvent;
@@ -318,14 +335,23 @@ export async function createSignedEvent(
     }
 
     // Fall back to nsec-based signing
-    const privateKey = localStorage.getItem('nostr_privkey');
+    let privateKey: string | null = null;
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      privateKey = localStorage.getItem('nostr_privkey');
+    }
+    
     if (!privateKey) {
       throw new Error('No private key found for signing');
     }
 
     // Get the event hash
-    event.id = getEventHash(event);
+    const getEventHashFn = await getEventHash();
+    if (!getEventHashFn) {
+      throw new Error('Failed to load getEventHash function');
+    }
     
+    event.id = getEventHashFn(event);
+
     // Convert hex private key to Uint8Array
     const privateKeyBytes = new Uint8Array(
       privateKey.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
@@ -368,26 +394,30 @@ async function retryOperation<T>(
   throw lastError;
 }
 
-// Update publishEvent to use retry mechanism
-export async function publishEvent(event: NostrEvent): Promise<string[]> {
+// Update publishEvent to work with single relay
+export async function publishEvent(event: any): Promise<string[]> { // Changed from NostrEvent to any to avoid SSR issues
   try {
-    const relays = await getWorkingRelays();
+    const relays = getRelays(); // Always use our custom relay
     if (relays.length === 0) {
-      throw new Error('No working relays available');
+      throw new Error('No relay configured');
     }
 
-    const results = await Promise.all(
-      relays.map(async (relay) => {
-        try {
-          await pool.publish([relay], event);
-          return 'ok';
-        } catch (error) {
-          return 'failed: ' + (error instanceof Error ? error.message : String(error));
-        }
-      })
-    );
-
-    return results;
+    const relay = relays[0]; // We only have one relay
+    
+    try {
+      const SimplePool = await getSimplePool();
+      if (!SimplePool) {
+        throw new Error('Failed to load SimplePool');
+      }
+      
+      const pool = new SimplePool();
+      await pool.publish([relay], event);
+      console.log(`Event published successfully to ${relay}`);
+      return ['ok'];
+    } catch (error) {
+      console.error(`Failed to publish to ${relay}:`, error);
+      return ['failed: ' + (error instanceof Error ? error.message : String(error))];
+    }
   } catch (error) {
     console.error('Failed to publish event:', error);
     return ['failed: ' + (error instanceof Error ? error.message : String(error))];
@@ -395,17 +425,26 @@ export async function publishEvent(event: NostrEvent): Promise<string[]> {
 }
 
 // Close all connections
-export function closePool(): void {
+export async function closePool(): Promise<void> {
   try {
-    pool.close(getRelays());
+    const SimplePool = await getSimplePool();
+    if (SimplePool) {
+      const pool = new SimplePool();
+      pool.close(getRelays());
+    }
   } catch (error) {
     console.error('Failed to close pool:', error);
   }
 }
 
 // Helper function to convert npub to hex pubkey
-export function npubToHex(npub: string): string {
+export async function npubToHex(npub: string): Promise<string> {
   try {
+    const nip19 = await getNip19();
+    if (!nip19) {
+      return '';
+    }
+    
     const { data } = nip19.decode(npub);
     return data as string;
   } catch (error) {
@@ -415,8 +454,13 @@ export function npubToHex(npub: string): string {
 }
 
 // Helper function to convert hex pubkey to npub
-export function hexToNpub(hex: string): string {
+export async function hexToNpub(hex: string): Promise<string> {
   try {
+    const nip19 = await getNip19();
+    if (!nip19) {
+      return '';
+    }
+    
     return nip19.npubEncode(hex);
   } catch (error) {
     console.error('Failed to convert hex to npub:', error);
@@ -432,8 +476,8 @@ export async function getUserProfile(pubkey: string): Promise<{
   about?: string;
 } | null> {
   try {
-    const relays = await getWorkingRelays();
-    const filter: Filter = {
+    const relays = getRelays(); // Always use our custom relay
+    const filter: any = { // Changed from Filter to any to avoid SSR issues
       kinds: [EVENT_KINDS.METADATA],
       authors: [pubkey],
       limit: 1
@@ -446,7 +490,7 @@ export async function getUserProfile(pubkey: string): Promise<{
     }
 
     // Get the most recent metadata event
-    const latestEvent = events.sort((a: NostrEvent, b: NostrEvent) => b.created_at - a.created_at)[0];
+    const latestEvent = events.sort((a: any, b: any) => b.created_at - a.created_at)[0]; // Changed from NostrEvent to any
     
     try {
       const metadata = JSON.parse(latestEvent.content);

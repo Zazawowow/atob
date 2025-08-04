@@ -38,10 +38,12 @@ export type { PackageData, ProfileData };
 
 // Helper function to get user's public key
 export function getUserPubkey(): string {
-  // Get from localStorage first
-  const storedPubkey = localStorage.getItem('nostr_pubkey');
-  if (storedPubkey) {
-    return storedPubkey;
+  // Get from localStorage first - only in browser environment
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+    const storedPubkey = localStorage.getItem('nostr_pubkey');
+    if (storedPubkey) {
+      return storedPubkey;
+    }
   }
 
   // Fall back to generated keys
@@ -278,7 +280,7 @@ export async function getJobs(): Promise<JobData[]> {
   try {
     // First try to get jobs from Nostr
     try {
-      const events = await listEvents([EVENT_KINDS.JOB]);
+      const events = await listEvents([{ kinds: [EVENT_KINDS.JOB] }]);
       const jobs: JobData[] = [];
 
       for (const event of events) {

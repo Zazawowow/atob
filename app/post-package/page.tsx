@@ -17,16 +17,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { ArrowLeft, Package } from 'lucide-react';
-import Link from 'next/link';
-import { createPackage, getEffectiveStatus } from '@/lib/nostr';
+import { Package, MapPin } from 'lucide-react';
+import { createPackage } from '@/lib/nostr';
 import { useNostr } from '@/components/nostr-provider';
 import { AddressInput } from '@/components/address-input';
 import Image from 'next/image';
 
+// Force dynamic rendering to avoid SSR issues
+export const dynamic = 'force-dynamic';
+
 export default function PostPackage() {
   const router = useRouter();
-  const { isReady } = useNostr();
+  const { isReady, isLoggedIn } = useNostr();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -56,7 +58,7 @@ export default function PostPackage() {
     const errors: Record<string, string> = {};
     
     if (!formData.title.trim()) {
-      errors.title = 'Title is required';
+      errors.title = 'Package title is required';
     }
     if (!formData.pickupLocation.trim()) {
       errors.pickupLocation = 'Pickup location is required';
@@ -84,16 +86,20 @@ export default function PostPackage() {
       toast.error('Please fix the form errors before submitting');
       return;
     }
+
+    if (!isLoggedIn) {
+      toast.error('Please log in to post a package');
+      return;
+    }
     
     setIsSubmitting(true);
 
     try {
-      // Create package using Nostr with localStorage fallback
       const packageId = await createPackage(formData);
       console.log('Package created with ID:', packageId);
 
-      toast.success('Package Posted', {
-        description: 'Your package has been successfully posted for delivery.',
+      toast.success('Package Posted Successfully', {
+        description: 'Your package has been posted and is now available for delivery.',
       });
 
       // Add a small delay before redirecting to ensure the event is propagated
@@ -108,7 +114,7 @@ export default function PostPackage() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [formData, isFormValid, router]);
+  }, [formData, isFormValid, isLoggedIn, router]);
 
   if (!isReady) {
     return (
@@ -121,11 +127,30 @@ export default function PostPackage() {
     );
   }
 
+  if (!isLoggedIn) {
+    return (
+      <div className='container mx-auto px-4 pt-24 pb-8'>
+        <Card className='max-w-2xl mx-auto bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm'>
+          <CardContent className='p-8 text-center'>
+            <Package className='h-16 w-16 mx-auto mb-4 text-gray-400' />
+            <h3 className='text-xl font-cyber text-off-white mb-2'>Authentication Required</h3>
+            <p className='text-gray-400 mb-6'>
+              You must be logged in with Nostr to post packages.
+            </p>
+            <Button onClick={() => router.push('/')} className='btn-purple'>
+              Go to Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <main className='min-h-screen'>
       <div className='fixed inset-0 -z-10'>
         <Image
-          src='/hero-4.jpeg'
+          src='/hero-3.jpeg'
           alt='Background'
           fill
           className='object-cover object-center brightness-[0.3]'
@@ -135,92 +160,92 @@ export default function PostPackage() {
       </div>
       
       <div className='container mx-auto px-4 pt-24 pb-12 relative z-10'>
-        <Card className='max-w-2xl mx-auto bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm'>
-          <CardHeader>
-            <CardTitle className='flex items-center text-off-white font-cyber text-2xl'>
-              <div className='p-2 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-md mr-4'>
-                <Package className='h-6 w-6 text-off-white' />
-              </div>
-              POST A PACKAGE
-            </CardTitle>
-          </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className='space-y-6 pt-6 pb-4'>
-              <div className='space-y-2'>
-                <Label htmlFor='title' className='text-off-white-90'>Package Title</Label>
-                <Input
-                  id='title'
-                  name='title'
-                  placeholder='E.g., Box of Cyber-Crystals'
-                  value={formData.title}
-                  onChange={handleChange}
-                  required
-                  className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
-                />
-              </div>
-
-              <div className='space-y-2'>
-                <Label htmlFor='pickupLocation' className='text-off-white-90'>Pickup Location</Label>
-                <AddressInput
-                  id='pickupLocation'
-                  value={formData.pickupLocation}
-                  onChange={(value) => handleAddressChange('pickupLocation', value)}
-                  placeholder='E.g., Neo-Kyoto, Sector 7'
-                  required
-                />
-              </div>
-
-              <div className='space-y-2'>
-                <Label htmlFor='destination' className='text-off-white-90'>Destination</Label>
-                <AddressInput
-                  id='destination'
-                  value={formData.destination}
-                  onChange={(value) => handleAddressChange('destination', value)}
-                  placeholder='E.g., Arakis, The Great Flat'
-                  required
-                />
-              </div>
-
-              <div className='grid grid-cols-2 gap-4'>
+        <div className='max-w-4xl mx-auto'>
+          <Card className='bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm'>
+            <CardHeader>
+              <CardTitle className='flex items-center text-off-white font-cyber text-2xl'>
+                <div className='p-2 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-md mr-4'>
+                  <Package className='h-6 w-6 text-off-white' />
+                </div>
+                POST A PACKAGE
+              </CardTitle>
+            </CardHeader>
+            <form onSubmit={handleSubmit}>
+              <CardContent className='space-y-6 pt-6 pb-4'>
                 <div className='space-y-2'>
-                  <Label htmlFor='cost' className='text-off-white-90'>Cost (sats)</Label>
+                  <Label htmlFor='title' className='text-off-white-90'>Package Title</Label>
+                  <Input
+                    id='title'
+                    name='title'
+                    placeholder='E.g., Important Documents, Electronics, etc.'
+                    value={formData.title}
+                    onChange={handleChange}
+                    required
+                    className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
+                  />
+                </div>
+
+                <div className='space-y-2'>
+                  <Label htmlFor='pickupLocation' className='text-off-white-90'>Pickup Location</Label>
+                  <AddressInput
+                    id='pickupLocation'
+                    value={formData.pickupLocation}
+                    onChange={(value) => handleAddressChange('pickupLocation', value)}
+                    placeholder='E.g., Neo-Tokyo, Tech District'
+                    required
+                  />
+                </div>
+
+                <div className='space-y-2'>
+                  <Label htmlFor='destination' className='text-off-white-90'>Destination</Label>
+                  <AddressInput
+                    id='destination'
+                    value={formData.destination}
+                    onChange={(value) => handleAddressChange('destination', value)}
+                    placeholder='E.g., Cyber-City, Business District'
+                    required
+                  />
+                </div>
+
+                <div className='space-y-2'>
+                  <Label htmlFor='cost' className='text-off-white-90'>Delivery Cost (sats)</Label>
                   <Input
                     id='cost'
                     name='cost'
                     type='number'
-                    placeholder='10000'
+                    placeholder='25000'
                     value={formData.cost}
                     onChange={handleChange}
                     required
                     className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
                   />
                 </div>
-              </div>
 
-              <div className='space-y-2'>
-                <Label htmlFor='description' className='text-off-white-90'>Description (optional)</Label>
-                <Textarea
-                  id='description'
-                  name='description'
-                  placeholder='Additional instructions or package details...'
-                  value={formData.description}
-                  onChange={handleChange}
-                  rows={3}
-                  className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
-                />
-              </div>
-            </CardContent>
-            <CardFooter className='p-6 bg-black/20 border-t border-white/10'>
-              <Button
-                type='submit'
-                className='w-full btn-purple'
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Posting...' : 'Post Package'}
-              </Button>
-            </CardFooter>
-          </form>
-        </Card>
+                <div className='space-y-2'>
+                  <Label htmlFor='description' className='text-off-white-90'>Package Description</Label>
+                  <Textarea
+                    id='description'
+                    name='description'
+                    placeholder='Describe the package contents, size, weight, special handling requirements...'
+                    value={formData.description}
+                    onChange={handleChange}
+                    rows={4}
+                    className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
+                  />
+                </div>
+              </CardContent>
+              <CardFooter className='p-6 bg-black/20 border-t border-white/10'>
+                <Button
+                  type='submit'
+                  className='w-full btn-purple'
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Posting Package...' : 'Post Package'}
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
+        </div>
       </div>
     </main>
   );

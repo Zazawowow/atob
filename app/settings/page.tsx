@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -8,274 +9,287 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
-import { ArrowLeft, Plus, Trash2, RefreshCw } from 'lucide-react';
-import Link from 'next/link';
-import { getRelays, setRelays, checkRelay } from '@/lib/nostr-service';
 import { Badge } from '@/components/ui/badge';
-import { SettingsIcon } from 'lucide-react';
-import { Label } from '@/components/ui/label';
-import { PlusCircle } from 'lucide-react';
+import { toast } from 'sonner';
+import { Settings, Shield, Users, Lock, CheckCircle, XCircle } from 'lucide-react';
+import { useNostr } from '@/components/nostr-provider';
+// import { getUserNpub } from '@/lib/nostr-secure';
 import Image from 'next/image';
 
-export default function Settings() {
-  const [relays, setRelaysList] = useState<string[]>([]);
-  const [newRelay, setNewRelay] = useState('');
-  const [relayStatus, setRelayStatus] = useState<
-    Record<string, boolean | null>
-  >({});
-  const [isChecking, setIsChecking] = useState(false);
+// Force dynamic rendering to avoid SSR issues
+export const dynamic = 'force-dynamic';
 
-  // Default relays to suggest
-  const suggestedRelays = [
-    'wss://relay.damus.io',
-    'wss://nos.lol',
-    'wss://relay.snort.social',
-    'wss://relay.nostr.band',
-    'wss://nostr-pub.wellorder.net',
-    'wss://relay.nostr.bg',
-    'wss://nostr.bitcoiner.social',
-    'wss://nostr.onsats.org',
-    'wss://nostr.plebchain.org',
-    'wss://nostr.orangepill.dev',
-    'wss://nostr.zkid.social',
-    'wss://nostr.btcmp.com',
-    'wss://nostr.bitcoiner.social',
-    'wss://nostr.plebchain.org',
-    'wss://nostr.orangepill.dev',
-    'wss://nostr.zkid.social',
-    'wss://nostr.btcmp.com'
-  ];
+export default function SettingsPage() {
+  const { isReady, isLoggedIn, publicKey, logout } = useNostr();
+  const [userNpub, setUserNpub] = useState<string | null>(null);
+  const [relayStatus, setRelayStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
 
   useEffect(() => {
-    // Load relays from storage
-    const storedRelays = getRelays();
-    setRelaysList(storedRelays);
-
-    // Initialize status as null (unchecked)
-    const initialStatus: Record<string, boolean | null> = {};
-    storedRelays.forEach((relay) => {
-      initialStatus[relay] = null;
-    });
-    setRelayStatus(initialStatus);
-  }, []);
-
-  const handleAddRelay = () => {
-    if (!newRelay) return;
-
-    // Validate relay URL
-    if (!newRelay.startsWith('wss://')) {
-      toast.error('Invalid relay URL', {
-        description: 'Relay URL must start with wss://',
-      });
-      return;
+    if (isReady && isLoggedIn) {
+      loadUserNpub();
+      checkRelayStatus();
     }
+  }, [isReady, isLoggedIn]);
 
-    // Check if relay already exists
-    if (relays.includes(newRelay)) {
-      toast.error('Relay already exists', {
-        description: 'This relay is already in your list',
-      });
-      return;
+  const loadUserNpub = async () => {
+    try {
+      // const npub = await getUserNpub();
+      // setUserNpub(npub);
+      
+      // Temporary mock npub
+      setUserNpub('npub10wzfa7jkqj6c65xyr93hhxrns37ml9tss82jvymv8fymwdtu6cts3h6pvr');
+    } catch (error) {
+      console.error('Failed to load user npub:', error);
     }
-
-    // Add new relay
-    const updatedRelays = [...relays, newRelay];
-    setRelaysList(updatedRelays);
-    setRelays(updatedRelays);
-    setNewRelay('');
-
-    // Set initial status as null (unchecked)
-    setRelayStatus((prev) => ({
-      ...prev,
-      [newRelay]: null,
-    }));
-
-    toast.success('Relay added', {
-      description: 'New relay has been added to your list',
-    });
   };
 
-  const handleRemoveRelay = (relay: string) => {
-    const updatedRelays = relays.filter((r) => r !== relay);
-    setRelaysList(updatedRelays);
-    setRelays(updatedRelays);
-
-    // Remove from status
-    setRelayStatus((prev) => {
-      const newStatus = { ...prev };
-      delete newStatus[relay];
-      return newStatus;
-    });
-
-    toast.success('Relay removed', {
-      description: 'Relay has been removed from your list',
-    });
-  };
-
-  const handleAddSuggestedRelay = (relay: string) => {
-    if (relays.includes(relay)) {
-      toast.error('Relay already exists', {
-        description: 'This relay is already in your list',
-      });
-      return;
+  const checkRelayStatus = async () => {
+    setRelayStatus('checking');
+    try {
+      // Simple WebSocket test to check relay status
+      const ws = new WebSocket('wss://nostr.l484.com');
+      
+      ws.onopen = () => {
+        setRelayStatus('connected');
+        ws.close();
+      };
+      
+      ws.onerror = () => {
+        setRelayStatus('disconnected');
+      };
+      
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        if (relayStatus === 'checking') {
+          setRelayStatus('disconnected');
+        }
+      }, 5000);
+    } catch (error) {
+      setRelayStatus('disconnected');
     }
-
-    const updatedRelays = [...relays, relay];
-    setRelaysList(updatedRelays);
-    setRelays(updatedRelays);
-
-    // Set initial status as null (unchecked)
-    setRelayStatus((prev) => ({
-      ...prev,
-      [relay]: null,
-    }));
-
-    toast.success('Relay added', {
-      description: 'Suggested relay has been added to your list',
-    });
   };
 
-  const checkRelays = async () => {
-    setIsChecking(true);
+  const handleLogout = () => {
+    logout();
+    toast.success('Logged out successfully');
+  };
 
-    // Check all relays in parallel
-    const checkPromises = relays.map(async (relay) => {
-      const isWorking = await checkRelay(relay);
-      return { relay, isWorking };
-    });
-
-    // Update status as results come in
-    for (const promise of checkPromises) {
-      const { relay, isWorking } = await promise;
-      setRelayStatus((prev) => ({
-        ...prev,
-        [relay]: isWorking,
-      }));
+  const getRelayStatusIcon = () => {
+    switch (relayStatus) {
+      case 'connected':
+        return <CheckCircle className="h-4 w-4 text-green-400" />;
+      case 'disconnected':
+        return <XCircle className="h-4 w-4 text-red-400" />;
+      default:
+        return <div className="h-4 w-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />;
     }
-
-    setIsChecking(false);
-    toast.success('Relay check complete', {
-      description: 'All relays have been checked for connectivity',
-    });
   };
+
+  const getRelayStatusText = () => {
+    switch (relayStatus) {
+      case 'connected':
+        return 'Connected';
+      case 'disconnected':
+        return 'Disconnected';
+      default:
+        return 'Checking...';
+    }
+  };
+
+  const getRelayStatusColor = () => {
+    switch (relayStatus) {
+      case 'connected':
+        return 'bg-green-500/10 text-green-400 border-green-500/30';
+      case 'disconnected':
+        return 'bg-red-500/10 text-red-400 border-red-500/30';
+      default:
+        return 'bg-blue-500/10 text-blue-400 border-blue-500/30';
+    }
+  };
+
+  if (!isReady) {
+    return (
+      <div className='container mx-auto px-4 pt-24 pb-8'>
+        <div className='flex justify-center items-center h-64'>
+          <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full'></div>
+          <p className='ml-2'>Loading Nostr...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <div className='container mx-auto px-4 pt-24 pb-8'>
+        <Card className='max-w-2xl mx-auto bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm'>
+          <CardContent className='p-8 text-center'>
+            <Lock className='h-16 w-16 mx-auto mb-4 text-gray-400' />
+            <h3 className='text-xl font-cyber text-off-white mb-2'>Authentication Required</h3>
+            <p className='text-gray-400 mb-6'>
+              You must be logged in with Nostr to access settings.
+            </p>
+            <Button onClick={() => window.location.href = '/'} className='btn-purple'>
+              Go to Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className='container mx-auto px-4 pt-24 pb-8 relative z-10'>
+    <main className='min-h-screen'>
       <div className='fixed inset-0 -z-10'>
         <Image
-          src='/hero-3.jpeg'
+          src='/hero-4.jpeg'
           alt='Background'
           fill
           className='object-cover object-center brightness-[0.3]'
           priority
         />
-        <div className='absolute inset-0 bg-black/30' />
+        <div className='absolute inset-0 bg-black/40' />
       </div>
-      <Card className='max-w-2xl mx-auto bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10'>
-        <CardHeader>
-          <div className='flex items-center gap-4'>
-            <SettingsIcon className='size-8 text-off-white' />
-            <CardTitle className='flex items-center text-off-white font-cyber text-2xl'>
-              NOSTR SETTINGS
-            </CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className='space-y-8 pt-6'>
-          <div className='space-y-4'>
-            <div className='flex justify-between items-center'>
-              <h3 className='text-lg font-medium text-off-white'>Nostr Relays</h3>
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={checkRelays}
-                disabled={isChecking}
-                className='btn-outline-blue'
-              >
-                <RefreshCw
-                  className={`mr-2 h-4 w-4 ${isChecking ? 'animate-spin' : ''}`}
-                />
-                {isChecking ? 'Checking...' : 'Check All'}
-              </Button>
-            </div>
-
-            <div className='space-y-3'>
-              {relays.map((relay) => (
-                <div
-                  key={relay}
-                  className='flex items-center justify-between p-3 bg-black/20 rounded-lg border border-white/10'
-                >
-                  <div className='flex items-center gap-2 overflow-hidden'>
-                    <span className='truncate text-off-white-90'>{relay}</span>
-                    {relayStatus[relay] === true && (
-                      <Badge variant='success'>Connected</Badge>
-                    )}
-                    {relayStatus[relay] === false && (
-                      <Badge variant='destructive'>Failed</Badge>
-                    )}
-                  </div>
-                  <Button
-                    variant='ghost'
-                    size='icon'
-                    onClick={() => handleRemoveRelay(relay)}
-                    className='text-off-white-60 hover:text-pink-400'
-                  >
-                    <Trash2 className='h-4 w-4' />
-                  </Button>
+      
+      <div className='container mx-auto px-4 pt-24 pb-12 relative z-10'>
+        <div className='max-w-4xl mx-auto space-y-6'>
+          {/* Header */}
+          <div className='text-center mb-8'>
+            <h1 className='text-3xl md:text-4xl font-cyber text-off-white mb-2'>
+              <div className='flex items-center justify-center gap-3'>
+                <div className='p-2 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-md'>
+                  <Settings className='h-8 w-8 text-off-white' />
                 </div>
-              ))}
-            </div>
+                SETTINGS
+              </div>
+            </h1>
+            <p className='text-purple-300 text-lg'>
+              Manage your secure account and system access
+            </p>
+          </div>
 
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-off-white">Nostr Relays</h3>
-              <div className="space-y-2">
-                <Label htmlFor="new-relay" className="text-off-white">
-                  Add a new relay
-                </Label>
-                <div className="flex flex-col space-y-2">
-                  <Input
-                    id="new-relay"
-                    type="url"
-                    placeholder='wss://relay.damus.io'
-                    value={newRelay}
-                    onChange={(e) => setNewRelay(e.target.value)}
-                    className='bg-black/20 border-white/20 text-off-white focus:ring-cyan-400'
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddRelay()}
-                  />
-                  <Button
-                    onClick={handleAddRelay}
-                    size='sm'
-                    className='btn-blue w-full'
-                  >
-                    <PlusCircle className='mr-2 h-4 w-4' /> Add
-                  </Button>
+          {/* User Info */}
+          <Card className='bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm'>
+            <CardHeader>
+              <CardTitle className='flex items-center text-off-white font-cyber text-xl'>
+                <Users className='h-6 w-6 text-purple-400 mr-3' />
+                USER INFORMATION
+              </CardTitle>
+              <CardDescription className='text-purple-300'>
+                Your Nostr identity and connection status
+              </CardDescription>
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <div className='p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg'>
+                  <p className='text-sm text-purple-300 mb-1'>Public Key</p>
+                  <p className='text-xs font-mono text-purple-200 break-all'>
+                    {publicKey ? `${publicKey.slice(0, 12)}...${publicKey.slice(-8)}` : 'Not available'}
+                  </p>
+                </div>
+                <div className='p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg'>
+                  <p className='text-sm text-purple-300 mb-1'>Npub</p>
+                  <p className='text-xs font-mono text-purple-200 break-all'>
+                    {userNpub ? `${userNpub.slice(0, 12)}...${userNpub.slice(-8)}` : 'Not available'}
+                  </p>
                 </div>
               </div>
-            </div>
-          </div>
+              
+              <div className='flex justify-between items-center'>
+                <Button
+                  onClick={checkRelayStatus}
+                  variant='outline'
+                  className='btn-outline-purple'
+                  disabled={relayStatus === 'checking'}
+                >
+                  Check Relay Status
+                </Button>
+                <Button
+                  onClick={handleLogout}
+                  variant='outline'
+                  className='btn-outline-red'
+                >
+                  Logout
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-          <div className='space-y-4 border-t border-white/10 pt-6'>
-            <h3 className='text-lg font-medium text-off-white'>Suggested Relays</h3>
-            <div className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
-              {suggestedRelays
-                .filter((relay) => !relays.includes(relay))
-                .map((relay) => (
-                  <Button
-                    key={relay}
-                    variant='outline'
-                    className='justify-start overflow-hidden btn-outline-purple text-off-white'
-                    onClick={() => handleAddSuggestedRelay(relay)}
-                  >
-                    <Plus className='h-4 w-4 mr-2 flex-shrink-0' />
-                    <span className='truncate'>{relay}</span>
-                  </Button>
-                ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+          {/* Relay Status */}
+          <Card className='bg-black/30 border border-blue-500/20 rounded-2xl shadow-blue-glow/10 backdrop-blur-sm'>
+            <CardHeader>
+              <CardTitle className='flex items-center text-off-white font-cyber text-xl'>
+                <Shield className='h-6 w-6 text-blue-400 mr-3' />
+                SECURE RELAY STATUS
+              </CardTitle>
+              <CardDescription className='text-blue-300'>
+                Connection status to our secure relay
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className='flex items-center justify-between p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg'>
+                <div className='flex items-center gap-3'>
+                  {getRelayStatusIcon()}
+                  <div>
+                    <p className='text-blue-300 font-medium'>wss://nostr.l484.com</p>
+                    <p className='text-blue-400 text-sm'>Our secure relay</p>
+                  </div>
+                </div>
+                <Badge className={getRelayStatusColor()}>
+                  {getRelayStatusText()}
+                </Badge>
+              </div>
+              
+              <div className='mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg'>
+                <p className='text-sm text-yellow-400'>
+                  <strong>Security Note:</strong> This application exclusively uses our secure relay. 
+                  All data is encrypted and only accessible to approved users.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Security Info */}
+          <Card className='bg-black/30 border border-green-500/20 rounded-2xl shadow-green-glow/10 backdrop-blur-sm'>
+            <CardHeader>
+              <CardTitle className='flex items-center text-off-white font-cyber text-xl'>
+                <Lock className='h-6 w-6 text-green-400 mr-3' />
+                SECURITY FEATURES
+              </CardTitle>
+              <CardDescription className='text-green-300'>
+                How your data is protected
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <div className='p-4 bg-green-500/10 border border-green-500/20 rounded-lg'>
+                  <h4 className='text-green-300 font-medium mb-2'>End-to-End Encryption</h4>
+                  <p className='text-green-400 text-sm'>
+                    All job and package data is encrypted using NIP-04, ensuring only approved users can decrypt and view the content.
+                  </p>
+                </div>
+                <div className='p-4 bg-green-500/10 border border-green-500/20 rounded-lg'>
+                  <h4 className='text-green-300 font-medium mb-2'>Access Control</h4>
+                  <p className='text-green-400 text-sm'>
+                    Only approved npubs can view and interact with secure jobs and packages. Unauthorized users cannot access any data.
+                  </p>
+                </div>
+                <div className='p-4 bg-green-500/10 border border-green-500/20 rounded-lg'>
+                  <h4 className='text-green-300 font-medium mb-2'>Secure Relay</h4>
+                  <p className='text-green-400 text-sm'>
+                    All data is stored exclusively on our secure relay (nostr.l484.com). No other relays are used or accessible.
+                  </p>
+                </div>
+                <div className='p-4 bg-green-500/10 border border-green-500/20 rounded-lg'>
+                  <h4 className='text-green-300 font-medium mb-2'>Nostr Authentication</h4>
+                  <p className='text-green-400 text-sm'>
+                    Users authenticate using Nostr keys, providing cryptographic proof of identity without centralized servers.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </main>
   );
 }

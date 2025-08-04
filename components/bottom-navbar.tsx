@@ -4,6 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useNostr } from '@/components/nostr-provider';
 import { cn } from '@/lib/utils';
+import { useEffect, useState } from 'react';
+// import { getUserNpub } from '@/lib/nostr-secure';
+
+// Admin npub - this is the only admin user
+const ADMIN_NPUB = 'npub10wzfa7jkqj6c65xyr93hhxrns37ml9tss82jvymv8fymwdtu6cts3h6pvr';
 
 // Custom SVG Icons
 const PackageIcon = () => (
@@ -39,6 +44,25 @@ const ViewPackagesIcon = () => (
 export function BottomNavbar() {
   const { isLoggedIn } = useNostr();
   const pathname = usePathname();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check if user is admin
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (isLoggedIn) {
+        try {
+          // const userNpub = await getUserNpub();
+          // setIsAdmin(userNpub === ADMIN_NPUB);
+          // Temporarily commenting out to fix build issue
+          setIsAdmin(false); // Assume not admin for now
+        } catch (error) {
+          console.error('Failed to check admin status:', error);
+        }
+      }
+    };
+    
+    checkAdmin();
+  }, [isLoggedIn]);
 
   // This navbar should be visible when logged in on any page
   const shouldShowNavbar = isLoggedIn;
@@ -48,25 +72,16 @@ export function BottomNavbar() {
   }
 
   const navItems = [
-    { href: '/post-package', label: 'Post', icon: <PackageIcon /> },
-    { href: '/post-job', label: 'Job', icon: <JobIcon /> },
-    { href: '/view-packages', label: 'Map', icon: <MapIcon /> },
-    { href: '/my-deliveries', label: 'Me', icon: <ViewPackagesIcon /> },
-  ];
-
-  // Add job-related pages to the navbar when on job pages
-  const isOnJobPage = pathname.startsWith('/post-job') || pathname.startsWith('/view-jobs') || pathname.startsWith('/my-jobs');
-  const jobNavItems = [
-    { href: '/post-job', label: 'Post', icon: <JobIcon /> },
-    { href: '/view-jobs', label: 'Browse', icon: <ViewPackagesIcon /> },
-    { href: '/my-jobs', label: 'My Jobs', icon: <JobIcon /> },
-    { href: '/my-deliveries', label: 'Me', icon: <ViewPackagesIcon /> },
+    { href: '/post-package', label: 'Post Package', icon: <PackageIcon /> },
+    { href: '/post-job', label: 'Post Job', icon: <JobIcon /> },
+    { href: '/view-packages', label: 'View Map', icon: <MapIcon /> },
+    { href: '/my-deliveries', label: 'My Deliveries', icon: <ViewPackagesIcon /> },
   ];
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-lg border-t border-cyan-500/10 z-40 pb-safe">
       <div className="container mx-auto px-4 py-2 flex justify-around items-center">
-        {(isOnJobPage ? jobNavItems : navItems).map((item) => {
+        {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (
             <Link

@@ -8,6 +8,9 @@ import { useNostr } from '@/components/nostr-provider';
 import { useUIAnimation } from '@/components/ui-animation-context';
 import { NostrAuthModal } from '@/components/nostr-auth-modal';
 
+// Force dynamic rendering to avoid SSR issues
+export const dynamic = 'force-dynamic';
+
 export default function Home() {
   const { isLoggedIn, isReady } = useNostr();
   const { showUI, setShowUI } = useUIAnimation();
@@ -22,7 +25,7 @@ export default function Home() {
   const [videoOpacity, setVideoOpacity] = useState(1);
   
   // Array of background images to rotate through - memoized to prevent constant re-renders
-  const backgroundImages = useMemo(() => ['/hero.jpeg', 'hero-3.jpeg', '/hero-4.jpeg', '/hero-5.jpeg'], []);
+  const backgroundImages = useMemo(() => ['/hero.jpeg', '/hero-3.jpeg', '/hero-4.jpeg', '/hero-5.jpeg'], []);
 
   useEffect(() => {
     setMounted(true);

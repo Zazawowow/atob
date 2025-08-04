@@ -25,6 +25,9 @@ import { type PackageData, type JobData } from '@/lib/nostr-types';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 
+// Force dynamic rendering to avoid SSR issues
+export const dynamic = 'force-dynamic';
+
 export default function MyDeliveries() {
   const {
     isReady,
@@ -121,11 +124,12 @@ export default function MyDeliveries() {
     }
   }, [isReady]);
 
+  // Load jobs data once when component mounts and when isReady changes
   useEffect(() => {
-    if (activeTab === 'jobs') {
+    if (isReady) {
       loadMyJobs();
     }
-  }, [activeTab, loadMyJobs]);
+  }, [isReady, loadMyJobs]);
 
   if (!isReady || (packagesLoading && packages.length === 0)) {
     return (
@@ -196,7 +200,7 @@ export default function MyDeliveries() {
                     variant={activeTab === 'deliveries' ? 'default' : 'outline'}
                     size='sm'
                     onClick={() => setActiveTab('deliveries')}
-                    className={`font-cyber ${
+                    className={`${
                       activeTab === 'deliveries'
                         ? 'bg-blue-400/20 text-blue-400 border-blue-400/30'
                         : 'bg-black/20 text-[#FAFAFA]/70 border-blue-400/20 hover:bg-blue-400/10'
@@ -209,7 +213,7 @@ export default function MyDeliveries() {
                     variant={activeTab === 'jobs' ? 'default' : 'outline'}
                     size='sm'
                     onClick={() => setActiveTab('jobs')}
-                    className={`font-cyber ${
+                    className={`${
                       activeTab === 'jobs'
                         ? 'bg-blue-400/20 text-blue-400 border-blue-400/30'
                         : 'bg-black/20 text-[#FAFAFA]/70 border-blue-400/20 hover:bg-blue-400/10'
@@ -242,7 +246,7 @@ export default function MyDeliveries() {
               </Button>
             </CardHeader>
             <CardContent className='flex flex-col flex-grow overflow-hidden px-6 pb-6'>
-              <div className='space-y-4 overflow-y-auto pr-2 flex-1'>
+              <div className='space-y-4 overflow-y-auto pr-2 flex-1 transition-opacity duration-200'>
                 {activeTab === 'deliveries' ? (
                   <>
                     {deliveries.length === 0 ? (
@@ -310,7 +314,7 @@ export default function MyDeliveries() {
               </>
                 ) : (
                   <>
-                    {jobsLoading ? (
+                    {jobsLoading && myJobs.length === 0 ? (
                       <div className='text-center py-8 text-[#FAFAFA]/70'>
                         <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4'></div>
                         Loading jobs...
