@@ -249,15 +249,23 @@ export default function Home() {
                 </span>
               </h1>
 
-              {/* Mobile-only login button */}
-              <div className='block lg:hidden mt-8'>
+              {/* Mobile-only action buttons */}
+              <div className='block lg:hidden mt-8 space-y-4'>
                 {isLoggedIn ? (
-                  <button 
-                    onClick={() => window.location.href = '/post-package'}
-                    className='w-full px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'
-                  >
-                    Post a Package
-                  </button>
+                  <>
+                    <button 
+                      onClick={() => window.location.href = '/post-package'}
+                      className='w-full px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'
+                    >
+                      Post a Package
+                    </button>
+                    <button 
+                      onClick={() => window.location.href = '/post-job'}
+                      className='w-full px-8 py-4 bg-transparent rounded-full text-green-400 font-medium hover:shadow-green-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-green-400 hover:border-green-300 hover:text-green-300'
+                    >
+                      Post a Job
+                    </button>
+                  </>
                 ) : (
                   <NostrAuthModal
                     trigger={
@@ -402,6 +410,48 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Action Section - Only show when logged in */}
+      {isLoggedIn && (
+        <section className='py-20 bg-gray-900'>
+          <div className='container mx-auto px-4'>
+            <div className='bg-gradient-to-r from-black/60 to-gray-900/60 border border-cyan-500/30 rounded-3xl p-8 md:p-12 relative overflow-hidden backdrop-blur-sm'>
+              {/* Background Elements */}
+              <div className='absolute inset-0 z-0'>
+                <div className='absolute top-0 right-0 w-[300px] h-[300px] rounded-full bg-cyan-500/10 blur-[100px]'></div>
+                <div className='absolute bottom-0 left-0 w-[300px] h-[300px] rounded-full bg-green-500/10 blur-[100px]'></div>
+                <div className='absolute top-1/2 left-1/2 w-[200px] h-[200px] rounded-full bg-purple-500/10 blur-[80px]'></div>
+              </div>
+
+              <div className='relative z-10 text-center'>
+                <h2 className='text-3xl md:text-4xl font-cyber font-bold mb-6'>
+                  <span className='bg-gradient-to-r from-cyan-400 to-green-400 text-transparent bg-clip-text'>
+                    Ready to Get Started?
+                  </span>
+                </h2>
+                <p className='text-gray-300 max-w-2xl mx-auto mb-8'>
+                  Choose what you want to do in the <span className='text-cyan-400 font-semibold'>decentralized economy</span>
+                </p>
+                
+                <div className='flex flex-col md:flex-row gap-4 justify-center'>
+                  <button 
+                    onClick={() => window.location.href = '/post-package'}
+                    className='px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'
+                  >
+                    Post a Package
+                  </button>
+                  <button 
+                    onClick={() => window.location.href = '/post-job'}
+                    className='px-8 py-4 bg-transparent rounded-full text-green-400 font-medium hover:shadow-green-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-green-400 hover:border-green-300 hover:text-green-300'
+                  >
+                    Post a Job
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* CTA Section - Only show when not logged in */}
       {!isLoggedIn && (

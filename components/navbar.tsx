@@ -86,6 +86,9 @@ export function Navbar() {
             <ProtectedDesktopLink href='/post-package' hoverColor='hover:text-cyan-400' activeColor='text-cyan-400'>
               Post Package
             </ProtectedDesktopLink>
+            <ProtectedDesktopLink href='/post-job' hoverColor='hover:text-green-400' activeColor='text-green-400'>
+              Post Job
+            </ProtectedDesktopLink>
             <ProtectedDesktopLink href='/view-packages' hoverColor='hover:text-purple-400' activeColor='text-purple-400'>
               View Map
             </ProtectedDesktopLink>
