@@ -32,6 +32,9 @@ export default function MyDeliveries() {
   const {
     isReady,
     publicKey,
+    packages,
+    packagesLoading,
+    fetchPackages: refreshPackages,
   } = useNostr();
   const [selectedDelivery, setSelectedDelivery] = useState<PackageData | null>(
     null
@@ -42,24 +45,13 @@ export default function MyDeliveries() {
   const [activeTab, setActiveTab] = useState<'deliveries' | 'jobs'>('deliveries');
   const [myJobs, setMyJobs] = useState<JobData[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
-  const [deliveries, setDeliveries] = useState<PackageData[]>([]);
-  const [deliveriesLoading, setDeliveriesLoading] = useState(true);
 
-  const loadDeliveries = useCallback(async () => {
-    if (!isReady) return;
-    
-    try {
-      setDeliveriesLoading(true);
-      const deliveriesData = await getMyDeliveries();
-      setDeliveries(deliveriesData);
-      console.log(`Loaded ${deliveriesData.length} deliveries`);
-    } catch (error) {
-      console.error('Failed to load deliveries:', error);
-      toast.error('Failed to load your deliveries');
-    } finally {
-      setDeliveriesLoading(false);
-    }
-  }, [isReady]);
+  const deliveries = useMemo(() => {
+    return packages.filter(
+      (pkg) =>
+        getEffectiveStatus(pkg) === 'in_transit' && pkg.courier_pubkey === publicKey
+    );
+  }, [packages, publicKey]);
 
   useEffect(() => {
     // This effect handles the logic for the selected delivery when the filtered list updates.
@@ -79,8 +71,8 @@ export default function MyDeliveries() {
 
       await completeDelivery(packageId);
 
-      // Immediately trigger a refresh of deliveries
-      await loadDeliveries();
+      // Immediately trigger a refresh from the global provider
+      await refreshPackages();
 
       if (selectedDelivery?.id === packageId) {
         setSelectedDelivery(null);
@@ -98,7 +90,7 @@ export default function MyDeliveries() {
     } finally {
       setCompletingId(null); // Clear the loading state
     }
-  }, [loadDeliveries, selectedDelivery]);
+  }, [refreshPackages, selectedDelivery]);
 
   const generateQRValue = useCallback((packageId: string) => {
     // Generate a URL to the confirmation page
@@ -108,14 +100,14 @@ export default function MyDeliveries() {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await loadDeliveries();
+      await refreshPackages();
     } catch (error) {
       console.error('Failed to refresh deliveries:', error);
       toast.error('Failed to refresh deliveries');
     } finally {
       setRefreshing(false);
     }
-  }, [loadDeliveries]);
+  }, [refreshPackages]);
 
   const loadMyJobs = useCallback(async () => {
     if (!isReady) return;
@@ -132,15 +124,14 @@ export default function MyDeliveries() {
     }
   }, [isReady]);
 
-  // Load deliveries and jobs data once when component mounts and when isReady changes
+  // Load jobs data once when component mounts and when isReady changes
   useEffect(() => {
     if (isReady) {
-      loadDeliveries();
       loadMyJobs();
     }
-  }, [isReady, loadDeliveries, loadMyJobs]);
+  }, [isReady, loadMyJobs]);
 
-  if (!isReady || deliveriesLoading) {
+  if (!isReady || (packagesLoading && packages.length === 0)) {
     return (
       <div className='container mx-auto px-4 pt-24 pb-8 relative z-10'>
         <div className='fixed inset-0 -z-10'>

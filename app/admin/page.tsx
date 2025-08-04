@@ -151,7 +151,7 @@ export default function AdminPage() {
         <Card className='max-w-2xl mx-auto bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm'>
           <CardContent className='p-8 text-center'>
             <Lock className='h-16 w-16 mx-auto mb-4 text-gray-400' />
-            <h3 className='text-xl font-cyber text-off-white mb-2'>Authentication Required</h3>
+            <h3 className='text-xl text-off-white mb-2'>Authentication Required</h3>
             <p className='text-gray-400 mb-6'>
               You must be logged in with Nostr to access admin panel.
             </p>
@@ -170,7 +170,7 @@ export default function AdminPage() {
         <Card className='max-w-2xl mx-auto bg-black/30 border border-red-500/20 rounded-2xl shadow-red-glow/10 backdrop-blur-sm'>
           <CardContent className='p-8 text-center'>
             <Shield className='h-16 w-16 mx-auto mb-4 text-red-400' />
-            <h3 className='text-xl font-cyber text-off-white mb-2'>Access Denied</h3>
+            <h3 className='text-xl text-off-white mb-2'>Access Denied</h3>
             <p className='text-gray-400 mb-6'>
               You do not have admin privileges to access this page.
             </p>
@@ -200,7 +200,7 @@ export default function AdminPage() {
         <div className='max-w-4xl mx-auto space-y-6'>
           {/* Header */}
           <div className='text-center mb-8'>
-            <h1 className='text-3xl md:text-4xl font-cyber text-off-white mb-2'>
+            <h1 className='text-3xl md:text-4xl text-off-white mb-2'>
               <div className='flex items-center justify-center gap-3'>
                 <div className='p-2 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-md'>
                   <Crown className='h-8 w-8 text-off-white' />
@@ -216,7 +216,7 @@ export default function AdminPage() {
           {/* Admin Info */}
           <Card className='bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm'>
             <CardHeader>
-              <CardTitle className='flex items-center text-off-white font-cyber text-xl'>
+              <CardTitle className='flex items-center text-off-white text-xl'>
                 <Crown className='h-6 w-6 text-yellow-400 mr-3' />
                 ADMIN INFORMATION
               </CardTitle>
@@ -251,7 +251,7 @@ export default function AdminPage() {
           {/* Add New User */}
           <Card className='bg-black/30 border border-blue-500/20 rounded-2xl shadow-blue-glow/10 backdrop-blur-sm'>
             <CardHeader>
-              <CardTitle className='flex items-center text-off-white font-cyber text-xl'>
+              <CardTitle className='flex items-center text-off-white text-xl'>
                 <Plus className='h-6 w-6 text-blue-400 mr-3' />
                 APPROVE NEW USER
               </CardTitle>
@@ -281,7 +281,7 @@ export default function AdminPage() {
           {/* Approved Users List */}
           <Card className='bg-black/30 border border-green-500/20 rounded-2xl shadow-green-glow/10 backdrop-blur-sm'>
             <CardHeader>
-              <CardTitle className='flex items-center text-off-white font-cyber text-xl'>
+              <CardTitle className='flex items-center text-off-white text-xl'>
                 <Users className='h-6 w-6 text-green-400 mr-3' />
                 APPROVED USERS ({approvedNpubs.length})
               </CardTitle>
@@ -342,7 +342,7 @@ export default function AdminPage() {
           {/* System Info */}
           <Card className='bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm'>
             <CardHeader>
-              <CardTitle className='flex items-center text-off-white font-cyber text-xl'>
+              <CardTitle className='flex items-center text-off-white text-xl'>
                 <Settings className='h-6 w-6 text-purple-400 mr-3' />
                 SYSTEM INFORMATION
               </CardTitle>

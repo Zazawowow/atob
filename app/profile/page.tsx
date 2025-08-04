@@ -165,7 +165,7 @@ export default function Profile() {
           <div className='lg:col-span-1 space-y-8'>
             <Card className='bg-background/90 backdrop-blur-sm border border-purple-500/20 shadow-2xl shadow-primary/10'>
               <CardHeader>
-                <CardTitle className='flex items-center text-off-white font-cyber text-2xl'>
+                <CardTitle className='flex items-center text-off-white text-2xl'>
                   <User className='mr-3 h-5 w-5 text-purple-400' />
                   AGENT PROFILE
                 </CardTitle>
@@ -244,7 +244,7 @@ export default function Profile() {
 
             <Card className='bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10'>
               <CardHeader>
-                <CardTitle className='flex items-center text-off-white font-cyber text-2xl'>
+                <CardTitle className='flex items-center text-off-white text-2xl'>
                   <Star className='mr-3 h-5 w-5 text-cyan-400' />
                   REPUTATION
                 </CardTitle>
@@ -292,7 +292,7 @@ export default function Profile() {
           <div className='lg:col-span-2'>
             <Card className='bg-background/90 backdrop-blur-sm border border-pink-500/20 shadow-2xl shadow-primary/10 h-full'>
               <CardHeader>
-                <CardTitle className='flex items-center text-off-white font-cyber text-2xl'>
+                <CardTitle className='flex items-center text-off-white text-2xl'>
                   <Truck className='mr-3 h-5 w-5 text-pink-400' />
                   DELIVERY LOG
                 </CardTitle>

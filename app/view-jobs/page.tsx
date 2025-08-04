@@ -97,7 +97,7 @@ export default function ViewJobs() {
         <Card className='max-w-2xl mx-auto bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm'>
           <CardContent className='p-8 text-center'>
             <Briefcase className='h-16 w-16 mx-auto mb-4 text-gray-400' />
-            <h3 className='text-xl font-cyber text-off-white mb-2'>Authentication Required</h3>
+            <h3 className='text-xl text-off-white mb-2'>Authentication Required</h3>
             <p className='text-gray-400 mb-6'>
               You must be logged in with Nostr to view jobs.
             </p>
@@ -128,7 +128,7 @@ export default function ViewJobs() {
           {/* Header */}
           <div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-4'>
             <div>
-              <h1 className='text-3xl md:text-4xl font-cyber text-off-white mb-2'>
+              <h1 className='text-3xl md:text-4xl text-off-white mb-2'>
                 Available Jobs
               </h1>
               <p className='text-purple-300 text-lg'>
@@ -150,7 +150,7 @@ export default function ViewJobs() {
           {/* Jobs List */}
           <Card className='bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm'>
             <CardHeader>
-              <CardTitle className='text-off-white font-cyber text-xl'>
+                                <CardTitle className='text-off-white text-xl'>
                 All Jobs ({jobs.length})
               </CardTitle>
               <CardDescription className='text-purple-300'>

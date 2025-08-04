@@ -842,12 +842,14 @@ export async function getMyDeliveries(): Promise<PackageData[]> {
   );
   try {
     console.log('Fetching my deliveries from Nostr and localStorage...');
+    console.log('Current user pubkey:', getUserPubkey());
 
     // Get local deliveries first - ONLY in_transit ones
     localDeliveries = getMyLocalDeliveries().filter(
       (pkg) => pkg.status === 'in_transit'
     );
     console.log(`Found ${localDeliveries.length} local in_transit deliveries`);
+    console.log('Local deliveries:', localDeliveries.map(d => ({ id: d.id, title: d.title, status: d.status, courier_pubkey: d.courier_pubkey })));
 
     // If we have local deliveries, return them immediately to avoid getting stuck
     if (localDeliveries.length > 0) {

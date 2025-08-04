@@ -133,7 +133,7 @@ export default function PostPackage() {
         <Card className='max-w-2xl mx-auto bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm'>
           <CardContent className='p-8 text-center'>
             <Package className='h-16 w-16 mx-auto mb-4 text-gray-400' />
-            <h3 className='text-xl font-cyber text-off-white mb-2'>Authentication Required</h3>
+            <h3 className='text-xl text-off-white mb-2'>Authentication Required</h3>
             <p className='text-gray-400 mb-6'>
               You must be logged in with Nostr to post packages.
             </p>
@@ -163,7 +163,7 @@ export default function PostPackage() {
         <div className='max-w-4xl mx-auto'>
           <Card className='bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm'>
             <CardHeader>
-              <CardTitle className='flex items-center text-off-white font-cyber text-2xl'>
+              <CardTitle className='flex items-center text-off-white text-2xl'>
                 <div className='p-2 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-md mr-4'>
                   <Package className='h-6 w-6 text-off-white' />
                 </div>

@@ -148,7 +148,7 @@ export default function MyJobs() {
       
       <div className='container mx-auto px-4 pt-24 pb-12 relative z-10'>
         <div className='flex justify-between items-center mb-8'>
-          <h1 className='text-3xl font-cyber text-off-white flex items-center'>
+                      <h1 className='text-3xl text-off-white flex items-center'>
             <Briefcase className='h-8 w-8 mr-3 text-cyan-400' />
             MY JOBS
           </h1>
@@ -169,7 +169,7 @@ export default function MyJobs() {
           <Card className='max-w-2xl mx-auto bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm'>
             <CardContent className='p-8 text-center'>
               <Briefcase className='h-16 w-16 mx-auto mb-4 text-gray-400' />
-              <h3 className='text-xl font-cyber text-off-white mb-2'>No Jobs Posted</h3>
+              <h3 className='text-xl text-off-white mb-2'>No Jobs Posted</h3>
               <p className='text-gray-400 mb-6'>
                 You haven't posted any jobs yet. Start by posting your first job!
               </p>
@@ -190,7 +190,7 @@ export default function MyJobs() {
               >
                 <CardHeader>
                   <div className='flex justify-between items-start mb-2'>
-                    <CardTitle className='text-off-white font-cyber text-lg line-clamp-2'>
+                    <CardTitle className='text-off-white text-lg line-clamp-2'>
                       {job.title}
                     </CardTitle>
                     <Badge className={`${getStatusColor(job.status)} font-cyber text-xs`}>

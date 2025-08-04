@@ -10,17 +10,6 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   
-  // Disable static generation for pages that use nostr functionality
-  experimental: {
-    // Disable static generation for problematic pages
-    staticPageGenerationTimeout: 0,
-  },
-  
-  // Disable static generation for specific pages
-  async generateStaticParams() {
-    return [];
-  },
-  
   // Force dynamic rendering for all pages
   trailingSlash: false,
   

@@ -148,6 +148,9 @@ export function getMyLocalDeliveries(): PackageData[] {
 
     // Only return deliveries for the current user
     const currentPubkey = getUserPubkey();
+    console.log('Current pubkey in getMyLocalDeliveries:', currentPubkey);
+    console.log('All deliveries in localStorage:', deliveries.map(d => ({ id: d.id, title: d.title, status: d.status, courier_pubkey: d.courier_pubkey })));
+    
     const myDeliveries = deliveries.filter(
       (pkg) => pkg.courier_pubkey === currentPubkey
     );
@@ -223,6 +226,8 @@ export function pickupLocalPackage(
     );
 
     console.log(`Package ${packageId} picked up successfully`);
+    console.log('Updated package data:', updatedPackage);
+    console.log('Current courier pubkey:', getUserPubkey());
   } catch (error) {
     console.error('Failed to pick up local package:', error);
     throw error;
