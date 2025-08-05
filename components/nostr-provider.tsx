@@ -51,6 +51,11 @@ export function NostrProvider({ children }: { children: ReactNode }) {
   const [packagesLoading, setPackagesLoading] = useState(true);
 
   const fetchPackages = useCallback(async () => {
+    // Only run on client side
+    if (typeof window === 'undefined') {
+      return;
+    }
+    
     console.log('Fetching packages in provider...');
     try {
       const pkgs = await getPackages();
@@ -87,6 +92,11 @@ export function NostrProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') {
+      return;
+    }
+    
     if (isLoggedIn) {
       setPackagesLoading(true);
       fetchPackages(); // Initial fetch on login
