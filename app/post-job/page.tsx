@@ -224,7 +224,7 @@ export default function PostJob() {
                     />
                   </div>
                   <div className='space-y-2'>
-                    <Label htmlFor='compensation' className='text-off-white-90'>Compensation (sats)</Label>
+                    <Label htmlFor='compensation' className='text-off-white-90'>Compensation Per Person (sats)</Label>
                     <Input
                       id='compensation'
                       name='compensation'
@@ -235,6 +235,7 @@ export default function PostJob() {
                       required
                       className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
                     />
+                    <p className='text-xs text-gray-400'>Amount each person will receive</p>
                   </div>
                 </div>
 

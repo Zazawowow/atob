@@ -90,10 +90,13 @@ export function Navbar() {
               Post Job
             </ProtectedDesktopLink>
             <ProtectedDesktopLink href='/view-packages' hoverColor='hover:text-purple-400' activeColor='text-purple-400'>
-              View Map
+              View Posts
             </ProtectedDesktopLink>
             <ProtectedDesktopLink href='/my-deliveries' hoverColor='hover:text-pink-400' activeColor='text-pink-400'>
               My Deliveries
+            </ProtectedDesktopLink>
+            <ProtectedDesktopLink href='/my-jobs' hoverColor='hover:text-orange-400' activeColor='text-orange-400'>
+              My Jobs
             </ProtectedDesktopLink>
           </div>
           

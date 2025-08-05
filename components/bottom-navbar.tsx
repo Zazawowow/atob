@@ -74,8 +74,9 @@ export function BottomNavbar() {
   const navItems = [
     { href: '/post-package', label: 'Post Package', icon: <PackageIcon /> },
     { href: '/post-job', label: 'Post Job', icon: <JobIcon /> },
-    { href: '/view-packages', label: 'View Map', icon: <MapIcon /> },
+    { href: '/view-packages', label: 'View Posts', icon: <MapIcon /> },
     { href: '/my-deliveries', label: 'My Deliveries', icon: <ViewPackagesIcon /> },
+    { href: '/my-jobs', label: 'My Jobs', icon: <JobIcon /> },
   ];
 
   return (
@@ -95,14 +96,11 @@ export function BottomNavbar() {
               )}
             >
               <div className={cn(
-                'mb-1 transition-all duration-300',
+                'transition-all duration-300',
                 isActive ? 'text-glow-cyan-wide' : ''
               )}>
                 {item.icon}
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider">
-                {item.label}
-              </span>
             </Link>
           );
         })}
