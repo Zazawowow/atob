@@ -7,6 +7,7 @@ import { NostrConnectButton } from '@/components/nostr-connect-button';
 import { useNostr } from '@/components/nostr-provider';
 import { useUIAnimation } from '@/components/ui-animation-context';
 import { NostrAuthModal } from './nostr-auth-modal';
+import { Truck } from 'lucide-react';
 
 export function Navbar() {
   const { isLoggedIn, isReady, login } = useNostr();
@@ -92,11 +93,8 @@ export function Navbar() {
             <ProtectedDesktopLink href='/view-packages' hoverColor='hover:text-purple-400' activeColor='text-purple-400'>
               View Posts
             </ProtectedDesktopLink>
-            <ProtectedDesktopLink href='/my-deliveries' hoverColor='hover:text-pink-400' activeColor='text-pink-400'>
-              My Deliveries
-            </ProtectedDesktopLink>
-            <ProtectedDesktopLink href='/my-jobs' hoverColor='hover:text-orange-400' activeColor='text-orange-400'>
-              My Jobs
+            <ProtectedDesktopLink href='/my-activities' hoverColor='hover:text-pink-400' activeColor='text-pink-400'>
+              <span>My Activities</span>
             </ProtectedDesktopLink>
           </div>
           

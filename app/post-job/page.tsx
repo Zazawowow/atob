@@ -169,7 +169,7 @@ export default function PostJob() {
     <main className='min-h-screen'>
       <div className='fixed inset-0 -z-10'>
         <Image
-          src='/hero-5.jpeg'
+          src='/hero-3.jpeg'
           alt='Background'
           fill
           className='object-cover object-center brightness-[0.3]'
@@ -215,35 +215,34 @@ export default function PostJob() {
                   />
                 </div>
 
-                <div className='grid grid-cols-2 gap-4'>
-                  <div className='space-y-2'>
-                    <Label htmlFor='peopleNeeded' className='text-off-white-90'>People Needed</Label>
-                    <Input
-                      id='peopleNeeded'
-                      name='peopleNeeded'
-                      type='number'
-                      min='1'
-                      placeholder='1'
-                      value={formData.peopleNeeded}
-                      onChange={handleNumberChange}
-                      required
-                      className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
-                    />
-                  </div>
-                  <div className='space-y-2'>
-                    <Label htmlFor='compensation' className='text-off-white-90'>Compensation Per Person (sats)</Label>
-                    <Input
-                      id='compensation'
-                      name='compensation'
-                      type='number'
-                      placeholder='50000'
-                      value={formData.compensation}
-                      onChange={handleChange}
-                      required
-                      className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
-                    />
-                    <p className='text-xs text-gray-400'>Amount each person will receive</p>
-                  </div>
+                <div className='space-y-2'>
+                  <Label htmlFor='peopleNeeded' className='text-off-white-90'>People Needed</Label>
+                  <Input
+                    id='peopleNeeded'
+                    name='peopleNeeded'
+                    type='number'
+                    min='1'
+                    placeholder='1'
+                    value={formData.peopleNeeded}
+                    onChange={handleNumberChange}
+                    required
+                    className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
+                  />
+                </div>
+
+                <div className='space-y-2'>
+                  <Label htmlFor='compensation' className='text-off-white-90'>Compensation Per Person (sats)</Label>
+                  <Input
+                    id='compensation'
+                    name='compensation'
+                    type='number'
+                    placeholder='50000'
+                    value={formData.compensation}
+                    onChange={handleChange}
+                    required
+                    className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
+                  />
+                  <p className='text-xs text-gray-400'>Amount each person will receive</p>
                 </div>
 
                 <div className='space-y-2'>

@@ -101,7 +101,7 @@ a-to-b/
 │ ├── login/ # Login page
 │ ├── post-package/ # Package creation page
 │ ├── view-packages/ # Package listing and map view
-│ ├── my-deliveries/ # Active deliveries management
+│ ├── my-activities/ # Active deliveries and jobs management
 │ └── settings/ # Relay configuration
 ├── components/ # React components
 │ ├── ui/ # UI components (shadcn)

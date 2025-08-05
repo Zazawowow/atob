@@ -26,6 +26,28 @@ const PROFILE_RELAYS = [
   'wss://relay.bitcoin.social',
 ];
 
+// Simple connection pool (SSR-safe)
+let connectionPool: Map<string, any> | null = null;
+let cache: Map<string, { data: any; timestamp: number; ttl: number }> | null = null;
+
+// Get connection pool (lazy initialization)
+function getConnectionPool(): Map<string, any> {
+  if (typeof window === 'undefined') return new Map();
+  if (!connectionPool) {
+    connectionPool = new Map();
+  }
+  return connectionPool;
+}
+
+// Get cache (lazy initialization)
+function getCache(): Map<string, { data: any; timestamp: number; ttl: number }> {
+  if (typeof window === 'undefined') return new Map();
+  if (!cache) {
+    cache = new Map();
+  }
+  return cache;
+}
+
 // Clear any existing relay settings from localStorage
 function clearExistingRelaySettings(): void {
   if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
@@ -38,8 +60,6 @@ function clearExistingRelaySettings(): void {
     }
   }
 }
-
-// Note: Initialization moved to client-side only to avoid SSR issues
 
 // Get relays - always return our custom relay only
 export function getRelays(): string[] {
@@ -57,80 +77,91 @@ export function setRelays(relays: string[]): void {
   }
 }
 
-// Simple connection management without complex classes
-let simplePoolInstance: any = null;
-
-async function getSimplePoolInstance(): Promise<any> {
-  if (typeof window === 'undefined') {
+// Simple connection management
+async function getConnection(relay: string): Promise<any> {
+  if (typeof window === 'undefined') return null;
+  
+  const pool = getConnectionPool();
+  
+  // Return existing connection if available
+  if (pool.has(relay)) {
+    return pool.get(relay);
+  }
+  
+  try {
+    console.log(`🔌 Connecting to ${relay}`);
+    const SimplePool = await getSimplePool();
+    if (!SimplePool) {
+      throw new Error('Failed to load SimplePool');
+    }
+    
+    const connection = new SimplePool();
+    pool.set(relay, connection);
+    console.log(`✅ Connected to ${relay}`);
+    return connection;
+  } catch (error) {
+    console.warn(`❌ Failed to connect to ${relay}:`, error);
     return null;
   }
-  
-  if (!simplePoolInstance) {
-    try {
-      const SimplePool = await getSimplePool();
-      if (SimplePool) {
-        simplePoolInstance = new SimplePool();
-      }
-    } catch (error) {
-      console.warn('Error creating SimplePool instance:', error);
-      return null;
-    }
+}
+
+// Simple caching
+async function getCachedOrFetch<T>(key: string, fetcher: () => Promise<T>, ttl: number): Promise<T> {
+  if (typeof window === 'undefined') {
+    return fetcher();
   }
   
-  return simplePoolInstance;
-}
-
-// Legacy function for fetching events with timeout
-async function fetchEventsWithTimeout(
-  relays: string[],
-  filter: any, // Changed from Filter to any to avoid SSR issues
-  timeoutMs: number
-): Promise<any[]> { // Changed from NostrEvent[] to any[] to avoid SSR issues
-  return new Promise((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      console.warn(`Fetch timeout after ${timeoutMs}ms for relays: ${relays.join(', ')}`);
-      resolve([]); // Resolve with empty array instead of rejecting
-    }, timeoutMs);
-
-    const events: any[] = []; // Changed from NostrEvent[] to any[]
-    const seen = new Set<string>();
-
-    try {
-      getSimplePoolInstance().then(async (pool) => {
-        if (!pool) {
-          clearTimeout(timeoutId);
-          resolve([]);
-          return;
-        }
-        
-        const sub = pool.subscribe(relays, filter, {
-          onevent: (event: any) => { // Changed from NostrEvent to any
-            if (!seen.has(event.id)) {
-              seen.add(event.id);
-              events.push(event);
-            }
-          },
-          oneose: () => {
-            clearTimeout(timeoutId);
-            resolve(events);
-          }
-        });
-      }).catch((error) => {
-        console.warn('Error in fetchEventsWithTimeout:', error);
-        clearTimeout(timeoutId);
-        resolve([]); // Resolve with empty array instead of rejecting
-      });
-
-      // The timeout will automatically resolve with empty array if it takes too long
-    } catch (error) {
-      console.warn('Error in fetchEventsWithTimeout:', error);
-      clearTimeout(timeoutId);
-      resolve([]); // Resolve with empty array instead of rejecting
-    }
+  const cacheMap = getCache();
+  const cached = cacheMap.get(key);
+  const now = Date.now();
+  
+  // Return cached data if still valid
+  if (cached && (now - cached.timestamp) < cached.ttl) {
+    console.log(`📦 Cache hit for ${key}`);
+    return cached.data;
+  }
+  
+  // Fetch fresh data
+  const data = await fetcher();
+  
+  // Cache the result
+  cacheMap.set(key, {
+    data,
+    timestamp: now,
+    ttl
   });
+  
+  return data;
 }
 
-// Simplified listEvents function that works reliably
+// Check if a relay is responsive
+export async function checkRelay(relay: string, timeoutMs = 5000): Promise<boolean> {
+  try {
+    const pool = await getConnection(relay);
+    return !!pool;
+  } catch (error) {
+    return false;
+  }
+}
+
+// Get working relays
+export async function getWorkingRelays(): Promise<string[]> {
+  const relays = getRelays();
+  const workingRelays: string[] = [];
+
+  // Check our custom relay
+  const isWorking = await checkRelay(relays[0]);
+  if (isWorking) {
+    workingRelays.push(relays[0]);
+  } else {
+    console.warn(`Custom relay ${relays[0]} is not responding`);
+  }
+
+  // Always return our relay even if it's not working (for fallback behavior)
+  return relays;
+}
+
+// Smart listEvents function with caching and connection management
 export async function listEvents(
   filters: any[], // Changed from Filter[] to any[] to avoid SSR issues
   timeoutMs = 15000
@@ -141,50 +172,182 @@ export async function listEvents(
     return [];
   }
 
-  console.log('🚀 Fetching events');
+  console.log('🚀 Fetching events with smart connection management');
   
   const relays = getRelays();
   console.log(`Using relays: ${relays.join(', ')}`);
 
-  // Fix: Ensure filter is properly formatted
-  let fixedFilter: any = { kinds: [EVENT_KINDS.PACKAGE] }; // Changed from Filter to any
+  // Create cache key based on filters
+  const filterKey = JSON.stringify(filters);
+  const cacheKey = `events:${filterKey}`;
 
-  if (filters.length > 0 && filters[0].kinds && filters[0].kinds.length > 0) {
-    fixedFilter = filters[0];
-    console.log('Using filter:', fixedFilter);
-  } else {
-    console.log('Using default filter:', fixedFilter);
-  }
+  return getCachedOrFetch(
+    cacheKey,
+    async () => {
+      // Fix: Ensure filter is properly formatted
+      let fixedFilter: any = { kinds: [EVENT_KINDS.PACKAGE] }; // Changed from Filter to any
 
-  // Simple approach: try to fetch from relays
-  try {
-    const events = await fetchEventsWithTimeout(
-      relays,
-      fixedFilter,
-      timeoutMs
-    );
-
-    // Less strict filtering - only check if content is a string
-    const filteredEvents = events.filter((event) => {
-      if (typeof event.content !== 'string') {
-        console.log(`Skipping event ${event.id} with non-string content`);
-        return false;
+      if (filters.length > 0 && filters[0].kinds && filters[0].kinds.length > 0) {
+        fixedFilter = filters[0];
+        console.log('Using filter:', fixedFilter);
+      } else {
+        console.log('Using default filter:', fixedFilter);
       }
-      return true;
+
+      // Try to get a working connection
+      let workingPool = null;
+      for (const relay of relays) {
+        try {
+          workingPool = await getConnection(relay);
+          if (workingPool) {
+            console.log(`✅ Using connection to ${relay}`);
+            break;
+          }
+        } catch (error) {
+          console.warn(`❌ Failed to connect to ${relay}:`, error);
+        }
+      }
+
+      if (!workingPool) {
+        console.warn('⚠️ No working connections, returning empty array');
+        return [];
+      }
+
+      // Fetch events with optimized timeout
+      try {
+        const events = await fetchEventsWithTimeout(
+          workingPool,
+          relays,
+          fixedFilter,
+          timeoutMs
+        );
+
+        // Less strict filtering - only check if content is a string
+        const filteredEvents = events.filter((event) => {
+          if (typeof event.content !== 'string') {
+            console.log(`Skipping event ${event.id} with non-string content`);
+            return false;
+          }
+          return true;
+        });
+
+        // Remove duplicates based on event ID
+        const uniqueEvents = Array.from(
+          new Map(filteredEvents.map(event => [event.id, event])).values()
+        );
+
+        console.log(
+          `✅ Successfully fetched ${uniqueEvents.length} unique events`
+        );
+        return uniqueEvents;
+      } catch (error) {
+        console.warn('Error fetching events:', error);
+        return [];
+      }
+    },
+    60000 // 1 minute cache
+  );
+}
+
+// Fetch events with timeout
+async function fetchEventsWithTimeout(
+  pool: any,
+  relays: string[],
+  filter: any, // Changed from Filter to any to avoid SSR issues
+  timeoutMs: number
+): Promise<any[]> { // Changed from NostrEvent[] to any[] to avoid SSR issues
+  return new Promise((resolve) => {
+    const timeoutId = setTimeout(() => {
+      console.warn(`Fetch timeout after ${timeoutMs}ms for relays: ${relays.join(', ')}`);
+      resolve([]); // Resolve with empty array instead of rejecting
+    }, timeoutMs);
+
+    const events: any[] = []; // Changed from NostrEvent[] to any[]
+    const seen = new Set<string>();
+    let hasReceivedEose = false;
+
+    try {
+      console.log(`🔍 Subscribing to ${relays.length} relay(s) with filter:`, filter);
+      
+      const sub = pool.subscribe(relays, filter, {
+        onevent: (event: any) => { // Changed from NostrEvent to any
+          if (!seen.has(event.id)) {
+            seen.add(event.id);
+            events.push(event);
+            console.log(`📦 Received event ${event.id} (total: ${events.length})`);
+          }
+        },
+        oneose: () => {
+          if (!hasReceivedEose) {
+            hasReceivedEose = true;
+            clearTimeout(timeoutId);
+            console.log(`✅ EOSE received, resolving with ${events.length} events`);
+            resolve(events);
+          }
+        }
+      });
+
+      // Close subscription after timeout to prevent memory leaks
+      setTimeout(() => {
+        if (!hasReceivedEose) {
+          console.log(`⏰ Timeout reached, closing subscription`);
+          sub.close();
+        }
+      }, timeoutMs);
+
+    } catch (error) {
+      console.warn('Error in fetchEventsWithTimeout:', error);
+      clearTimeout(timeoutId);
+      resolve([]); // Resolve with empty array instead of rejecting
+    }
+  });
+}
+
+
+
+// Initialize cache cleanup (client-side only) - lazy initialization
+function initializeClientSideFeatures() {
+  if (typeof window === 'undefined') return;
+  
+  // Start cache cleanup interval
+  setInterval(() => {
+    const cacheMap = getCache();
+    let cleaned = 0;
+    
+    for (const [key, entry] of cacheMap.entries()) {
+      if (Date.now() - entry.timestamp > entry.ttl) {
+        cacheMap.delete(key);
+        cleaned++;
+      }
+    }
+    
+    if (cleaned > 0) {
+      console.log(`🧹 Cleaned ${cleaned} expired cache entries`);
+    }
+  }, 60000); // 1 minute cleanup
+  
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', () => {
+    const pool = getConnectionPool();
+    pool.forEach((connection, relay) => {
+      try {
+        connection.close();
+        console.log(`🔌 Closed connection to ${relay}`);
+      } catch (error) {
+        console.warn(`Error closing connection to ${relay}:`, error);
+      }
     });
+    pool.clear();
+    console.log('✅ All connections and cache cleared on page unload');
+  });
+}
 
-    // Remove duplicates based on event ID
-    const uniqueEvents = Array.from(
-      new Map(filteredEvents.map(event => [event.id, event])).values()
-    );
-
-    console.log(
-      `✅ Successfully fetched ${uniqueEvents.length} unique events`
-    );
-    return uniqueEvents;
-  } catch (error) {
-    console.warn('Error fetching events:', error);
-    return [];
+// Lazy initialization on first use
+let clientSideFeaturesInitialized = false;
+function ensureClientSideFeatures() {
+  if (!clientSideFeaturesInitialized && typeof window !== 'undefined') {
+    initializeClientSideFeatures();
+    clientSideFeaturesInitialized = true;
   }
 }
 
@@ -368,11 +531,16 @@ export async function publishEvent(event: any): Promise<string[]> { // Changed f
 export async function closePool(): Promise<void> {
   try {
     console.log('🔌 Closing all relay connections...');
-    if (simplePoolInstance) {
-      // simplePoolInstance.close(); // SimplePool doesn't have a direct close method
-      console.log('SimplePool instance closed (if it existed)');
-    }
-    // No cache to clear here as it's not a complex cache
+    const pool = getConnectionPool();
+    pool.forEach((connection, relay) => {
+      try {
+        connection.close();
+        console.log(`🔌 Closed connection to ${relay}`);
+      } catch (error) {
+        console.warn(`Error closing connection to ${relay}:`, error);
+      }
+    });
+    pool.clear();
     console.log('✅ All connections and cache cleared');
   } catch (error) {
     console.error('Error closing relay connections:', error);
@@ -427,7 +595,12 @@ export async function getUserProfile(pubkey: string): Promise<{
     };
 
     // Use public relays for profile data with shorter timeout
-    const events = await fetchEventsWithTimeout(PROFILE_RELAYS, filter, 3000);
+    const pool = await getConnection(PROFILE_RELAYS[0]);
+    if (!pool) {
+      console.warn('No connection available for profile fetch');
+      return null;
+    }
+    const events = await fetchEventsWithTimeout(pool, PROFILE_RELAYS, filter, 3000);
     
     if (events.length === 0) {
       console.log(`No profile found for pubkey: ${pubkey}`);

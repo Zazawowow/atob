@@ -28,7 +28,7 @@ import Image from 'next/image';
 // Force dynamic rendering to avoid SSR issues
 export const dynamic = 'force-dynamic';
 
-export default function MyDeliveries() {
+export default function MyActivities() {
   const {
     isReady,
     publicKey,
@@ -233,11 +233,11 @@ export default function MyDeliveries() {
                   </Button>
                 </div>
                 <CardTitle className='text-[#FAFAFA]'>
-                  {activeTab === 'deliveries' ? 'Active Deliveries' : 'My Jobs'}
+                  {activeTab === 'deliveries' ? 'My Activities' : 'My Activities'}
                 </CardTitle>
                 <CardDescription className='text-[#FAFAFA]/70'>
                   {activeTab === 'deliveries' 
-                    ? 'Click on a delivery to view its details and QR code'
+                    ? 'Manage your deliveries and view QR codes'
                     : 'Manage your posted jobs'
                   }
                 </CardDescription>

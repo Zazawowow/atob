@@ -141,7 +141,7 @@ export default function SettingsPage() {
     <main className='min-h-screen'>
       <div className='fixed inset-0 -z-10'>
         <Image
-          src='/hero-4.jpeg'
+          src='/hero-3.jpeg'
           alt='Background'
           fill
           className='object-cover object-center brightness-[0.3]'
