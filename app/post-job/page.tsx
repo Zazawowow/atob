@@ -114,10 +114,17 @@ export default function PostJob() {
         description: 'Your job has been posted and is now available for applications.',
       });
 
-      // Add a small delay before redirecting to ensure the event is propagated
-      setTimeout(() => {
-        router.push('/view-jobs');
-      }, 1000);
+      // Reset form after successful submission
+      setFormData({
+        title: '',
+        location: '',
+        peopleNeeded: 1,
+        compensation: '',
+        description: '',
+        requirements: '',
+        duration: '',
+        contactInfo: '',
+      });
     } catch (error) {
       toast.error('Error', {
         description: 'Failed to post job. Please try again.',

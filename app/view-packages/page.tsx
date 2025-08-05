@@ -313,7 +313,7 @@ export default function ViewPackages() {
                 <div className='space-y-4 overflow-y-auto pr-2 flex-1'>
                   {activeTab === 'packages' ? (
                     loading ? (
-                      <div className='flex justify-center items-center h-32'>
+                      <div className='flex justify-center items-center h-full min-h-[200px]'>
                         <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full'></div>
                         <p className='ml-2'>Loading packages...</p>
                       </div>
