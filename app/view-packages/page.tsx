@@ -17,8 +17,15 @@ import Link from 'next/link';
 import { getPackages, pickupPackage, deletePackage, getEffectiveStatus, getJobs, applyForJob, deleteJob } from '@/lib/nostr';
 import { useNostr } from '@/components/nostr-provider';
 import Image from 'next/image';
-import PackageMap from '@/components/package-map';
+import dynamicImport from 'next/dynamic';
 
+// Dynamically import PackageMap to avoid SSR issues
+const PackageMap = dynamicImport(() => import('@/components/package-map'), {
+  ssr: false,
+  loading: () => <div className="h-96 bg-gray-800 rounded-lg flex items-center justify-center">Loading map...</div>
+});
+
+// Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
 export default function ViewPackages() {

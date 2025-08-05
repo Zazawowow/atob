@@ -12,6 +12,11 @@ const MY_JOBS_BACKUP_KEY = 'my_jobs_backup_v1';
 // Backup current jobs before any major operation
 function backupJobs(): void {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
+    
     const jobs = localStorage.getItem(JOBS_STORAGE_KEY);
     const myJobs = localStorage.getItem(MY_JOBS_STORAGE_KEY);
     
@@ -29,6 +34,11 @@ function backupJobs(): void {
 // Restore from backup if main storage is empty
 function restoreFromBackupIfNeeded(): void {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
+    
     const jobs = localStorage.getItem(JOBS_STORAGE_KEY);
     const myJobs = localStorage.getItem(MY_JOBS_STORAGE_KEY);
     
@@ -55,6 +65,11 @@ function restoreFromBackupIfNeeded(): void {
 // Get all available jobs from local storage
 export function getLocalJobs(): JobData[] {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return [];
+    }
+    
     restoreFromBackupIfNeeded();
     const jobsJson = localStorage.getItem(JOBS_STORAGE_KEY);
     if (!jobsJson) return [];
@@ -72,6 +87,11 @@ export function getLocalJobs(): JobData[] {
 // Get jobs posted by the current user
 export function getMyLocalJobs(): JobData[] {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return [];
+    }
+    
     const myJobsJson = localStorage.getItem(MY_JOBS_STORAGE_KEY);
     if (!myJobsJson) return [];
 
@@ -87,6 +107,11 @@ export function saveLocalJob(
   jobData: Omit<JobData, 'id' | 'status' | 'pubkey'>
 ): string {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      throw new Error('localStorage not available');
+    }
+    
     const jobs = getLocalJobs();
 
     // Generate a unique ID
@@ -120,6 +145,11 @@ export function saveLocalJob(
 // Delete a job from local storage
 export function deleteLocalJob(jobId: string): void {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
+    
     const jobs = getLocalJobs();
     const myJobs = getMyLocalJobs();
 
@@ -155,6 +185,11 @@ export function updateLocalJobStatus(
   data?: Partial<JobData>
 ): void {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
+    
     const jobs = getLocalJobs();
     const myJobs = getMyLocalJobs();
 
@@ -182,6 +217,11 @@ export function updateLocalJobStatus(
 // Apply for a job (add worker to assigned workers)
 export function applyForLocalJob(jobId: string, workerPubkey: string): void {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
+    
     const jobs = getLocalJobs();
     const myJobs = getMyLocalJobs();
 
@@ -225,6 +265,12 @@ export function completeLocalJob(jobId: string): void {
 // Debug function to check storage
 export function debugJobStorage(): void {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      console.log('localStorage not available in this environment');
+      return;
+    }
+    
     console.log('=== Job Storage Debug ===');
     console.log('All jobs:', getLocalJobs());
     console.log('My jobs:', getMyLocalJobs());

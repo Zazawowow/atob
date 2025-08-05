@@ -71,10 +71,13 @@ export function NostrProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setMounted(true);
 
-    const storedPubkey = localStorage.getItem('nostr_pubkey');
-    if (storedPubkey) {
-      setPublicKey(storedPubkey);
-      setIsLoggedIn(true);
+    // Only access localStorage in browser environment
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      const storedPubkey = localStorage.getItem('nostr_pubkey');
+      if (storedPubkey) {
+        setPublicKey(storedPubkey);
+        setIsLoggedIn(true);
+      }
     }
 
     const hasExtension =
@@ -97,17 +100,21 @@ export function NostrProvider({ children }: { children: ReactNode }) {
   const login = useCallback((pubkey: string, privkey?: string) => {
     setPublicKey(pubkey);
     setIsLoggedIn(true);
-    localStorage.setItem('nostr_pubkey', pubkey);
-    if (privkey) {
-      localStorage.setItem('nostr_privkey', privkey);
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      localStorage.setItem('nostr_pubkey', pubkey);
+      if (privkey) {
+        localStorage.setItem('nostr_privkey', privkey);
+      }
     }
   }, []);
 
   const logout = useCallback(() => {
     setPublicKey('');
     setIsLoggedIn(false);
-    localStorage.removeItem('nostr_pubkey');
-    localStorage.removeItem('nostr_privkey');
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      localStorage.removeItem('nostr_pubkey');
+      localStorage.removeItem('nostr_privkey');
+    }
     setPackages([]); // Clear packages on logout
     router.replace('/');
   }, [router]);

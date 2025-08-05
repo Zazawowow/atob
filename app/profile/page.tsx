@@ -77,7 +77,7 @@ export default function Profile() {
     const fetchProfileData = async () => {
       try {
         setLoading(true);
-        const fullNpub = getNpub(publicKey);
+        const fullNpub = await getNpub(publicKey);
         setNpub(fullNpub);
 
         // Fetch profile and deliveries in parallel

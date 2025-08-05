@@ -186,7 +186,7 @@ async function createSecureEvent(
   
   const signature = schnorr.sign(event.id, privateKeyBytes);
   event.sig = Array.from(signature)
-    .map(b => b.toString(16).padStart(2, '0'))
+    .map((b: unknown) => (b as number).toString(16).padStart(2, '0'))
     .join('');
   
   return event;

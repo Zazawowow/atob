@@ -10,9 +10,23 @@ export const EVENT_KINDS = {
   JOB: 30003, // Custom event kind for jobs
 };
 
-// Use only our custom relay
+// Use only our custom relay for app-specific data
 const RELAYS = [
   'wss://nostr.l484.com',
+];
+
+// Popular public relays for profile data (metadata events)
+const PROFILE_RELAYS = [
+  'wss://relay.damus.io',
+  'wss://nos.lol',
+  'wss://relay.snort.social',
+  'wss://relay.primal.net',
+  'wss://relay.nostr.band',
+  'wss://purplepag.es',
+  'wss://relay.bitcoin.social',
+  'wss://relay.nostr.wirednet.jp',
+  'wss://relay.nostr.com.au',
+  'wss://relay.nostr.net',
 ];
 
 // Clear any existing relay settings from localStorage
@@ -29,11 +43,7 @@ function clearExistingRelaySettings(): void {
   }
 }
 
-// Initialize by clearing old settings - only in browser
-if (typeof window !== 'undefined') {
-  // Use setTimeout to ensure this runs after the module is loaded
-  setTimeout(clearExistingRelaySettings, 0);
-}
+// Note: Initialization moved to client-side only to avoid SSR issues
 
 // Get relays - always return our custom relay only
 export function getRelays(): string[] {
@@ -149,7 +159,7 @@ export async function listEvents(
           console.log(`Fetched ${events.length} events from ${relay}`);
           return events;
         } catch (error) {
-          console.error(`Error fetching from ${relay}:`, error);
+          console.warn(`Error fetching from ${relay}:`, error);
           return [];
         }
       });
@@ -208,7 +218,8 @@ async function fetchEventsWithTimeout(
 ): Promise<any[]> { // Changed from NostrEvent[] to any[] to avoid SSR issues
   return new Promise((resolve, reject) => {
     const timeoutId = setTimeout(() => {
-      reject(new Error('Fetch timeout'));
+      console.warn(`Fetch timeout after ${timeoutMs}ms for relays: ${relays.join(', ')}`);
+      resolve([]); // Resolve with empty array instead of rejecting
     }, timeoutMs);
 
     const events: any[] = []; // Changed from NostrEvent[] to any[]
@@ -236,14 +247,16 @@ async function fetchEventsWithTimeout(
           }
         });
       }).catch((error) => {
+        console.warn('Error in fetchEventsWithTimeout:', error);
         clearTimeout(timeoutId);
-        reject(error);
+        resolve([]); // Resolve with empty array instead of rejecting
       });
 
-      // The timeout will automatically reject the promise if it takes too long
+      // The timeout will automatically resolve with empty array if it takes too long
     } catch (error) {
+      console.warn('Error in fetchEventsWithTimeout:', error);
       clearTimeout(timeoutId);
-      reject(error instanceof Error ? error : new Error('Unknown error'));
+      resolve([]); // Resolve with empty array instead of rejecting
     }
   });
 }
@@ -277,7 +290,7 @@ export async function getEventById(id: string): Promise<any | null> { // Changed
         // Wait a bit before retrying
         await new Promise((resolve) => setTimeout(resolve, 500));
       } catch (error) {
-        console.error(`Error on attempt ${retries + 1}:`, error);
+        console.warn(`Error on attempt ${retries + 1}:`, error);
         retries++;
         if (retries >= maxRetries) {
           console.log('Max retries reached, returning null');
@@ -468,7 +481,7 @@ export async function hexToNpub(hex: string): Promise<string> {
   }
 }
 
-// Fetch user profile metadata
+// Fetch user profile metadata from public relays
 export async function getUserProfile(pubkey: string): Promise<{
   name?: string;
   display_name?: string;
@@ -476,31 +489,35 @@ export async function getUserProfile(pubkey: string): Promise<{
   about?: string;
 } | null> {
   try {
-    const relays = getRelays(); // Always use our custom relay
-    const filter: any = { // Changed from Filter to any to avoid SSR issues
+    console.log(`Fetching profile for pubkey: ${pubkey} from public relays`);
+    
+    const filter: any = {
       kinds: [EVENT_KINDS.METADATA],
       authors: [pubkey],
       limit: 1
     };
 
-    const events = await fetchEventsWithTimeout(relays, filter, 5000);
+    // Use public relays for profile data with shorter timeout
+    const events = await fetchEventsWithTimeout(PROFILE_RELAYS, filter, 3000);
     
     if (events.length === 0) {
+      console.log(`No profile found for pubkey: ${pubkey}`);
       return null;
     }
 
     // Get the most recent metadata event
-    const latestEvent = events.sort((a: any, b: any) => b.created_at - a.created_at)[0]; // Changed from NostrEvent to any
+    const latestEvent = events.sort((a: any, b: any) => b.created_at - a.created_at)[0];
     
     try {
       const metadata = JSON.parse(latestEvent.content);
+      console.log(`Profile found for ${pubkey}:`, metadata);
       return metadata;
     } catch (error) {
       console.error('Failed to parse metadata content:', error);
       return null;
     }
   } catch (error) {
-    console.error('Failed to fetch user profile:', error);
+    console.error('Failed to fetch user profile from public relays:', error);
     return null;
   }
 }

@@ -1,7 +1,7 @@
 import { nip19, getPublicKey } from 'nostr-tools';
 
 // Get or generate user keys
-export function getUserKeys(): { privateKey: string; publicKey: string } {
+export async function getUserKeys(): Promise<{ privateKey: string; publicKey: string }> {
   if (typeof window === 'undefined') {
     // Server-side rendering, return placeholder
     return { privateKey: '', publicKey: '' };
@@ -20,18 +20,24 @@ export function getUserKeys(): { privateKey: string; publicKey: string } {
     localStorage.setItem('nostr_private_key', privateKey);
   }
 
-  const publicKey = getPublicKey(privateKey);
+  const { getPublicKey } = await import('./nostr-wrapper');
+  const getPublicKeyFn = await getPublicKey();
+  const publicKey = getPublicKeyFn ? getPublicKeyFn(privateKey) : '';
   return { privateKey, publicKey };
 }
 
 // Get npub (public key in bech32 format)
-export function getNpub(publicKey: string): string {
-  return nip19.npubEncode(publicKey);
+export async function getNpub(publicKey: string): Promise<string> {
+  const { getNip19 } = await import('./nostr-wrapper');
+  const nip19 = await getNip19();
+  return nip19 ? nip19.npubEncode(publicKey) : '';
 }
 
 // Get nsec (private key in bech32 format)
-export function getNsec(privateKey: string): string {
-  return nip19.nsecEncode(privateKey);
+export async function getNsec(privateKey: string): Promise<string> {
+  const { getNip19 } = await import('./nostr-wrapper');
+  const nip19 = await getNip19();
+  return nip19 ? nip19.nsecEncode(privateKey) : '';
 }
 
 // Check if we have browser extension (NIP-07) support
@@ -44,7 +50,7 @@ export async function getExtensionPublicKey(): Promise<string | null> {
   if (!hasNostrExtension()) return null;
 
   try {
-    return await window.nostr.getPublicKey();
+    return await window.nostr!.getPublicKey();
   } catch (error) {
     console.error('Failed to get public key from extension:', error);
     return null;
@@ -56,7 +62,7 @@ export async function signWithExtension(event: any): Promise<any> {
   if (!hasNostrExtension()) return null;
 
   try {
-    return await window.nostr.signEvent(event);
+    return await window.nostr!.signEvent(event);
   } catch (error) {
     console.error('Failed to sign event with extension:', error);
     return null;

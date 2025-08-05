@@ -56,4 +56,7 @@ export interface ProfileData {
   following: number;
   deliveries: number;
   rating: number;
+  about?: string;
+  website?: string;
+  nip05?: string;
 }

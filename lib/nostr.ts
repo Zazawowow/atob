@@ -1,4 +1,5 @@
-import { getUserKeys } from './nostr-keys';
+// Import getUserKeys dynamically to avoid SSR issues
+// import { getUserKeys } from './nostr-keys';
 import { EVENT_KINDS, type PackageData, type JobData, type ProfileData } from './nostr-types';
 import {
   listEvents,
@@ -28,7 +29,21 @@ import {
 } from './local-job-service';
 import { getRelays } from './nostr-service';
 import type { Event as NostrEvent } from 'nostr-tools';
-import { SimplePool } from 'nostr-tools';
+// import { SimplePool } from 'nostr-tools';
+
+// Popular public relays for profile data (metadata events)
+const PROFILE_RELAYS = [
+  'wss://relay.damus.io',
+  'wss://nos.lol',
+  'wss://relay.snort.social',
+  'wss://relay.primal.net',
+  'wss://relay.nostr.band',
+  'wss://purplepag.es',
+  'wss://relay.bitcoin.social',
+  'wss://relay.nostr.wirednet.jp',
+  'wss://relay.nostr.com.au',
+  'wss://relay.nostr.net',
+];
 // Define storage keys directly (matching the ones in local-package-service.ts)
 const PACKAGES_STORAGE_KEY = 'shared_packages_v1';
 const MY_DELIVERIES_STORAGE_KEY = 'my_deliveries_v2';
@@ -38,17 +53,21 @@ export type { PackageData, ProfileData };
 
 // Helper function to get user's public key
 export function getUserPubkey(): string {
-  // Get from localStorage first - only in browser environment
-  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+  // Only run in browser environment
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  // Get from localStorage first
+  if (typeof localStorage !== 'undefined') {
     const storedPubkey = localStorage.getItem('nostr_pubkey');
     if (storedPubkey) {
       return storedPubkey;
     }
   }
 
-  // Fall back to generated keys
-  const { publicKey } = getUserKeys();
-  return publicKey;
+  // For server-side rendering, return empty string
+  return '';
 }
 
 // Update the parsePackageFromEvent function to be more robust against non-JSON content
@@ -183,6 +202,71 @@ function safeParseJSON(jsonString: string, fallback: any = null): any {
   } catch (e) {
     console.log('Failed to parse JSON:', e);
     return fallback;
+  }
+}
+
+// Helper function to fetch metadata from public relays
+async function fetchMetadataFromPublicRelays(pubkey: string): Promise<any | null> {
+  try {
+    console.log(`Fetching metadata for ${pubkey} from public relays`);
+    
+    const { SimplePool } = await import('nostr-tools');
+    const pool = new SimplePool();
+    const filter = {
+      kinds: [0], // Metadata events
+      authors: [pubkey],
+      limit: 1
+    };
+
+    // Use a timeout promise to avoid hanging
+    const timeoutPromise = new Promise<null>((resolve) => {
+      setTimeout(() => {
+        console.log(`Metadata fetch timeout for ${pubkey}`);
+        resolve(null);
+      }, 3000);
+    });
+
+    const fetchPromise = new Promise<any | null>((resolve) => {
+      const events: any[] = [];
+      const seen = new Set<string>();
+
+      const sub = pool.subscribe(PROFILE_RELAYS, filter, {
+        onevent: (event: any) => {
+          if (!seen.has(event.id)) {
+            seen.add(event.id);
+            events.push(event);
+          }
+        },
+        oneose: () => {
+          if (events.length > 0) {
+            // Get the most recent metadata event
+            const latestEvent = events.sort((a: any, b: any) => b.created_at - a.created_at)[0];
+            try {
+              const metadata = JSON.parse(latestEvent.content);
+              console.log(`Metadata found for ${pubkey}:`, metadata);
+              resolve(metadata);
+            } catch (e) {
+              console.error('Failed to parse metadata:', e);
+              resolve(null);
+            }
+          } else {
+            console.log(`No metadata found for ${pubkey}`);
+            resolve(null);
+          }
+        }
+      });
+
+      // Close subscription after timeout
+      setTimeout(() => {
+        sub.close();
+        resolve(null);
+      }, 3000);
+    });
+
+    return Promise.race([fetchPromise, timeoutPromise]);
+  } catch (error) {
+    console.error('Error fetching metadata from public relays:', error);
+    return null;
   }
 }
 
@@ -1237,31 +1321,40 @@ export async function getUserProfile(pubkey?: string): Promise<ProfileData> {
       }
     }).length;
 
-    // Try to get user metadata from kind 0 events
-    const metadataEvents = await listEvents(
-      [
-        {
-          kinds: [0],
-          authors: [userPubkey],
-          limit: 1,
-        },
-      ],
-      3000
-    );
+    // Try to get user metadata from public relays first, then fallback to private relay
+    let metadata = await fetchMetadataFromPublicRelays(userPubkey);
+    
+    // If not found in public relays, try private relay as fallback
+    if (!metadata) {
+      console.log(`Metadata not found in public relays for ${userPubkey}, trying private relay`);
+      const metadataEvents = await listEvents(
+        [
+          {
+            kinds: [0],
+            authors: [userPubkey],
+            limit: 1,
+          },
+        ],
+        2000 // Shorter timeout for fallback
+      );
+
+      if (metadataEvents.length > 0) {
+        try {
+          metadata = JSON.parse(metadataEvents[0].content);
+        } catch (e) {
+          console.error('Error parsing user metadata from private relay:', e);
+        }
+      }
+    }
 
     let name = 'bfleet_user';
     let displayName = 'Bfleet User';
     let picture = 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + userPubkey;
 
-    if (metadataEvents.length > 0) {
-      try {
-        const metadata = JSON.parse(metadataEvents[0].content);
-        name = metadata.name || name;
-        displayName = metadata.display_name || metadata.displayName || name;
-        picture = metadata.picture || picture;
-      } catch (e) {
-        console.error('Error parsing user metadata:', e);
-      }
+    if (metadata) {
+      name = metadata.name || name;
+      displayName = metadata.display_name || metadata.displayName || name;
+      picture = metadata.picture || picture;
     }
 
     return {
@@ -1588,11 +1681,12 @@ export async function publishEvent(event: Event): Promise<string[]> {
       throw new Error('No relays available');
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Publish timeout'));
       }, 5000);
 
+      const { SimplePool } = await import('nostr-tools');
       const pool = new SimplePool();
       
       const publishPromises = relays.map(async (relay) => {

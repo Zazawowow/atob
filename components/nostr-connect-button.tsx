@@ -30,13 +30,16 @@ export function NostrConnectButton() {
 
   useEffect(() => {
     if (publicKey) {
-      try {
-        const fullNpub = getNpub(publicKey);
-        setNpub(fullNpub.slice(0, 10) + '...' + fullNpub.slice(-4));
-      } catch (error) {
-        console.error('Error formatting npub:', error);
-        setNpub(publicKey.slice(0, 8) + '...');
-      }
+      const formatNpub = async () => {
+        try {
+          const fullNpub = await getNpub(publicKey);
+          setNpub(fullNpub.slice(0, 10) + '...' + fullNpub.slice(-4));
+        } catch (error) {
+          console.error('Error formatting npub:', error);
+          setNpub(publicKey.slice(0, 8) + '...');
+        }
+      };
+      formatNpub();
     }
   }, [publicKey]);
 

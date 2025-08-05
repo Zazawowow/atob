@@ -12,6 +12,11 @@ const DELIVERIES_BACKUP_KEY = 'my_deliveries_backup_v2';
 // Backup current packages before any major operation
 function backupPackages(): void {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
+    
     const packages = localStorage.getItem(PACKAGES_STORAGE_KEY);
     const deliveries = localStorage.getItem(MY_DELIVERIES_STORAGE_KEY);
     
@@ -29,6 +34,11 @@ function backupPackages(): void {
 // Restore from backup if main storage is empty
 function restoreFromBackupIfNeeded(): void {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
+    
     const packages = localStorage.getItem(PACKAGES_STORAGE_KEY);
     const deliveries = localStorage.getItem(MY_DELIVERIES_STORAGE_KEY);
     
@@ -55,6 +65,11 @@ function restoreFromBackupIfNeeded(): void {
 // Get all available packages from local storage
 export function getLocalPackages(): PackageData[] {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return [];
+    }
+    
     restoreFromBackupIfNeeded();
     const packagesJson = localStorage.getItem(PACKAGES_STORAGE_KEY);
     if (!packagesJson) return [];
@@ -76,6 +91,11 @@ export function getLocalPackages(): PackageData[] {
 // Get all deliveries from local storage (not just the current user's)
 export function getAllLocalDeliveries(): PackageData[] {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return [];
+    }
+    
     const deliveriesJson = localStorage.getItem(MY_DELIVERIES_STORAGE_KEY);
     if (!deliveriesJson) return [];
 
@@ -91,6 +111,11 @@ export function saveLocalPackage(
   packageData: Omit<PackageData, 'id' | 'status' | 'pubkey'>
 ): string {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      throw new Error('localStorage not available');
+    }
+    
     const packages = getLocalPackages();
 
     // Generate a unique ID
@@ -121,6 +146,11 @@ export function saveLocalPackage(
 // Delete a package from local storage
 export function deleteLocalPackage(packageId: string): void {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
+    
     const packages = getLocalPackages();
 
     // Filter out the package to delete
@@ -139,6 +169,11 @@ export function deleteLocalPackage(packageId: string): void {
 // Get my deliveries from local storage
 export function getMyLocalDeliveries(): PackageData[] {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return [];
+    }
+    
     restoreFromBackupIfNeeded();
     const deliveriesJson = localStorage.getItem(MY_DELIVERIES_STORAGE_KEY);
     if (!deliveriesJson) return [];
@@ -182,6 +217,11 @@ export function pickupLocalPackage(
   packageData?: PackageData
 ): void {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
+    
     // Get the package from available packages
     const packages = getLocalPackages();
     let packageToPickup = packages.find((pkg) => pkg.id === packageId);
@@ -237,6 +277,11 @@ export function pickupLocalPackage(
 // Complete a delivery locally - ensure it's properly removed from active deliveries
 export function completeLocalDelivery(packageId: string): void {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
+    
     console.log(`Completing delivery for package ${packageId} in localStorage`);
 
     // Get all deliveries
@@ -296,6 +341,11 @@ export function completeLocalDelivery(packageId: string): void {
 // Get a specific package by ID (from either available packages or my deliveries)
 export function getLocalPackageById(id: string): PackageData | null {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return null;
+    }
+    
     // Check available packages
     const packages = getLocalPackages();
     const availablePackage = packages.find((pkg) => pkg.id === id);
@@ -318,6 +368,11 @@ export function getLocalPackageById(id: string): PackageData | null {
 // Confirm delivery (by recipient)
 export function confirmLocalDelivery(packageId: string): void {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
+    
     // Update status in deliveries
     const allDeliveries = JSON.parse(
       localStorage.getItem(MY_DELIVERIES_STORAGE_KEY) || '[]'
@@ -344,6 +399,11 @@ export function confirmLocalDelivery(packageId: string): void {
 // Add a function to share packages between browsers
 export function sharePackagesWithLocalStorage(): void {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined' || typeof sessionStorage === 'undefined') {
+      return;
+    }
+    
     // Get all packages from localStorage
     const packagesJson = localStorage.getItem(PACKAGES_STORAGE_KEY);
     if (!packagesJson) return;
@@ -365,6 +425,11 @@ export function sharePackagesWithLocalStorage(): void {
 // Import shared packages from another browser
 export function importSharedPackages(): number {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined' || typeof sessionStorage === 'undefined') {
+      return 0;
+    }
+    
     // Get shared packages from sessionStorage
     const sharedPackagesJson = sessionStorage.getItem('shared_packages_export');
     if (!sharedPackagesJson) return 0;
@@ -406,6 +471,12 @@ export function importSharedPackages(): number {
 // Debug function to log all packages and deliveries
 export function debugStorage(): void {
   try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      console.log('localStorage not available in this environment');
+      return;
+    }
+    
     const packagesJson = localStorage.getItem(PACKAGES_STORAGE_KEY);
     const packages = packagesJson ? JSON.parse(packagesJson) : [];
 
