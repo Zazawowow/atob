@@ -5,17 +5,17 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useRouter } from 'next/navigation';
+import { MapPin } from 'lucide-react';
 import { type PackageData } from '@/lib/nostr-types';
 import { getEffectiveStatus } from '@/lib/nostr';
 
-// Fix for default marker icons in Leaflet with Next.js
-const DefaultIcon = L.icon({
-  iconUrl: '/marker-icon.png',
-  shadowUrl: '/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
+// Custom default marker icon for Leaflet with Next.js
+const DefaultIcon = L.divIcon({
+  className: 'default-marker',
+  html: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#3B82F6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>`,
+  iconSize: [30, 30],
+  iconAnchor: [15, 30],
+  popupAnchor: [0, -30],
 });
 
 // Custom marker icon for packages
@@ -215,13 +215,24 @@ export default function PackageMap({
 
   return (
     <div className='relative h-full w-full' style={{ zIndex: 1 }}>
-      <MapContainer
-        center={center}
-        zoom={2}
-        style={{ height: '100%', width: '100%', display: 'block' }}
-        className='z-0'
-        attributionControl={true}
-      >
+      {packages.length === 0 ? (
+        <div className='flex justify-center items-center h-full text-gray-400'>
+          <div className='text-center'>
+            <MapPin className='h-16 w-16 mx-auto mb-4 text-purple-400' />
+            <p>No packages available</p>
+            <p className='text-sm text-gray-500 mt-2'>
+              Packages will appear here when posted
+            </p>
+          </div>
+        </div>
+      ) : (
+        <MapContainer
+          center={center}
+          zoom={2}
+          style={{ height: '100%', width: '100%', display: 'block' }}
+          className='z-0'
+          attributionControl={true}
+        >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           url='https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
@@ -265,20 +276,16 @@ export default function PackageMap({
 
         <RecenterMap lat={center[0]} lng={center[1]} />
         <CenterOnMe />
-      </MapContainer>
+        </MapContainer>
+      )}
       {isLoading && (
         <div className='absolute inset-0 bg-white/50 flex items-center justify-center'>
           <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full'></div>
         </div>
       )}
       {geocodingErrors.length > 0 && (
-        <div className='absolute top-2 left-2 right-2 bg-red-50 border border-red-200 rounded-md p-2 text-xs text-red-700'>
-          <p className='font-medium'>Some locations could not be mapped:</p>
-          <ul className='list-disc list-inside mt-1'>
-            {geocodingErrors.map((error, index) => (
-              <li key={index}>{error}</li>
-            ))}
-          </ul>
+        <div className='absolute bottom-4 left-4 bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-xs text-gray-300 backdrop-blur-sm'>
+          Some locations couldn't be mapped
         </div>
       )}
     </div>

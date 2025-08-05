@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { getPackages, pickupPackage, deletePackage, getEffectiveStatus, getJobs, applyForJob, deleteJob } from '@/lib/nostr';
 import { useNostr } from '@/components/nostr-provider';
 import Image from 'next/image';
+import PackageMap from '@/components/package-map';
 
 export const dynamic = 'force-dynamic';
 
@@ -565,42 +566,11 @@ export default function ViewPackages() {
               <CardContent className='flex-1 p-0'>
                 <div className='h-full w-full'>
                   {activeTab === 'packages' ? (
-                    selectedPackage ? (
-                      <div className='h-full flex flex-col'>
-                        <div className='flex-1 flex justify-center items-center text-gray-400'>
-                          <div className='text-center'>
-                            <MapPin className='h-16 w-16 mx-auto mb-4 text-purple-400' />
-                            <p className='text-lg font-semibold text-purple-300 mb-2'>
-                              {selectedPackage.title}
-                            </p>
-                            <p className='text-sm text-gray-300 mb-1'>
-                              📍 {selectedPackage.pickupLocation}
-                            </p>
-                            <p className='text-sm text-gray-300 mb-1'>
-                              🎯 {selectedPackage.destination}
-                            </p>
-                            <p className='text-sm text-yellow-400 font-medium'>
-                              {formatCost(selectedPackage.cost)}
-                            </p>
-                            <div className='mt-4 p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg'>
-                              <p className='text-xs text-purple-300'>
-                                Package location marked on map
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className='flex justify-center items-center h-full text-gray-400'>
-                        <div className='text-center'>
-                          <MapPin className='h-16 w-16 mx-auto mb-4 text-purple-400' />
-                          <p>Select a package to view on map</p>
-                          <p className='text-sm text-gray-500 mt-2'>
-                            Package locations will be marked
-                          </p>
-                        </div>
-                      </div>
-                    )
+                    <PackageMap
+                      packages={packages}
+                      selectedPackage={selectedPackage}
+                      onSelectPackage={handlePackageSelect}
+                    />
                   ) : (
                     selectedJob ? (
                       <div className='h-full flex flex-col'>
