@@ -64,7 +64,8 @@ export default function ViewPackages() {
     try {
       const allJobs = await getJobs();
       setJobs(allJobs);
-      console.log('Loaded jobs:', allJobs.length);
+      console.log('Loaded jobs:', allJobs.length, 'publicKey:', publicKey);
+      console.log('Jobs with assignedWorkers:', allJobs.filter(job => job.assignedWorkers && job.assignedWorkers.length > 0));
     } catch (err) {
       console.error('Failed to load jobs:', err);
       setError('Failed to load jobs. Please try again.');
@@ -72,7 +73,7 @@ export default function ViewPackages() {
     } finally {
       setJobsLoading(false);
     }
-  }, [isReady, isLoggedIn]);
+  }, [isReady, isLoggedIn, publicKey]);
 
   useEffect(() => {
     loadPackages();
@@ -109,9 +110,17 @@ export default function ViewPackages() {
 
   const handleApplyForJob = async (jobId: string) => {
     try {
+      console.log('Applying for job:', jobId, 'with publicKey:', publicKey);
+      
+      // Debug: Check what's in localStorage before applying
+      const { debugJobStorage } = await import('@/lib/local-job-service');
+      debugJobStorage();
+      
       await applyForJob(jobId);
       toast.success('Application submitted successfully!');
-      loadJobs();
+      console.log('Application successful, reloading jobs...');
+      await loadJobs();
+      console.log('Jobs reloaded');
     } catch (error) {
       console.error('Failed to apply for job:', error);
       toast.error('Failed to apply for job. Please try again.');
@@ -157,6 +166,12 @@ export default function ViewPackages() {
 
   const isOwnJob = (job: any) => {
     return job.pubkey === publicKey;
+  };
+
+  const hasAppliedToJob = (job: any) => {
+    const hasApplied = job.assignedWorkers && job.assignedWorkers.includes(publicKey);
+    console.log(`Job ${job.id} - assignedWorkers:`, job.assignedWorkers, 'publicKey:', publicKey, 'hasApplied:', hasApplied);
+    return hasApplied;
   };
 
   const formatCompensation = (compensation: string) => {
@@ -266,55 +281,57 @@ export default function ViewPackages() {
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6'>
         <div className='h-[calc(100vh-10rem)]'>
           <Card className='bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm h-full flex flex-col'>
-            <CardHeader className='flex flex-row justify-between items-start py-4 px-4 lg:px-6'>
-              <div className='flex-1'>
-                <div className='flex space-x-1 mb-3'>
-                  <Button
-                    variant={activeTab === 'packages' ? 'default' : 'outline'}
-                    size='sm'
-                    onClick={() => setActiveTab('packages')}
-                    className={`${
-                      activeTab === 'packages'
-                        ? 'bg-purple-400/20 text-purple-400 border-purple-400/30'
-                        : 'bg-black/20 text-[#FAFAFA]/70 border-purple-400/20 hover:bg-purple-400/10'
-                    }`}
-                  >
-                    <Package className='h-4 w-4 mr-2' />
-                    Packages
-                  </Button>
-                  <Button
-                    variant={activeTab === 'jobs' ? 'default' : 'outline'}
-                    size='sm'
-                    onClick={() => setActiveTab('jobs')}
-                    className={`${
-                      activeTab === 'jobs'
-                        ? 'bg-purple-400/20 text-purple-400 border-purple-400/30'
-                        : 'bg-black/20 text-[#FAFAFA]/70 border-purple-400/20 hover:bg-purple-400/10'
-                    }`}
-                  >
-                    <Briefcase className='h-4 w-4 mr-2' />
-                    Jobs
-                  </Button>
+            <CardHeader className='py-4 px-4 lg:px-6'>
+              <div className='flex justify-between items-start mb-4'>
+                <div className='flex-1'>
+                  <CardTitle className='text-off-white text-xl mb-2'>
+                    {activeTab === 'packages' ? `Available Work (${packages.length})` : `Available Work (${jobs.length})`}
+                  </CardTitle>
+                  <CardDescription className='text-purple-300'>
+                    {activeTab === 'packages' 
+                      ? 'Click on a package to view it on the map'
+                      : 'Click on a job to view its details'
+                    }
+                  </CardDescription>
                 </div>
-                <CardTitle className='text-off-white text-xl'>
-                  {activeTab === 'packages' ? `Available Work (${packages.length})` : `Available Work (${jobs.length})`}
-                </CardTitle>
-                <CardDescription className='text-purple-300'>
-                  {activeTab === 'packages' 
-                    ? 'Click on a package to view it on the map'
-                    : 'Click on a job to view its details'
-                  }
-                </CardDescription>
+                <Button
+                  onClick={activeTab === 'packages' ? handleRefresh : loadJobs}
+                  variant='outline'
+                  size='icon'
+                  className='bg-black/20 border-purple-400/20 hover:bg-purple-400/10 hover:border-purple-400/30 text-purple-300'
+                  disabled={activeTab === 'packages' ? loading : jobsLoading}
+                >
+                  <RefreshCw className={`h-4 w-4 ${(activeTab === 'packages' ? loading : jobsLoading) ? 'animate-spin' : ''}`} />
+                </Button>
               </div>
-              <Button
-                onClick={activeTab === 'packages' ? handleRefresh : loadJobs}
-                variant='outline'
-                size='icon'
-                className='bg-black/20 border-purple-400/20 hover:bg-purple-400/10 hover:border-purple-400/30 text-purple-300 -mt-2 -mr-2'
-                disabled={activeTab === 'packages' ? loading : jobsLoading}
-              >
-                <RefreshCw className={`h-4 w-4 ${(activeTab === 'packages' ? loading : jobsLoading) ? 'animate-spin' : ''}`} />
-              </Button>
+              <div className='flex space-x-1'>
+                <Button
+                  variant={activeTab === 'packages' ? 'default' : 'outline'}
+                  size='sm'
+                  onClick={() => setActiveTab('packages')}
+                  className={`${
+                    activeTab === 'packages'
+                      ? 'bg-purple-400/20 text-purple-400 border-purple-400/30'
+                      : 'bg-black/20 text-[#FAFAFA]/70 border-purple-400/20 hover:bg-purple-400/10'
+                  }`}
+                >
+                  <Package className='h-4 w-4 mr-2' />
+                  Packages
+                </Button>
+                <Button
+                  variant={activeTab === 'jobs' ? 'default' : 'outline'}
+                  size='sm'
+                  onClick={() => setActiveTab('jobs')}
+                  className={`${
+                    activeTab === 'jobs'
+                      ? 'bg-purple-400/20 text-purple-400 border-purple-400/30'
+                      : 'bg-black/20 text-[#FAFAFA]/70 border-purple-400/20 hover:bg-purple-400/10'
+                  }`}
+                >
+                  <Briefcase className='h-4 w-4 mr-2' />
+                  Jobs
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className='flex flex-col flex-grow overflow-hidden px-4 lg:px-6 pb-4 lg:pb-6'>
               <div className='space-y-2 lg:space-y-3 overflow-y-auto pr-2 flex-1'>
@@ -397,7 +414,8 @@ export default function ViewPackages() {
                                     handlePickup(pkg.id);
                                   }}
                                   size='sm'
-                                  className='btn-purple flex-1'
+                                  variant='outline'
+                                  className='flex-1 bg-transparent border-purple-400/50 text-purple-400 hover:bg-purple-400/10 hover:border-purple-400'
                                 >
                                   <Truck className='h-4 w-4 mr-2' />
                                   Pick Up
@@ -507,17 +525,37 @@ export default function ViewPackages() {
                             
                             {/* Action buttons */}
                             <div className='flex gap-2 pt-1'>
-                              {job.status === 'open' && !ownJob && (
+                              {job.status === 'open' && !ownJob && !hasAppliedToJob(job) && (
                                 <Button
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    console.log('Apply button clicked for job:', job.id);
                                     handleApplyForJob(job.id);
                                   }}
                                   size='sm'
-                                  className='btn-purple flex-1'
+                                  variant='outline'
+                                  className='flex-1 bg-transparent border-purple-400/50 text-purple-400 hover:bg-purple-400/10 hover:border-purple-400'
                                 >
                                   Apply
                                 </Button>
+                              )}
+                              
+                              {job.status === 'open' && !ownJob && hasAppliedToJob(job) && (
+                                <Button
+                                  size='sm'
+                                  variant='outline'
+                                  className='flex-1 bg-transparent border-green-400/50 text-green-400 cursor-not-allowed'
+                                  disabled
+                                >
+                                  Applied
+                                </Button>
+                              )}
+                              
+                              {/* Debug info */}
+                              {job.status === 'open' && !ownJob && (
+                                <div className='text-xs text-gray-500'>
+                                  Debug: ownJob={ownJob}, hasApplied={hasAppliedToJob(job)}, assignedWorkers={JSON.stringify(job.assignedWorkers)}
+                                </div>
                               )}
                               
                               {ownJob && job.status === 'open' && (

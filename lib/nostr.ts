@@ -376,9 +376,23 @@ export async function getJobs(): Promise<JobData[]> {
 
       // Also get from localStorage
       const localJobs = getLocalJobs();
+      console.log('getJobs - Found', localJobs.length, 'local jobs');
+      console.log('getJobs - Local jobs:', localJobs.map(job => ({ id: job.id, assignedWorkers: job.assignedWorkers })));
+      console.log('getJobs - Found', jobs.length, 'jobs from Nostr');
+      console.log('getJobs - Nostr jobs:', jobs.map(job => ({ id: job.id, assignedWorkers: job.assignedWorkers })));
 
-      // Merge and deduplicate
-      const allJobs = [...jobs, ...localJobs];
+      // Save Nostr jobs to localStorage if they don't exist locally
+      const { saveExistingJobToLocal } = await import('@/lib/local-job-service');
+      for (const job of jobs) {
+        const existingLocalJob = localJobs.find(localJob => localJob.id === job.id);
+        if (!existingLocalJob) {
+          console.log('Saving Nostr job to localStorage:', job.id);
+          saveExistingJobToLocal(job);
+        }
+      }
+
+      // Merge and deduplicate, prioritizing localStorage data
+      const allJobs = [...localJobs, ...jobs];
       const uniqueJobs = allJobs.filter((job, index, self) => 
         index === self.findIndex(j => j.id === job.id)
       );
@@ -386,6 +400,8 @@ export async function getJobs(): Promise<JobData[]> {
       // Sort by creation date (newest first)
       uniqueJobs.sort((a, b) => b.created_at - a.created_at);
 
+      console.log('getJobs - Returning', uniqueJobs.length, 'unique jobs');
+      console.log('getJobs - Final jobs:', uniqueJobs.map(job => ({ id: job.id, assignedWorkers: job.assignedWorkers })));
       return uniqueJobs;
     } catch (nostrError) {
       console.error('Nostr error, falling back to localStorage only:', nostrError);
@@ -402,6 +418,7 @@ export async function getJobs(): Promise<JobData[]> {
 export async function applyForJob(jobId: string): Promise<void> {
   try {
     const userPubkey = getUserPubkey();
+    console.log('applyForJob called with jobId:', jobId, 'userPubkey:', userPubkey);
     
     // Update local storage
     applyForLocalJob(jobId, userPubkey);

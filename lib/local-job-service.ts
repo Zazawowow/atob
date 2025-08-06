@@ -222,6 +222,8 @@ export function applyForLocalJob(jobId: string, workerPubkey: string): void {
       return;
     }
     
+    console.log('applyForLocalJob called with jobId:', jobId, 'workerPubkey:', workerPubkey);
+    
     const jobs = getLocalJobs();
     const myJobs = getMyLocalJobs();
 
@@ -229,12 +231,17 @@ export function applyForLocalJob(jobId: string, workerPubkey: string): void {
       return jobList.map((job) => {
         if (job.id === jobId) {
           const assignedWorkers = job.assignedWorkers || [];
+          console.log('Job', jobId, 'current assignedWorkers:', assignedWorkers);
           if (!assignedWorkers.includes(workerPubkey)) {
-            return {
+            const updatedJob = {
               ...job,
               assignedWorkers: [...assignedWorkers, workerPubkey],
               status: assignedWorkers.length === 0 ? 'in_progress' : job.status,
             };
+            console.log('Updated job with new assignedWorkers:', updatedJob.assignedWorkers);
+            return updatedJob;
+          } else {
+            console.log('Worker already assigned to job', jobId);
           }
         }
         return job;
@@ -247,6 +254,7 @@ export function applyForLocalJob(jobId: string, workerPubkey: string): void {
     localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(updatedJobs));
     localStorage.setItem(MY_JOBS_STORAGE_KEY, JSON.stringify(updatedMyJobs));
 
+    console.log('Job application saved to localStorage');
     backupJobs();
   } catch (error) {
     console.error('Failed to apply for local job:', error);
@@ -259,6 +267,42 @@ export function completeLocalJob(jobId: string): void {
     updateLocalJobStatus(jobId, 'completed');
   } catch (error) {
     console.error('Failed to complete local job:', error);
+  }
+}
+
+// Save an existing job to localStorage (for jobs from Nostr)
+export function saveExistingJobToLocal(job: JobData): void {
+  try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
+    
+    const jobs = getLocalJobs();
+    const myJobs = getMyLocalJobs();
+
+    // Check if job already exists
+    const existingJobIndex = jobs.findIndex(j => j.id === job.id);
+    if (existingJobIndex === -1) {
+      // Add to all jobs
+      jobs.push(job);
+      localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(jobs));
+      console.log('Saved existing job to localStorage:', job.id);
+    }
+
+    // Check if it's the user's job and add to my jobs
+    if (job.pubkey === getUserPubkey()) {
+      const existingMyJobIndex = myJobs.findIndex(j => j.id === job.id);
+      if (existingMyJobIndex === -1) {
+        myJobs.push(job);
+        localStorage.setItem(MY_JOBS_STORAGE_KEY, JSON.stringify(myJobs));
+        console.log('Saved existing job to my jobs:', job.id);
+      }
+    }
+
+    backupJobs();
+  } catch (error) {
+    console.error('Failed to save existing job to local:', error);
   }
 }
 
