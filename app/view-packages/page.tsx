@@ -14,7 +14,9 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Package, MapPin, Bitcoin, Eye, RefreshCw, Briefcase, Truck } from 'lucide-react';
 import Link from 'next/link';
-import { getPackages, pickupPackage, deletePackage, getEffectiveStatus, getJobs, applyForJob, deleteJob } from '@/lib/nostr';
+import { getPackages, pickupPackage, deletePackage, getEffectiveStatus, getJobs, applyForJob, deleteJob } from '@/lib/nostr-client';
+import { PostJobModal } from '@/components/post-job-modal';
+import { PostPackageModal } from '@/components/post-package-modal';
 import { useNostr } from '@/components/nostr-provider';
 import Image from 'next/image';
 import dynamicImport from 'next/dynamic';
@@ -39,6 +41,8 @@ export default function ViewPackages() {
   const [selectedPackage, setSelectedPackage] = useState<any | null>(null);
   const [selectedJob, setSelectedJob] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<'packages' | 'jobs'>('packages');
+  const [showJobModal, setShowJobModal] = useState(false);
+  const [showPackageModal, setShowPackageModal] = useState(false);
 
   const loadPackages = useCallback(async () => {
     if (!isReady || !isLoggedIn) return;
@@ -96,6 +100,14 @@ export default function ViewPackages() {
 
   const handleRefresh = () => {
     loadPackages();
+  };
+
+  const handlePackageClick = () => {
+    setShowPackageModal(true);
+  };
+
+  const handleJobClick = () => {
+    setShowJobModal(true);
   };
 
   const handlePackageSelect = (pkg: any) => {
@@ -352,11 +364,9 @@ export default function ViewPackages() {
                     <div className='text-center text-gray-400 py-8'>
                       <Package className='h-16 w-16 mx-auto mb-4 opacity-50' />
                       <p>No packages available</p>
-                      <Link href='/post-package'>
-                        <Button className='mt-4 btn-purple'>
-                          Post First Package
-                        </Button>
-                      </Link>
+                      <Button onClick={handlePackageClick} className='mt-4 btn-purple'>
+                        Post First Package
+                      </Button>
                     </div>
                   ) : (
                     packages.map((pkg) => {
@@ -458,11 +468,9 @@ export default function ViewPackages() {
                     <div className='text-center text-gray-400 py-8'>
                       <Briefcase className='h-16 w-16 mx-auto mb-4 opacity-50' />
                       <p>No jobs available</p>
-                      <Link href='/post-job'>
-                        <Button className='mt-4 btn-purple'>
-                          Post First Job
-                        </Button>
-                      </Link>
+                      <Button onClick={handleJobClick} className='mt-4 btn-purple'>
+                        Post First Job
+                      </Button>
                     </div>
                   ) : (
                     jobs.map((job) => {
@@ -669,6 +677,17 @@ export default function ViewPackages() {
           </Card>
         </div>
       </div>
+
+      {/* Modals */}
+      <PostJobModal
+        open={showJobModal}
+        onOpenChange={setShowJobModal}
+      />
+      
+      <PostPackageModal
+        open={showPackageModal}
+        onOpenChange={setShowPackageModal}
+      />
     </div>
   );
 } 

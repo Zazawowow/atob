@@ -7,6 +7,8 @@ import { NostrConnectButton } from '@/components/nostr-connect-button';
 import { useNostr } from '@/components/nostr-provider';
 import { useUIAnimation } from '@/components/ui-animation-context';
 import { NostrAuthModal } from './nostr-auth-modal';
+import { PostJobModal } from '@/components/post-job-modal';
+import { PostPackageModal } from '@/components/post-package-modal';
 import { Truck } from 'lucide-react';
 
 export function Navbar() {
@@ -14,6 +16,8 @@ export function Navbar() {
   const { showUI } = useUIAnimation();
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [showJobModal, setShowJobModal] = useState(false);
+  const [showPackageModal, setShowPackageModal] = useState(false);
   const pathname = usePathname();
 
   // Handle scroll effect for navbar
@@ -40,11 +44,6 @@ export function Navbar() {
   const ProtectedDesktopLink = ({ href, children, hoverColor, activeColor }: { href: string, children: React.ReactNode, hoverColor: string, activeColor: string }) => {
     let isActive = isLoggedIn && pathname.startsWith(href);
 
-    // Special case for post-package, since startsWith isn't working reliably
-    if (href === '/post-package' && isLoggedIn && pathname.includes('post-package')) {
-      isActive = true;
-    }
-
     if (isLoggedIn) {
       return (
         <Link
@@ -68,40 +67,77 @@ export function Navbar() {
     );
   };
 
-  return (
-    <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-1000 ${
-        scrolled ? 'bg-[#0A0A0A] backdrop-blur-lg shadow-lg' : 'bg-transparent'
-      } ${
-        showUI ? 'animate-slide-up-fade opacity-100' : 'opacity-0 -translate-y-4'
-      }`}
-    >
-      <div className='container mx-auto px-4 py-4 flex justify-between items-center'>
-        <Link href='/' className='flex items-center gap-2'>
-          <span className='font-cyber font-bold text-xl text-off-white drop-shadow-md'>A TO ₿</span>
-        </Link>
+  const PostButton = ({ children, onClick, hoverColor }: { children: React.ReactNode, onClick: () => void, hoverColor: string }) => {
+    if (isLoggedIn) {
+      return (
+        <button
+          onClick={onClick}
+          className={`text-gray-300 ${hoverColor} transition-colors font-medium`}
+        >
+          {children}
+        </button>
+      );
+    }
+    
+    return (
+      <NostrAuthModal
+        trigger={
+          <button className={`text-gray-300 ${hoverColor} transition-colors font-medium`}>
+            {children}
+          </button>
+        }
+        onAuth={login}
+      />
+    );
+  };
 
-        <div className='flex items-center gap-6'>
-          {/* Desktop-only Navigation Links */}
-          <div className='hidden md:flex items-center gap-6'>
-            <ProtectedDesktopLink href='/post-package' hoverColor='hover:text-cyan-400' activeColor='text-cyan-400'>
-              Post Package
-            </ProtectedDesktopLink>
-            <ProtectedDesktopLink href='/post-job' hoverColor='hover:text-green-400' activeColor='text-green-400'>
-              Post Job
-            </ProtectedDesktopLink>
-            <ProtectedDesktopLink href='/view-packages' hoverColor='hover:text-purple-400' activeColor='text-purple-400'>
-              View Posts
-            </ProtectedDesktopLink>
-            <ProtectedDesktopLink href='/my-activities' hoverColor='hover:text-pink-400' activeColor='text-pink-400'>
-              <span>My Activities</span>
-            </ProtectedDesktopLink>
+  return (
+    <>
+      <nav
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-1000 ${
+          scrolled ? 'bg-[#0A0A0A] backdrop-blur-lg shadow-lg' : 'bg-transparent'
+        } ${
+          showUI ? 'animate-slide-up-fade opacity-100' : 'opacity-0'
+        }`}
+      >
+        <div className='container mx-auto px-4 py-4 flex justify-between items-center'>
+          <Link href='/' className='flex items-center gap-2'>
+            <span className='font-cyber font-bold text-xl text-off-white drop-shadow-md'>A TO ₿</span>
+          </Link>
+
+          <div className='flex items-center gap-6'>
+            {/* Desktop-only Navigation Links */}
+            <div className='hidden md:flex items-center gap-6'>
+              <PostButton onClick={() => setShowPackageModal(true)} hoverColor='hover:text-cyan-400'>
+                Post Package
+              </PostButton>
+              <PostButton onClick={() => setShowJobModal(true)} hoverColor='hover:text-green-400'>
+                Post Job
+              </PostButton>
+              <ProtectedDesktopLink href='/view-packages' hoverColor='hover:text-purple-400' activeColor='text-purple-400'>
+                Find Jobs
+              </ProtectedDesktopLink>
+              <ProtectedDesktopLink href='/my-activities' hoverColor='hover:text-pink-400' activeColor='text-pink-400'>
+                <span>My Activities</span>
+              </ProtectedDesktopLink>
+            </div>
+            
+            {/* Login button visible on all screen sizes */}
+            <NostrConnectButton />
           </div>
-          
-          {/* Login button visible on all screen sizes */}
-          <NostrConnectButton />
         </div>
-      </div>
-    </nav>
+      </nav>
+
+      {/* Modals */}
+      <PostJobModal
+        open={showJobModal}
+        onOpenChange={setShowJobModal}
+      />
+      
+      <PostPackageModal
+        open={showPackageModal}
+        onOpenChange={setShowPackageModal}
+      />
+    </>
   );
 }

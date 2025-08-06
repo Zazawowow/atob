@@ -7,8 +7,6 @@ import { Package, Map, CheckCircle, Truck, User, Download } from 'lucide-react';
 import { useNostr } from '@/components/nostr-provider';
 import { useUIAnimation } from '@/components/ui-animation-context';
 import { NostrAuthModal } from '@/components/nostr-auth-modal';
-import { PostJobModal } from '@/components/post-job-modal';
-import { PostPackageModal } from '@/components/post-package-modal';
 
 // Force dynamic rendering to avoid SSR issues
 export const dynamic = 'force-dynamic';
@@ -25,8 +23,6 @@ export default function Home() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingRedirect, setPendingRedirect] = useState<string>('');
   const [videoOpacity, setVideoOpacity] = useState(1);
-  const [showJobModal, setShowJobModal] = useState(false);
-  const [showPackageModal, setShowPackageModal] = useState(false);
   
   // Array of background images to rotate through - memoized to prevent constant re-renders
   const backgroundImages = useMemo(() => ['/hero.jpeg', '/hero-3.jpeg', '/hero-4.jpeg', '/hero-5.jpeg'], []);
@@ -261,13 +257,13 @@ export default function Home() {
                 {isLoggedIn ? (
                   <>
                     <button 
-                      onClick={() => setShowPackageModal(true)}
+                      onClick={() => window.location.href = '/post-package'}
                       className='w-full px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'
                     >
                       Post a Package
                     </button>
                     <button 
-                      onClick={() => setShowJobModal(true)}
+                      onClick={() => window.location.href = '/post-job'}
                       className='w-full px-8 py-4 bg-transparent rounded-full text-green-400 font-medium hover:shadow-green-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-green-400 hover:border-green-300 hover:text-green-300'
                     >
                       Post a Job
@@ -442,13 +438,13 @@ export default function Home() {
                 
                 <div className='flex flex-col md:flex-row gap-4 justify-center'>
                   <button 
-                    onClick={() => setShowPackageModal(true)}
+                    onClick={() => window.location.href = '/post-package'}
                     className='px-8 py-4 bg-transparent rounded-full text-blue-400 font-medium hover:shadow-blue-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-blue-400 hover:border-blue-300 hover:text-blue-300'
                   >
                     Post a Package
                   </button>
                   <button 
-                    onClick={() => setShowJobModal(true)}
+                    onClick={() => window.location.href = '/post-job'}
                     className='px-8 py-4 bg-transparent rounded-full text-green-400 font-medium hover:shadow-green-glow transform hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-green-400 hover:border-green-300 hover:text-green-300'
                   >
                     Post a Job
@@ -498,17 +494,6 @@ export default function Home() {
           </div>
         </section>
       )}
-
-      {/* Modals */}
-      <PostJobModal
-        open={showJobModal}
-        onOpenChange={setShowJobModal}
-      />
-      
-      <PostPackageModal
-        open={showPackageModal}
-        onOpenChange={setShowPackageModal}
-      />
     </main>
   );
 }
