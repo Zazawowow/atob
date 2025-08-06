@@ -17,15 +17,17 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp, Bug, RefreshCw, Shield } from 'lucide-react';
+import { ChevronDown, ChevronUp, Bug, RefreshCw, Shield, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import { forceStatusRefresh } from '@/lib/nostr';
+import { forceStatusRefresh, deleteAllJobsAndPackages, forceClearAllData } from '@/lib/nostr';
 
 export function DebugPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [relayStatus, setRelayStatus] = useState<boolean | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isForceClearing, setIsForceClearing] = useState(false);
   const [localData, setLocalData] = useState<any>(null);
 
   const checkRelayStatus = async () => {
@@ -72,6 +74,49 @@ export function DebugPanel() {
       });
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    const confirmed = window.confirm(
+      '⚠️ WARNING: This will delete ALL your jobs and packages from the relay and clear all local data. This action cannot be undone. Are you sure you want to continue?'
+    );
+    
+    if (!confirmed) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteAllJobsAndPackages();
+      toast.success('All Jobs and Packages Deleted', {
+        description: 'All data has been cleared from the relay and localStorage',
+      });
+      // Update local data display
+      showLocalStorage();
+    } catch (error) {
+      toast.error('Deletion Failed', {
+        description: 'Could not delete all jobs and packages',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleForceClear = async () => {
+    const confirmed = window.confirm(
+      '🚨 DANGER: This will FORCE CLEAR all data and reload the page. This is a last resort option if normal deletion failed. Are you absolutely sure?'
+    );
+    
+    if (!confirmed) return;
+    
+    setIsForceClearing(true);
+    try {
+      await forceClearAllData();
+      // Page will reload automatically
+    } catch (error) {
+      toast.error('Force Clear Failed', {
+        description: 'Could not force clear all data',
+      });
+      setIsForceClearing(false);
     }
   };
 
@@ -190,6 +235,42 @@ export function DebugPanel() {
               <p className='text-xs text-gray-500'>
                 This will fetch all delivery events from Nostr and update local
                 storage with the latest status.
+              </p>
+            </div>
+
+            <div>
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={handleDeleteAll}
+                disabled={isDeleting}
+                className='mb-2 flex items-center gap-1 text-red-600 border-red-600 hover:bg-red-50'
+              >
+                <Trash2
+                  className={`h-4 w-4 ${isDeleting ? 'animate-spin' : ''}`}
+                />
+                {isDeleting ? 'Deleting...' : 'Delete All Jobs & Packages'}
+              </Button>
+              <p className='text-xs text-red-500'>
+                ⚠️ This will permanently delete ALL your jobs and packages from the relay and clear all local data.
+              </p>
+            </div>
+
+            <div>
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={handleForceClear}
+                disabled={isForceClearing}
+                className='mb-2 flex items-center gap-1 text-orange-600 border-orange-600 hover:bg-orange-50'
+              >
+                <AlertTriangle
+                  className={`h-4 w-4 ${isForceClearing ? 'animate-spin' : ''}`}
+                />
+                {isForceClearing ? 'Force Clearing...' : 'Force Clear All Data'}
+              </Button>
+              <p className='text-xs text-orange-500'>
+                🚨 LAST RESORT: Force clear all data and reload page if normal deletion failed.
               </p>
             </div>
           </CardContent>

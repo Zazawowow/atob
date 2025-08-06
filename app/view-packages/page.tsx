@@ -435,12 +435,6 @@ export default function ViewPackages() {
                                   Delete
                                 </Button>
                               )}
-                              
-                              {effectiveStatus === 'in_transit' && (
-                                <Badge className='bg-blue-400/10 text-blue-400 border-blue-400/30'>
-                                  In Transit
-                                </Badge>
-                              )}
                             </div>
                           </CardContent>
                         </Card>

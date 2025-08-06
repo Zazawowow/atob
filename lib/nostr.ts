@@ -1690,6 +1690,128 @@ export async function forceStatusRefresh(): Promise<void> {
   }
 }
 
+// Delete all jobs and packages to start fresh
+export async function deleteAllJobsAndPackages(): Promise<void> {
+  try {
+    console.log('Starting bulk deletion of all jobs and packages...');
+    
+    const userPubkey = getUserPubkey();
+    console.log('User pubkey:', userPubkey);
+    
+    // Get all jobs and packages
+    const allJobs = await getJobs();
+    const allPackages = await getPackages();
+    
+    console.log(`Total jobs found: ${allJobs.length}`);
+    console.log(`Total packages found: ${allPackages.length}`);
+    
+    // Filter to only user's own jobs and packages
+    const userJobs = allJobs.filter(job => job.pubkey === userPubkey);
+    const userPackages = allPackages.filter(pkg => pkg.pubkey === userPubkey);
+    
+    console.log(`Found ${userJobs.length} jobs and ${userPackages.length} packages to delete`);
+    console.log('Jobs to delete:', userJobs.map(job => ({ id: job.id, title: job.title, pubkey: job.pubkey })));
+    
+    // Delete all jobs with more detailed logging
+    for (const job of userJobs) {
+      try {
+        console.log(`Deleting job: ${job.id} - ${job.title}`);
+        await deleteJob(job.id);
+        console.log(`Successfully deleted job: ${job.id}`);
+      } catch (error) {
+        console.error(`Failed to delete job ${job.id}:`, error);
+      }
+    }
+    
+    // Delete all packages
+    for (const pkg of userPackages) {
+      try {
+        console.log(`Deleting package: ${pkg.id} - ${pkg.title}`);
+        await deletePackage(pkg.id);
+        console.log(`Successfully deleted package: ${pkg.id}`);
+      } catch (error) {
+        console.error(`Failed to delete package ${pkg.id}:`, error);
+      }
+    }
+    
+    // Clear localStorage completely with more thorough clearing
+    try {
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        console.log('Clearing localStorage...');
+        
+        // Clear all possible storage keys
+        const keysToRemove = [
+          'jobs',
+          'myJobs', 
+          'packages',
+          'myDeliveries',
+          'jobBackup',
+          'packageBackup',
+          'shared_packages_v1',
+          'my_deliveries_v2',
+          'shared_jobs_v1',
+          'my_jobs_v1'
+        ];
+        
+        for (const key of keysToRemove) {
+          if (localStorage.getItem(key)) {
+            localStorage.removeItem(key);
+            console.log(`Removed localStorage key: ${key}`);
+          }
+        }
+        
+        console.log('localStorage cleared');
+      }
+    } catch (error) {
+      console.error('Failed to clear localStorage:', error);
+    }
+    
+    // Force a refresh of the data
+    console.log('Forcing data refresh...');
+    try {
+      // Clear any cached data by re-fetching
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait a bit
+      console.log('Bulk deletion completed');
+    } catch (error) {
+      console.error('Error during final refresh:', error);
+    }
+  } catch (error) {
+    console.error('Failed to delete all jobs and packages:', error);
+    throw error;
+  }
+}
+
+// Force clear all data - more aggressive version
+export async function forceClearAllData(): Promise<void> {
+  try {
+    console.log('Force clearing all data...');
+    
+    // Clear all localStorage immediately
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      console.log('Force clearing localStorage...');
+      
+      // Get all keys and remove them
+      const allKeys = Object.keys(localStorage);
+      console.log('All localStorage keys:', allKeys);
+      
+      for (const key of allKeys) {
+        if (key.includes('job') || key.includes('package') || key.includes('delivery') || key.includes('nostr')) {
+          localStorage.removeItem(key);
+          console.log(`Force removed: ${key}`);
+        }
+      }
+    }
+    
+    // Force reload the page to clear any cached data
+    console.log('Reloading page to clear cache...');
+    window.location.reload();
+    
+  } catch (error) {
+    console.error('Failed to force clear data:', error);
+    throw error;
+  }
+}
+
 // Publish event to relays
 export async function publishEvent(event: Event): Promise<string[]> {
   try {

@@ -7,6 +7,7 @@ import { Package, Map, CheckCircle, Truck, User, Download } from 'lucide-react';
 import { useNostr } from '@/components/nostr-provider';
 import { useUIAnimation } from '@/components/ui-animation-context';
 import { NostrAuthModal } from '@/components/nostr-auth-modal';
+import { DebugPanel } from '@/components/debug-panel';
 
 // Force dynamic rendering to avoid SSR issues
 export const dynamic = 'force-dynamic';
@@ -490,6 +491,17 @@ export default function Home() {
                   />
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Debug Panel - Only show when logged in */}
+      {isLoggedIn && (
+        <section className='py-8 bg-gray-900'>
+          <div className='container mx-auto px-4'>
+            <div className='max-w-4xl mx-auto'>
+              <DebugPanel />
             </div>
           </div>
         </section>

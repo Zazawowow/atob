@@ -157,4 +157,22 @@ export async function forceStatusRefresh(): Promise<void> {
   
   const { forceStatusRefresh: originalForceStatusRefresh } = await import('./nostr');
   return originalForceStatusRefresh();
+}
+
+export async function deleteAllJobsAndPackages(): Promise<void> {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  
+  const { deleteAllJobsAndPackages: originalDeleteAllJobsAndPackages } = await import('./nostr');
+  return originalDeleteAllJobsAndPackages();
+}
+
+export async function forceClearAllData(): Promise<void> {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  
+  const { forceClearAllData: originalForceClearAllData } = await import('./nostr');
+  return originalForceClearAllData();
 } 
