@@ -1,0 +1,405 @@
+'use client';
+
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
+import { MapPin } from 'lucide-react';
+import { type PackageData, type JobData } from '@/lib/nostr-types';
+
+// Dynamically import Leaflet components to avoid SSR issues
+const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
+const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
+const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
+const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false });
+const useMap = dynamic(() => import('react-leaflet').then(mod => mod.useMap), { ssr: false });
+
+// Dynamically import Leaflet CSS
+if (typeof window !== 'undefined') {
+  import('leaflet/dist/leaflet.css');
+}
+
+let L: any;
+if (typeof window !== 'undefined') {
+  L = require('leaflet');
+}
+
+// Helper function to create icons safely
+const createIcon = (color: string, className: string) => {
+  if (typeof window === 'undefined' || !L) return null;
+  
+  return L.divIcon({
+    className,
+    html: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="${color}" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 30],
+    popupAnchor: [0, -30],
+  });
+};
+
+// Helper component to recenter map
+function RecenterMap({ lat, lng }: { lat: number; lng: number }) {
+  const map = useMap();
+  useEffect(() => {
+    if (map && typeof map.setView === 'function' && typeof map.getZoom === 'function') {
+      map.setView([lat, lng], map.getZoom());
+    }
+  }, [lat, lng, map]);
+  return null;
+}
+
+// Helper component to center on user's location
+function CenterOnMe() {
+  const map = useMap();
+
+  const handleClick = () => {
+    if (map && typeof map.locate === 'function') {
+      map.locate({ setView: true, maxZoom: 16 });
+    }
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      className='absolute bottom-4 right-4 z-[999] bg-white px-4 py-2 rounded-md shadow-md text-sm font-medium hover:bg-gray-100 transition-colors'
+      style={{ zIndex: 999 }}
+    >
+      Center on Me
+    </button>
+  );
+}
+
+// Geocoding cache to prevent repeated API calls
+const geocodingCache = new Map<string, [number, number] | null>();
+
+// Convert address to coordinates using OpenStreetMap Nominatim with caching
+async function getCoordinates(address: string): Promise<[number, number] | null> {
+  // Check cache first
+  if (geocodingCache.has(address)) {
+    return geocodingCache.get(address) || null;
+  }
+  try {
+    // Check if input is already coordinates
+    const coordRegex = /^\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*$/;
+    const match = address.match(coordRegex);
+
+    if (match) {
+      const lat = Number.parseFloat(match[1]);
+      const lng = Number.parseFloat(match[2]);
+
+      // Validate coordinates
+      if (
+        !isNaN(lat) &&
+        !isNaN(lng) &&
+        lat >= -90 &&
+        lat <= 90 &&
+        lng >= -180 &&
+        lng <= 180
+      ) {
+        return [lat, lng];
+      }
+    }
+
+    // If not coordinates, try geocoding
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        address
+      )}&limit=1`,
+      {
+        headers: {
+          'User-Agent': 'AtoBApp/1.0',
+        },
+      }
+    );
+
+    const data = await response.json();
+    
+    if (data && data.length > 0) {
+      const coords: [number, number] = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+      geocodingCache.set(address, coords);
+      return coords;
+    }
+    
+    console.warn(`Geocoding failed for address: ${address}`);
+    // Cache null results to prevent repeated failed requests
+    geocodingCache.set(address, null);
+    return null;
+  } catch (error) {
+    console.error('Error geocoding address:', error);
+    // Cache null results for failed requests too
+    geocodingCache.set(address, null);
+    return null;
+  }
+}
+
+interface ActivityMapProps {
+  deliveries?: PackageData[];
+  jobs?: JobData[];
+  packages?: PackageData[];
+  selectedDelivery?: PackageData | null;
+  selectedJob?: JobData | null;
+  selectedPackage?: PackageData | null;
+}
+
+export default function ActivityMap({
+  deliveries = [],
+  jobs = [],
+  packages = [],
+  selectedDelivery,
+  selectedJob,
+  selectedPackage,
+}: ActivityMapProps) {
+  const [center, setCenter] = useState<[number, number]>([20, 0]);
+  const [coordinates, setCoordinates] = useState<Record<string, [number, number]>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [geocodingErrors, setGeocodingErrors] = useState<string[]>([]);
+
+  // Create icons safely
+  const deliveryIcon = createIcon('#06B6D4', 'delivery-marker');
+  const jobIcon = createIcon('#10B981', 'job-marker');
+  const packageIcon = createIcon('#8B5CF6', 'package-marker');
+
+  // Set initial center based on user's location
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCenter([position.coords.latitude, position.coords.longitude]);
+        },
+        () => {
+          // If geolocation fails, keep default center
+          console.warn('Failed to get user location');
+        }
+      );
+    }
+  }, []);
+
+  // Collect all items that need geocoding
+  const itemsToGeocode = useMemo(() => {
+    const items: Array<{ id: string; location: string; type: string }> = [];
+    
+    // Add deliveries
+    deliveries.forEach(delivery => {
+      if (!coordinates[`delivery-${delivery.id}`]) {
+        items.push({ id: `delivery-${delivery.id}`, location: delivery.pickupLocation, type: 'delivery' });
+      }
+    });
+    
+    // Add jobs
+    jobs.forEach(job => {
+      if (!coordinates[`job-${job.id}`]) {
+        items.push({ id: `job-${job.id}`, location: job.location, type: 'job' });
+      }
+    });
+    
+    // Add packages
+    packages.forEach(pkg => {
+      if (!coordinates[`package-${pkg.id}`]) {
+        items.push({ id: `package-${pkg.id}`, location: pkg.pickupLocation, type: 'package' });
+      }
+    });
+    
+    return items;
+  }, [deliveries, jobs, packages, coordinates]);
+
+  // Geocode locations
+  useEffect(() => {
+    if (itemsToGeocode.length === 0) {
+      setIsLoading(false);
+      return;
+    }
+
+    const geocodeItems = async () => {
+      setIsLoading(true);
+      const newCoordinates: Record<string, [number, number]> = {};
+      const errors: string[] = [];
+
+      // Process items in batches
+      const BATCH_SIZE = 3;
+      for (let i = 0; i < itemsToGeocode.length; i += BATCH_SIZE) {
+        const batch = itemsToGeocode.slice(i, i + BATCH_SIZE);
+        
+        const batchPromises = batch.map(async (item) => {
+          const coords = await getCoordinates(item.location);
+          if (coords) {
+            newCoordinates[item.id] = coords;
+          } else {
+            errors.push(`Could not geocode address: ${item.location}`);
+          }
+        });
+
+        await Promise.all(batchPromises);
+        
+        if (i + BATCH_SIZE < itemsToGeocode.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
+      setCoordinates(prev => ({ ...prev, ...newCoordinates }));
+      setGeocodingErrors(errors);
+      setIsLoading(false);
+    };
+
+    const timeoutId = setTimeout(geocodeItems, 300);
+    return () => clearTimeout(timeoutId);
+  }, [itemsToGeocode]);
+
+  // Update center when selected item changes
+  useEffect(() => {
+    if (selectedDelivery && coordinates[`delivery-${selectedDelivery.id}`]) {
+      setCenter(coordinates[`delivery-${selectedDelivery.id}`]);
+    } else if (selectedJob && coordinates[`job-${selectedJob.id}`]) {
+      setCenter(coordinates[`job-${selectedJob.id}`]);
+    } else if (selectedPackage && coordinates[`package-${selectedPackage.id}`]) {
+      setCenter(coordinates[`package-${selectedPackage.id}`]);
+    }
+  }, [selectedDelivery, selectedJob, selectedPackage, coordinates]);
+
+  const allItems = [...deliveries, ...jobs, ...packages];
+
+  return (
+    <div className='relative h-full w-full' style={{ zIndex: 1 }}>
+      {allItems.length === 0 ? (
+        <div className='flex justify-center items-center h-full text-gray-400'>
+          <div className='text-center'>
+            <MapPin className='h-16 w-16 mx-auto mb-4 text-purple-400' />
+            <p>No locations to display</p>
+            <p className='text-sm text-gray-500 mt-2'>
+              Items with locations will appear here
+            </p>
+          </div>
+        </div>
+      ) : (
+        <MapContainer
+          center={center}
+          zoom={2}
+          style={{ height: '100%', width: '100%', display: 'block' }}
+          className='z-0'
+          attributionControl={true}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            url='https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+          />
+
+          {!isLoading && (
+            <>
+              {/* Delivery markers */}
+              {deliveries.map((delivery) => {
+                const coords = coordinates[`delivery-${delivery.id}`];
+                if (!coords || !deliveryIcon) return null;
+                
+                const isSelected = selectedDelivery?.id === delivery.id;
+                return (
+                  <Marker
+                    key={`delivery-${delivery.id}`}
+                    position={coords}
+                    icon={deliveryIcon}
+                    eventHandlers={{
+                      click: () => {
+                        // Handle delivery selection if needed
+                      },
+                    }}
+                  >
+                    <Popup>
+                      <div className='p-1'>
+                        <h3 className='font-medium text-cyan-400'>Delivery</h3>
+                        <h4 className='font-medium'>{delivery.title}</h4>
+                        <p className='text-xs text-gray-500'>
+                          From: {delivery.pickupLocation}
+                        </p>
+                        <p className='text-xs text-gray-500'>
+                          To: {delivery.destination}
+                        </p>
+                        <p className='text-xs font-medium mt-1'>{delivery.cost} sats</p>
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              })}
+
+              {/* Job markers */}
+              {jobs.map((job) => {
+                const coords = coordinates[`job-${job.id}`];
+                if (!coords || !jobIcon) return null;
+                
+                const isSelected = selectedJob?.id === job.id;
+                return (
+                  <Marker
+                    key={`job-${job.id}`}
+                    position={coords}
+                    icon={jobIcon}
+                    eventHandlers={{
+                      click: () => {
+                        // Handle job selection if needed
+                      },
+                    }}
+                  >
+                    <Popup>
+                      <div className='p-1'>
+                        <h3 className='font-medium text-green-400'>Job</h3>
+                        <h4 className='font-medium'>{job.title}</h4>
+                        <p className='text-xs text-gray-500'>
+                          Location: {job.location}
+                        </p>
+                        <p className='text-xs text-gray-500'>
+                          People needed: {job.peopleNeeded}
+                        </p>
+                        <p className='text-xs font-medium mt-1'>{job.compensation} sats</p>
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              })}
+
+              {/* Package markers */}
+              {packages.map((pkg) => {
+                const coords = coordinates[`package-${pkg.id}`];
+                if (!coords || !packageIcon) return null;
+                
+                const isSelected = selectedPackage?.id === pkg.id;
+                return (
+                  <Marker
+                    key={`package-${pkg.id}`}
+                    position={coords}
+                    icon={packageIcon}
+                    eventHandlers={{
+                      click: () => {
+                        // Handle package selection if needed
+                      },
+                    }}
+                  >
+                    <Popup>
+                      <div className='p-1'>
+                        <h3 className='font-medium text-purple-400'>Package</h3>
+                        <h4 className='font-medium'>{pkg.title}</h4>
+                        <p className='text-xs text-gray-500'>
+                          From: {pkg.pickupLocation}
+                        </p>
+                        <p className='text-xs text-gray-500'>
+                          To: {pkg.destination}
+                        </p>
+                        <p className='text-xs font-medium mt-1'>{pkg.cost} sats</p>
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              })}
+            </>
+          )}
+
+          <RecenterMap lat={center[0]} lng={center[1]} />
+          <CenterOnMe />
+        </MapContainer>
+      )}
+      {isLoading && (
+        <div className='absolute inset-0 bg-white/50 flex items-center justify-center'>
+          <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full'></div>
+        </div>
+      )}
+      {geocodingErrors.length > 0 && (
+        <div className='absolute bottom-4 left-4 bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-xs text-gray-300 backdrop-blur-sm'>
+          Some locations couldn't be mapped
+        </div>
+      )}
+    </div>
+  );
+} 

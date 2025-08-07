@@ -1,9 +1,4 @@
----
-description: Environment
-globs: 
-alwaysApply: true
----
-You are an expert in React, TanStack ecosystem, Radix UI, Tailwind CSS, Nostr protocol, and TypeScript.
+You are an expert in React, Next.js, Radix UI, Tailwind CSS, Nostr protocol, and TypeScript.
 
 Key Principles
 - Write concise, technical responses with accurate React examples.
@@ -16,9 +11,8 @@ Error Handling and Validation
 - Use early returns for error conditions to avoid deeply nested if statements.
 - Place the happy path last in the function for improved readability.
 - Avoid unnecessary else statements; use if-return pattern instead.
-- Always throw user-friendly errors that TanStack Query can catch and display.
-- Use Zod schemas for runtime validation and type inference.
-- Implement proper error logging with descriptive messages.
+- Always throw user-friendly errors that can be caught and displayed.
+- Use proper error logging with descriptive messages.
 
 React & Components
 - Use functional components with TypeScript interfaces.
@@ -27,67 +21,69 @@ React & Components
 - Use content variables for static content outside render functions.
 - Wrap async components in Suspense with meaningful fallback UI.
 - Prefer composition over inheritance for component design.
+- Use 'use client' directive for client-side components.
 
-State Management (TanStack Store)
-- Use TanStack Store for client-side global state.
-- Create separate stores for different domains (auth, cart, product, ndk).
+State Management
+- Use React hooks (useState, useEffect, useContext) for local state.
+- Use Context API for global state management when needed.
+- Create separate contexts for different domains (auth, packages, jobs).
 - Define clear state interfaces and initial state objects.
-- Export both store and actions from store files.
 - Use descriptive action names that indicate intent.
-- Always handle state immutability when updating store state.
+- Always handle state immutability when updating state.
 
-Data Fetching (TanStack Query)
-- Use TanStack Query for all server/Nostr data fetching.
-- Create query key factories in `src/queries/queryKeyFactory.ts`.
-- Organize queries by domain in separate files under `src/queries/`.
-- Use `queryOptions` for reusable query configurations.
-- Implement proper error handling in query functions.
+Data Fetching
+- Use custom hooks for data fetching and Nostr operations.
+- Create reusable service functions in `lib/` directory.
+- Implement proper error handling in data fetching functions.
 - Use optimistic updates for better UX where appropriate.
+- Handle SSR/CSR differences with proper checks.
 
-Forms (TanStack Form)
-- Use TanStack Form with Zod resolvers for validation.
-- Define form schemas using Zod for type safety and validation.
+Forms
+- Use controlled components with React state for form management.
+- Implement proper form validation with TypeScript.
 - Handle form submission errors gracefully with user feedback.
 - Use field-level validation for real-time feedback.
 - Extract complex form logic into custom hooks.
 
-Routing (TanStack Router)
-- Use TanStack Router with type-safe route definitions.
-- Define routes in the `src/routes/` directory following file-based routing.
-- Use route loaders for data dependencies.
+Routing (Next.js App Router)
+- Use Next.js App Router with file-based routing.
+- Define routes in the `app/` directory following Next.js 13+ conventions.
+- Use dynamic imports for components that need client-side only features.
 - Implement proper loading and error states for routes.
 - Use search params and path params with proper TypeScript typing.
+- Force dynamic rendering when needed with `export const dynamic = 'force-dynamic'`.
 
 Nostr Integration
-- Use NDK (Nostr Development Kit) for all Nostr operations.
-- Initialize NDK through the store pattern in `src/lib/stores/ndk.ts`.
-- Use proper NDK event filtering and caching strategies.
+- Use nostr-tools for all Nostr operations.
+- Handle SSR issues by dynamically importing nostr-tools only on client side.
+- Use proper event filtering and caching strategies.
 - Handle relay connections and failures gracefully.
-- Implement authentication using NDK signers (NIP-07, NIP-46, private key).
-- Use proper event validation with Zod schemas.
+- Implement authentication using Nostr extensions (NIP-07) or private keys.
+- Use proper event validation with TypeScript interfaces.
+- Store sensitive data (private keys) securely using localStorage for MVP.
 
 UI & Styling (Radix UI + Tailwind CSS)
 - Use Radix UI components as the foundation for all interactive elements.
-- Build custom components by composing Radix primitives in `src/components/ui/`.
+- Build custom components by composing Radix primitives in `components/ui/`.
 - Use Tailwind CSS for all styling with the custom design system.
 - Implement responsive design using Tailwind's responsive utilities.
-- Use CSS variables defined in `styles/globals.css` for theming.
+- Use CSS variables defined in `app/globals.css` for theming.
 - Utilize `class-variance-authority` for component variants.
 - Use `clsx` and `tailwind-merge` for conditional styling.
 - Follow the established color palette (primary, secondary, tertiary, focus).
 
 File Organization
-- Place components in `src/components/` with domain-specific subdirectories.
-- Keep UI primitives in `src/components/ui/`.
-- Store business logic in `src/lib/` with clear separation of concerns.
-- Use `src/queries/` for all data fetching logic.
-- Place TypeScript types and schemas in `src/lib/schemas/`.
-- Keep utility functions in `src/lib/utils/`.
+- Place components in `components/` with domain-specific subdirectories.
+- Keep UI primitives in `components/ui/`.
+- Store business logic in `lib/` with clear separation of concerns.
+- Place TypeScript types and interfaces in `lib/` with descriptive names.
+- Keep utility functions in `lib/` with clear naming conventions.
+- Use Next.js app directory structure for pages and layouts.
 
 TypeScript Best Practices
 - Use strict TypeScript configuration with proper type inference.
 - Define interfaces for all component props and state shapes.
-- Use Zod for runtime type validation and `z.infer` for type extraction.
+- Use proper type definitions for Nostr events and data structures.
 - Avoid `any` types; use proper type definitions or `unknown`.
 - Use discriminated unions for complex state or action types.
 - Implement proper generic constraints where needed.
@@ -95,22 +91,41 @@ TypeScript Best Practices
 Performance & Optimization
 - Use React 19's concurrent features appropriately.
 - Implement proper memoization with `useMemo` and `useCallback` when needed.
-- Use TanStack Query's caching strategies effectively.
-- Optimize bundle size by using dynamic imports for large components.
+- Use dynamic imports for large components to optimize bundle size.
 - Implement proper error boundaries for component isolation.
+- Use Next.js Image component for optimized image loading.
 
 Authentication & Security
 - Use Nostr-based authentication with proper key management.
-- Store sensitive data (private keys) securely using encryption.
+- Store sensitive data (private keys) securely using localStorage for MVP.
 - Implement proper session management with localStorage/sessionStorage.
-- Validate all user inputs and API responses with Zod schemas.
+- Validate all user inputs and API responses with TypeScript.
 - Handle authentication states properly throughout the application.
 
 Testing Considerations
 - Write testable code with clear separation of concerns.
 - Use dependency injection patterns for easier testing.
-- Mock external dependencies (Nostr relays, NDK) in tests.
+- Mock external dependencies (Nostr relays, nostr-tools) in tests.
 - Test error scenarios and edge cases thoroughly.
+
+Import Organization
+- Group imports: React/external libraries, internal utilities, components, types.
+- Use path aliases defined in `tsconfig.json` (@/components, @/lib, etc.).
+- Avoid circular dependencies between modules.
+- Use barrel exports for cleaner import statements.
+
+PWA & Offline Support
+- Use next-pwa for Progressive Web App functionality.
+- Implement proper offline fallbacks using localStorage.
+- Handle service worker registration and updates.
+- Use proper caching strategies for static assets.
+
+Nostr-Specific Patterns
+- Always check for window object before using nostr-tools.
+- Use lazy loading for nostr-tools to avoid SSR issues.
+- Implement proper relay management and fallback strategies.
+- Handle Nostr extension availability gracefully.
+- Use proper event kinds for different data types (30001 for packages, 30002 for deliveries, etc.).
 
 Import Organization
 - Group imports: React/external libraries, internal utilities, components, types.

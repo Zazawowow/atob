@@ -1,46 +1,49 @@
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { MapPin } from 'lucide-react';
 import { type PackageData } from '@/lib/nostr-types';
+
+// Dynamically import Leaflet components to avoid SSR issues
+const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
+const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
+const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
+const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false });
+const useMap = dynamic(() => import('react-leaflet').then(mod => mod.useMap), { ssr: false });
+
+// Dynamically import Leaflet CSS
+if (typeof window !== 'undefined') {
+  import('leaflet/dist/leaflet.css');
+}
+
+let L: any;
+if (typeof window !== 'undefined') {
+  L = require('leaflet');
+}
+import { useRouter } from 'next/navigation';
 import { getEffectiveStatus } from '@/lib/nostr';
 
-// Custom default marker icon for Leaflet with Next.js
-const DefaultIcon = L.divIcon({
-  className: 'default-marker',
-  html: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#3B82F6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>`,
-  iconSize: [30, 30],
-  iconAnchor: [15, 30],
-  popupAnchor: [0, -30],
-});
-
-// Custom marker icon for packages
-const PackageIcon = L.divIcon({
-  className: 'custom-package-marker',
-  html: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>`,
-  iconSize: [30, 30],
-  iconAnchor: [15, 30],
-  popupAnchor: [0, -30],
-});
-
-// Custom marker icon for selected package
-const SelectedPackageIcon = L.divIcon({
-  className: 'selected-package-marker',
-  html: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>`,
-  iconSize: [36, 36],
-  iconAnchor: [18, 36],
-  popupAnchor: [0, -36],
-});
+// Helper function to create icons safely
+const createIcon = (color: string, className: string, size: number = 30) => {
+  if (typeof window === 'undefined' || !L) return null;
+  
+  return L.divIcon({
+    className,
+    html: `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${color}" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>`,
+    iconSize: [size, size],
+    iconAnchor: [size/2, size],
+    popupAnchor: [0, -size],
+  });
+};
 
 // Helper component to recenter map
 function RecenterMap({ lat, lng }: { lat: number; lng: number }) {
   const map = useMap();
   useEffect(() => {
-    map.setView([lat, lng], map.getZoom());
+    if (map && typeof map.setView === 'function' && typeof map.getZoom === 'function') {
+      map.setView([lat, lng], map.getZoom());
+    }
   }, [lat, lng, map]);
   return null;
 }
@@ -50,7 +53,9 @@ function CenterOnMe() {
   const map = useMap();
 
   const handleClick = () => {
-    map.locate({ setView: true, maxZoom: 16 });
+    if (map && typeof map.locate === 'function') {
+      map.locate({ setView: true, maxZoom: 16 });
+    }
   };
 
   return (
@@ -143,6 +148,10 @@ export default function PackageMap({
   const [packageCoordinates, setPackageCoordinates] = useState<Record<string, [number, number]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [geocodingErrors, setGeocodingErrors] = useState<string[]>([]);
+
+  // Create icons safely
+  const packageIcon = createIcon('#8B5CF6', 'custom-package-marker');
+  const selectedPackageIcon = createIcon('#8B5CF6', 'selected-package-marker', 36);
 
   // Set initial center based on user's location
   useEffect(() => {
@@ -245,11 +254,14 @@ export default function PackageMap({
             if (!coords) return null; // Skip packages without valid coordinates
             
             const isSelected = selectedPackage?.id === pkg.id;
+            const icon = isSelected ? selectedPackageIcon : packageIcon;
+            if (!icon) return null;
+            
             return (
               <Marker
                 key={pkg.id}
                 position={coords}
-                icon={isSelected ? SelectedPackageIcon : PackageIcon}
+                icon={icon}
                 eventHandlers={{
                   click: () => {
                     if (onSelectPackage) {

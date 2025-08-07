@@ -17,15 +17,9 @@ import Link from 'next/link';
 import { getPackages, pickupPackage, deletePackage, getEffectiveStatus, getJobs, applyForJob, deleteJob } from '@/lib/nostr-client';
 import { PostJobModal } from '@/components/post-job-modal';
 import { PostPackageModal } from '@/components/post-package-modal';
+import { DeleteConfirmationModal } from '@/components/delete-confirmation-modal';
 import { useNostr } from '@/components/nostr-provider';
 import Image from 'next/image';
-import dynamicImport from 'next/dynamic';
-
-// Dynamically import PackageMap to avoid SSR issues
-const PackageMap = dynamicImport(() => import('@/components/package-map'), {
-  ssr: false,
-  loading: () => <div className="h-96 bg-gray-800 rounded-lg flex items-center justify-center">Loading map...</div>
-});
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -33,6 +27,11 @@ export const dynamic = 'force-dynamic';
 export default function ViewPackages() {
   const router = useRouter();
   const { isReady, isLoggedIn, publicKey } = useNostr();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [packages, setPackages] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +42,9 @@ export default function ViewPackages() {
   const [activeTab, setActiveTab] = useState<'packages' | 'jobs'>('packages');
   const [showJobModal, setShowJobModal] = useState(false);
   const [showPackageModal, setShowPackageModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteItem, setDeleteItem] = useState<{ id: string; title: string; type: 'job' | 'package' } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadPackages = useCallback(async () => {
     if (!isReady || !isLoggedIn) return;
@@ -172,6 +174,27 @@ export default function ViewPackages() {
     }
   };
 
+  const handleDeleteClick = (item: { id: string; title: string; type: 'job' | 'package' }) => {
+    setDeleteItem(item);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteItem) return;
+    
+    setIsDeleting(true);
+    try {
+      if (deleteItem.type === 'job') {
+        await handleDeleteJob(deleteItem.id);
+      } else {
+        await handleDelete(deleteItem.id);
+      }
+    } finally {
+      setIsDeleting(false);
+      setDeleteItem(null);
+    }
+  };
+
   const isOwnPackage = (pkg: any) => {
     return pkg.pubkey === publicKey;
   };
@@ -245,6 +268,21 @@ export default function ViewPackages() {
     }
   };
 
+  const getCardBorderStyle = (type: 'delivery' | 'job' | 'package' | 'posted-job') => {
+    switch (type) {
+      case 'delivery':
+        return 'bg-black/20 border-cyan-500/10 hover:border-cyan-500/30';
+      case 'job':
+        return 'bg-black/20 border-green-500/10 hover:border-green-500/30';
+      case 'package':
+        return 'bg-black/20 border-purple-500/10 hover:border-purple-500/30';
+      case 'posted-job':
+        return 'bg-black/20 border-blue-500/10 hover:border-blue-500/30';
+      default:
+        return 'bg-black/20 border-gray-500/10 hover:border-gray-500/30';
+    }
+  };
+
   if (!isReady) {
     return (
       <div className='container mx-auto px-4 pt-24 pb-8'>
@@ -258,7 +296,7 @@ export default function ViewPackages() {
     );
   }
 
-  if (!isLoggedIn) {
+  if (!mounted || !isLoggedIn) {
     return (
       <div className='container mx-auto px-4 pt-24 pb-8'>
         <Card className='max-w-2xl mx-auto bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm'>
@@ -370,81 +408,77 @@ export default function ViewPackages() {
                     </div>
                   ) : (
                     packages.map((pkg) => {
-                      const effectiveStatus = getEffectiveStatus(pkg);
                       const ownPackage = isOwnPackage(pkg);
                       const isSelected = selectedPackage?.id === pkg.id;
                       
                       return (
                         <Card 
                           key={pkg.id} 
-                          className={`cursor-pointer transition-all duration-300 hover:-translate-y-1 ${
-                            isSelected
-                              ? 'bg-purple-400/10 border-purple-400/30 shadow-purple-glow/20'
-                              : 'bg-black/20 border-purple-500/10 hover:border-purple-500/30'
+                          className={`cursor-pointer ${getCardBorderStyle('package')} ${
+                            isSelected ? 'bg-purple-400/10 border-purple-400/30' : ''
                           }`}
                           onClick={() => handlePackageSelect(pkg)}
                         >
-                          <CardHeader className='pb-2 pt-4 px-4'>
-                            <div className='flex justify-between items-start'>
-                              <CardTitle className='text-off-white text-lg line-clamp-2'>
-                                {pkg.title}
-                              </CardTitle>
-                              <Badge className={getStatusColor(effectiveStatus)}>
-                                {getStatusText(effectiveStatus)}
+                          <CardHeader className='p-4'>
+                            <div className='flex items-center gap-2 mb-2'>
+                              <svg className='h-4 w-4 text-purple-400' viewBox="0 0 122.88 122.25" fill="currentColor">
+                                <g><path d="M122.57,29.25l0.31,62.88c0.01,3.28-2.05,6.1-5,7.29l0.01,0.01l-54.64,22.09c-0.99,0.4-2.05,0.6-3.12,0.6 c-0.11,0-0.22,0-0.33-0.01c-0.47,0.08-0.95,0.13-1.42,0.13c-1.06,0-2.11-0.21-3.08-0.62L4.94,100.46l0-0.01 C2.03,99.22-0.01,96.32,0,92.94l0.3-62.08c-0.04-0.66,0-1.33,0.12-1.99c0.02-0.95,0.22-1.88,0.58-2.76 c0.84-2.04,2.47-3.55,4.42-4.33l0-0.01L57.98,0.6c2.14-0.86,4.44-0.77,6.4,0.07l52.47,18.97c3.14,1.13,5.13,3.96,5.27,7.01 C122.41,27.49,122.57,28.37,122.57,29.25L122.57,29.25z M51.51,108.46l0.39-54.77L9.82,35.5L8.93,90.49L51.51,108.46L51.51,108.46 L51.51,108.46z M113.58,35.5L66.55,53.7l0.37,54.71l46.94-17.54L113.58,35.5L113.58,35.5L113.58,35.5z"/></g></svg>
+                              <Badge variant='outline' className='bg-purple-400/10 text-purple-400 border-purple-400/30 text-xs'>
+                                Package
+                              </Badge>
+                            </div>
+                            <div className='flex justify-between items-start gap-3'>
+                              <div className='flex-1 min-w-0'>
+                                <CardTitle className='text-lg font-semibold mb-1 text-[#FAFAFA]'>
+                                  {pkg.title}
+                                </CardTitle>
+                                <CardDescription className='text-sm text-[#FAFAFA]/70'>
+                                  {pkg.description || 'No description provided'}
+                                </CardDescription>
+                              </div>
+                              <Badge
+                                variant='outline'
+                                className='hidden md:block bg-blue-400/10 text-blue-400 border-blue-400/30 flex-shrink-0'
+                              >
+                                {pkg.cost} sats
                               </Badge>
                             </div>
                           </CardHeader>
-                          <CardContent className='space-y-2 px-4 pb-4'>
-                            <div className='flex items-center gap-2 text-sm'>
-                              <MapPin className='h-4 w-4 text-purple-400' />
-                              <span className='text-gray-300'>
+                          <CardContent className='p-4 pt-0'>
+                            <div className='flex justify-between items-center'>
+                              <div className='text-sm text-[#FAFAFA]/70'>
                                 {pkg.pickupLocation} → {pkg.destination}
-                              </span>
-                            </div>
-                            
-                            <div className='flex items-center gap-2 text-sm'>
-                              <Bitcoin className='h-4 w-4 text-yellow-400' />
-                              <span className='text-gray-300'>
-                                {formatCost(pkg.cost)}
-                              </span>
-                            </div>
-                            
-                            {pkg.description && (
-                              <p className='text-sm text-gray-400 line-clamp-2'>
-                                {pkg.description}
-                              </p>
-                            )}
-                            
-                            {/* Action buttons */}
-                            <div className='flex gap-2 pt-1'>
-                              {effectiveStatus === 'available' && !ownPackage && (
-                                <Button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePickup(pkg.id);
-                                  }}
-                                  size='sm'
-                                  variant='outline'
-                                  className='flex-1 bg-transparent border-purple-400/50 text-purple-400 hover:bg-purple-400/10 hover:border-purple-400'
-                                >
-                                  <Truck className='h-4 w-4 mr-2' />
-                                  Pick Up
-                                </Button>
-                              )}
-                              
-                              {ownPackage && effectiveStatus === 'available' && (
-                                <Button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDelete(pkg.id);
-                                  }}
-                                  size='sm'
-                                  variant='destructive'
-                                  className='flex-1'
-                                >
-                                  Delete
-                                </Button>
-                              )}
+                              </div>
+                              <div className='flex gap-2'>
+                                {pkg.status === 'available' && !ownPackage && (
+                                  <Button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePickup(pkg.id);
+                                    }}
+                                    variant='outline'
+                                    size='sm'
+                                    className='bg-black/20 border-purple-400/20 hover:bg-purple-400/10 hover:border-purple-400/30 text-[#FAFAFA]'
+                                  >
+                                    <Truck className='h-4 w-4 mr-2' />
+                                    Pick Up
+                                  </Button>
+                                )}
+                                
+                                {ownPackage && pkg.status === 'available' && (
+                                  <Button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteClick({ id: pkg.id, title: pkg.title, type: 'package' });
+                                    }}
+                                    variant='destructive'
+                                    size='sm'
+                                    className='bg-red-400/10 border-red-400/20 hover:bg-red-400/20 hover:border-red-400/30 text-red-400'
+                                  >
+                                    Delete
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </CardContent>
                         </Card>
@@ -564,7 +598,7 @@ export default function ViewPackages() {
                                 <Button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleDeleteJob(job.id);
+                                    handleDeleteClick({ id: job.id, title: job.title, type: 'job' });
                                   }}
                                   size='sm'
                                   variant='destructive'
@@ -595,83 +629,111 @@ export default function ViewPackages() {
           <Card className='bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm h-full flex flex-col'>
             <CardHeader className='py-4 px-4 lg:px-6'>
                 <CardTitle className='text-off-white text-xl'>
-              {activeTab === 'packages' ? 'Package Map' : 'Job Details'}
+              Browse Packages & Jobs
             </CardTitle>
             <CardDescription className='text-purple-300'>
-              {activeTab === 'packages' ? (
-                selectedPackage 
-                  ? `Selected: ${selectedPackage.title}`
-                  : 'Click on a package to view it on the map'
-              ) : (
-                selectedJob
-                  ? `Selected: ${selectedJob.title}`
-                  : 'Click on a job to view its details'
-              )}
+              {selectedPackage 
+                ? `Selected Package: ${selectedPackage.title}`
+                : selectedJob
+                ? `Selected Job: ${selectedJob.title}`
+                : 'Browse available packages and jobs. Click on an item to view details.'}
             </CardDescription>
             </CardHeader>
             <CardContent className='flex-1 p-0'>
               <div className='h-full w-full'>
-                {activeTab === 'packages' ? (
-                  <PackageMap
-                    packages={packages}
-                    selectedPackage={selectedPackage}
-                    onSelectPackage={handlePackageSelect}
-                  />
-                ) : (
-                  selectedJob ? (
-                    <div className='h-full flex flex-col'>
-                      <div className='flex-1 flex justify-center items-center text-gray-400'>
-                        <div className='text-center'>
-                          <Briefcase className='h-16 w-16 mx-auto mb-4 text-purple-400' />
-                          <p className='text-lg font-semibold text-purple-300 mb-2'>
-                            {selectedJob.title}
-                          </p>
-                          <p className='text-sm text-gray-300 mb-1'>
-                            📍 {selectedJob.location}
-                          </p>
-                          <p className='text-sm text-yellow-400 font-medium mb-1'>
-                            {formatCompensation(selectedJob.compensation)} per person
-                          </p>
-                          <p className='text-sm text-blue-400 mb-1'>
-                            👥 {selectedJob.peopleNeeded} person{selectedJob.peopleNeeded > 1 ? 's' : ''} needed
-                          </p>
-                          {selectedJob.description && (
-                            <p className='text-sm text-gray-400 mb-2 line-clamp-3'>
-                              {selectedJob.description}
-                            </p>
-                          )}
-                          {selectedJob.requirements && (
-                            <div className='text-sm mb-2'>
-                              <span className='text-purple-300 font-medium'>Requirements:</span>
-                              <p className='text-gray-400 line-clamp-2 mt-1'>{selectedJob.requirements}</p>
-                            </div>
-                          )}
-                          {selectedJob.duration && (
-                            <div className='text-sm mb-2'>
-                              <span className='text-purple-300 font-medium'>Duration:</span>
-                              <p className='text-gray-400 mt-1'>{selectedJob.duration}</p>
-                            </div>
-                          )}
-                          <div className='mt-4 p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg'>
-                            <p className='text-xs text-purple-300'>
-                              Job details and requirements
-                            </p>
-                          </div>
+                <div className='h-full w-full bg-gray-800/50 rounded-lg flex flex-col'>
+                  {/* Header */}
+                  <div className='p-4 border-b border-gray-700/50'>
+                    <div className='text-center text-gray-400'>
+                      <p className='text-lg mb-2'>Activity Overview</p>
+                      <div className='flex justify-center gap-4 text-xs'>
+                        <div className='flex items-center gap-2'>
+                          <div className='w-3 h-3 bg-purple-500 rounded-full'></div>
+                          <span>Packages ({packages.length})</span>
+                        </div>
+                        <div className='flex items-center gap-2'>
+                          <div className='w-3 h-3 bg-green-500 rounded-full'></div>
+                          <span>Jobs ({jobs.length})</span>
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <div className='flex justify-center items-center h-full text-gray-400'>
-                      <div className='text-center'>
-                        <Briefcase className='h-16 w-16 mx-auto mb-4 text-purple-400' />
-                        <p>Select a job to view details</p>
-                        <p className='text-sm text-gray-500 mt-2'>
-                          Job information and requirements
+                  </div>
+                  
+                  {/* Scrollable Content */}
+                  <div className='flex-1 overflow-y-auto p-4'>
+                    {/* Selected Item Details - Show at top when selected */}
+                    {selectedPackage && (
+                      <div className='mb-4 p-3 bg-black/20 border border-purple-400/20 rounded-lg'>
+                        <p className='text-purple-400 font-medium text-sm'>Selected Package</p>
+                        <p className='text-sm font-medium'>{selectedPackage.title || 'No title'}</p>
+                        <p className='text-xs text-gray-400 mt-1'>
+                          📍 {selectedPackage.pickupLocation || 'Unknown'} → {selectedPackage.destination || 'Unknown'}
+                        </p>
+                        <p className='text-xs text-gray-500 mt-1'>
+                          {selectedPackage.cost || '0'} sats • {getEffectiveStatus(selectedPackage)}
                         </p>
                       </div>
-                    </div>
-                  )
-                )}
+                    )}
+                    
+                    {selectedJob && (
+                      <div className='mb-4 p-3 bg-black/20 border border-green-400/20 rounded-lg'>
+                        <p className='text-green-400 font-medium text-sm'>Selected Job</p>
+                        <p className='text-sm font-medium'>{selectedJob.title || 'No title'}</p>
+                        <p className='text-xs text-gray-400 mt-1'>
+                          📍 {selectedJob.location || 'Unknown'}
+                        </p>
+                        <p className='text-xs text-gray-500 mt-1'>
+                          {selectedJob.compensation || '0'} sats • {selectedJob.peopleNeeded || '1'} needed
+                        </p>
+                      </div>
+                    )}
+                    
+                    {/* All Items Summary */}
+                    {packages.length > 0 && (
+                      <div className='mb-4'>
+                        <h4 className='text-purple-400 font-medium text-sm mb-2'>All Packages</h4>
+                        <div className='space-y-1'>
+                          {packages.slice(0, 8).map((pkg) => (
+                            <div key={pkg.id} className='text-xs bg-black/20 p-2 rounded border-l-2 border-purple-400/30'>
+                              <p className='font-medium truncate'>{pkg.title || 'No title'}</p>
+                              <p className='text-gray-400 truncate'>
+                                📍 {pkg.pickupLocation || 'Unknown'} → {pkg.destination || 'Unknown'}
+                              </p>
+                            </div>
+                          ))}
+                          {packages.length > 8 && (
+                            <p className='text-xs text-gray-500 text-center py-2'>... and {packages.length - 8} more</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {jobs.length > 0 && (
+                      <div className='mb-4'>
+                        <h4 className='text-green-400 font-medium text-sm mb-2'>All Jobs</h4>
+                        <div className='space-y-1'>
+                          {jobs.slice(0, 8).map((job) => (
+                            <div key={job.id} className='text-xs bg-black/20 p-2 rounded border-l-2 border-green-400/30'>
+                              <p className='font-medium truncate'>{job.title || 'No title'}</p>
+                              <p className='text-gray-400 truncate'>
+                                📍 {job.location || 'Unknown'}
+                              </p>
+                            </div>
+                          ))}
+                          {jobs.length > 8 && (
+                            <p className='text-xs text-gray-500 text-center py-2'>... and {jobs.length - 8} more</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {packages.length === 0 && jobs.length === 0 && (
+                      <div className='text-center text-gray-500 py-8'>
+                        <p>No packages or jobs available</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -687,6 +749,16 @@ export default function ViewPackages() {
       <PostPackageModal
         open={showPackageModal}
         onOpenChange={setShowPackageModal}
+      />
+
+      <DeleteConfirmationModal
+        open={showDeleteModal}
+        onOpenChange={setShowDeleteModal}
+        onConfirm={handleConfirmDelete}
+        title="Confirm Deletion"
+        description={`Are you sure you want to delete this ${deleteItem?.type}? This action cannot be undone.`}
+        itemName={deleteItem?.title}
+        isLoading={isDeleting}
       />
     </div>
   );

@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { ArrowLeft, CheckCircle, RefreshCw, Truck, Briefcase } from 'lucide-react';
+import { ArrowLeft, CheckCircle, RefreshCw, Truck, Briefcase, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import {
   getMyDeliveries,
@@ -27,6 +27,13 @@ import { type PackageData, type JobData } from '@/lib/nostr-types';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { CourierBadges } from '@/components/courier-badges';
+import ActivityMap from '@/components/activity-map';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 // Force dynamic rendering to avoid SSR issues
 export const dynamic = 'force-dynamic';
@@ -36,15 +43,28 @@ export default function MyActivities() {
     isReady,
     publicKey,
   } = useNostr();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [selectedDelivery, setSelectedDelivery] = useState<PackageData | null>(
     null
   );
   const [selectedJob, setSelectedJob] = useState<JobData | null>(null);
+  const [selectedItemType, setSelectedItemType] = useState<'delivery' | 'job' | 'package' | null>(null);
   const [showQR, setShowQR] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [acceptingWorker, setAcceptingWorker] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'deliveries' | 'jobs' | 'my-packages' | 'my-jobs'>('deliveries');
+  const [activeTab, setActiveTab] = useState<'all' | 'deliveries' | 'jobs' | 'my-packages' | 'my-jobs'>(() => {
+    // Get saved tab from localStorage, default to 'all'
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('my-activities-active-tab');
+      return (saved as 'all' | 'deliveries' | 'jobs' | 'my-packages' | 'my-jobs') || 'all';
+    }
+    return 'all';
+  });
   const [myJobs, setMyJobs] = useState<JobData[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [deliveries, setDeliveries] = useState<PackageData[]>([]);
@@ -95,6 +115,45 @@ export default function MyActivities() {
       setApplicantProfiles({});
     }
   }, [myPostedJobs, selectedJob]);
+
+  const handleTabChange = useCallback((tab: 'all' | 'deliveries' | 'jobs' | 'my-packages' | 'my-jobs') => {
+    setActiveTab(tab);
+    // Save to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('my-activities-active-tab', tab);
+    }
+  }, []);
+
+  // Tab options for dropdown
+  const tabOptions = [
+    { value: 'all', label: 'All Activities', icon: <svg className='h-4 w-4 mr-2' viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 12l2 2 4-4"/><path d="M21 12c-1 0-2-1-2-2s1-2 2-2 2 1 2 2-1 2-2 2z"/><path d="M3 12c1 0 2-1 2-2s-1-2-2-2-2 1-2 2 1 2 2 2z"/><path d="M12 3c0 1-1 2-2 2s-2-1-2-2 1-2 2-2 2 1 2 2z"/><path d="M12 21c0-1 1-2 2-2s2 1 2 2-1 2-2 2-2-1-2-2z"/></svg> },
+    { value: 'deliveries', label: 'Deliveries', icon: <Truck className='h-4 w-4 mr-2' /> },
+    { value: 'jobs', label: 'Work', icon: <svg className='h-4 w-4 mr-2' viewBox="0 0 122.49 122.88" fill="currentColor"><g><path d="M101.12,37.47c14.95,18.54,22.23,40.44,21.28,60.48c-6.91-16.93-17.64-34.09-31.87-49.9l-4.77,4.77 c-0.54,0.54-1.42,0.54-1.96,0L68.72,37.75c-0.54-0.54-0.54-1.42,0-1.96l4.63-4.63C57.16,17.12,39.68,6.67,22.54,0.2 c20.2-1.52,42.5,5.45,61.44,20.33l2.09-2.09c0.54-0.54,1.42-0.54,1.96,0l15.08,15.08c0.54,0.54,0.54,1.42,0,1.96L101.12,37.47 L101.12,37.47z M68.16,42.51l12.22,12.22l-65.64,65.64c-3.36,3.36-8.86,3.36-12.22,0l0,0c-3.36-3.36-3.36-8.86,0-12.22L68.16,42.51 L68.16,42.51z"/></g></svg> },
+    { value: 'my-packages', label: 'My Packages', icon: <svg className='h-4 w-4 mr-2' viewBox="0 0 122.88 122.25" fill="currentColor"><g><path d="M122.57,29.25l0.31,62.88c0.01,3.28-2.05,6.1-5,7.29l0.01,0.01l-54.64,22.09c-0.99,0.4-2.05,0.6-3.12,0.6 c-0.11,0-0.22,0-0.33-0.01c-0.47,0.08-0.95,0.13-1.42,0.13c-1.06,0-2.11-0.21-3.08-0.62L4.94,100.46l0-0.01 C2.03,99.22-0.01,96.32,0,92.94l0.3-62.08c-0.04-0.66,0-1.33,0.12-1.99c0.02-0.95,0.22-1.88,0.58-2.76 c0.84-2.04,2.47-3.55,4.42-4.33l0-0.01L57.98,0.6c2.14-0.86,4.44-0.77,6.4,0.07l52.47,18.97c3.14,1.13,5.13,3.96,5.27,7.01 C122.41,27.49,122.57,28.37,122.57,29.25L122.57,29.25z M51.51,108.46l0.39-54.77L9.82,35.5L8.93,90.49L51.51,108.46L51.51,108.46 L51.51,108.46z M113.58,35.5L66.55,53.7l0.37,54.71l46.94-17.54L113.58,35.5L113.58,35.5L113.58,35.5z"/></g></svg> },
+    { value: 'my-jobs', label: 'My Jobs', icon: <Briefcase className='h-4 w-4 mr-2' /> },
+  ];
+
+  const currentTab = tabOptions.find(tab => tab.value === activeTab);
+
+  // Helper function to get border styles based on card type
+  const getCardBorderStyle = (type: 'delivery' | 'job' | 'package' | 'posted-job') => {
+    const baseStyle = 'transition-all duration-300 hover:-translate-y-1';
+    const selectedStyle = 'bg-blue-400/10 border-blue-400/30';
+    const hoverStyle = 'hover:bg-blue-400/10 hover:border-blue-400/30';
+    
+    switch (type) {
+      case 'delivery':
+        return `${baseStyle} bg-black/20 border-cyan-400/20 ${hoverStyle}`;
+      case 'job':
+        return `${baseStyle} bg-black/20 border-green-400/20 ${hoverStyle}`;
+      case 'package':
+        return `${baseStyle} bg-black/20 border-purple-400/20 ${hoverStyle}`;
+      case 'posted-job':
+        return `${baseStyle} bg-black/20 border-orange-400/20 ${hoverStyle}`;
+      default:
+        return `${baseStyle} bg-black/20 border-blue-400/20 ${hoverStyle}`;
+    }
+  };
 
   const handleComplete = useCallback(async (packageId: string) => {
     try {
@@ -264,7 +323,7 @@ export default function MyActivities() {
     }
   }, [isReady, loadDeliveries, loadMyJobs, loadMyPackages, loadMyPostedJobs]);
 
-  if (!isReady || deliveriesLoading) {
+  if (!mounted || !isReady || deliveriesLoading) {
     return (
       <div className='container mx-auto px-4 pt-24 pb-8 relative z-10'>
         <div className='fixed inset-0 -z-10'>
@@ -291,7 +350,7 @@ export default function MyActivities() {
               </CardHeader>
               <CardContent className='flex-grow flex items-center justify-center'>
                 <div className='flex flex-col items-center gap-4 text-[#FAFAFA]/70'>
-          <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full'></div>
+                  <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full'></div>
                   <p>{!isReady ? 'Connecting to Nostr...' : 'Loading Deliveries...'}</p>
                 </div>
               </CardContent>
@@ -326,100 +385,44 @@ export default function MyActivities() {
         {/* Left Column: Delivery List */}
         <div className='h-[calc(100vh-10rem)]'>
           <Card className='bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10 h-full flex flex-col p-0 gap-0'>
-            <CardHeader className='flex flex-row justify-between items-start py-6 px-6'>
+            <CardHeader className='flex flex-row justify-between items-center py-6 px-6'>
               <div className='flex-1'>
-                <div className='flex flex-col gap-2 mb-4'>
-                  <Button
-                    variant={activeTab === 'deliveries' ? 'default' : 'outline'}
-                    size='sm'
-                    onClick={() => setActiveTab('deliveries')}
-                    className={`${
-                      activeTab === 'deliveries'
-                        ? 'bg-blue-400/20 text-blue-400 border-blue-400/30'
-                        : 'bg-black/20 text-[#FAFAFA]/70 border-blue-400/20 hover:bg-blue-400/10'
-                    }`}
-                  >
-                    <Truck className='h-4 w-4 mr-2' />
-                    Deliveries
-                  </Button>
-                  <Button
-                    variant={activeTab === 'jobs' ? 'default' : 'outline'}
-                    size='sm'
-                    onClick={() => setActiveTab('jobs')}
-                    className={`${
-                      activeTab === 'jobs'
-                        ? 'bg-blue-400/20 text-blue-400 border-blue-400/30'
-                        : 'bg-black/20 text-[#FAFAFA]/70 border-blue-400/20 hover:bg-blue-400/10'
-                    }`}
-                  >
-                    <Briefcase className='h-4 w-4 mr-2' />
-                    Jobs
-                  </Button>
-                  <Button
-                    variant={activeTab === 'my-packages' ? 'default' : 'outline'}
-                    size='sm'
-                    onClick={() => setActiveTab('my-packages')}
-                    className={`${
-                      activeTab === 'my-packages'
-                        ? 'bg-blue-400/20 text-blue-400 border-blue-400/30'
-                        : 'bg-black/20 text-[#FAFAFA]/70 border-blue-400/20 hover:bg-blue-400/10'
-                    }`}
-                  >
-                    <Truck className='h-4 w-4 mr-2' />
-                    My Packages
-                  </Button>
-                  <Button
-                    variant={activeTab === 'my-jobs' ? 'default' : 'outline'}
-                    size='sm'
-                    onClick={() => setActiveTab('my-jobs')}
-                    className={`${
-                      activeTab === 'my-jobs'
-                        ? 'bg-blue-400/20 text-blue-400 border-blue-400/30'
-                        : 'bg-black/20 text-[#FAFAFA]/70 border-blue-400/20 hover:bg-blue-400/10'
-                    }`}
-                  >
-                    <Briefcase className='h-4 w-4 mr-2' />
-                    My Jobs
-                  </Button>
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      className='bg-black/20 text-[#FAFAFA]/70 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 w-full justify-between'
+                    >
+                      <div className='flex items-center'>
+                        {currentTab?.icon}
+                        {currentTab?.label}
+                      </div>
+                      <ChevronDown className='h-4 w-4 ml-2' />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className='bg-black/95 border-blue-400/20 text-[#FAFAFA] min-w-[200px]'>
+                    {tabOptions.map((tab) => (
+                      <DropdownMenuItem
+                        key={tab.value}
+                        onClick={() => handleTabChange(tab.value as 'all' | 'deliveries' | 'jobs' | 'my-packages' | 'my-jobs')}
+                        className='hover:bg-blue-400/10 focus:bg-blue-400/10 cursor-pointer'
+                      >
+                        {tab.icon}
+                        {tab.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
-              
-              {/* Mobile-only Account Tab */}
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={() => {/* TODO: Navigate to account/profile page */}}
-                className='lg:hidden bg-black/20 text-[#FAFAFA]/70 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 ml-4'
-              >
-                <svg 
-                  className='h-4 w-4' 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  viewBox="0 0 122.88 122.88"
-                  fill="currentColor"
-                >
-                  <path d="M61.44,0a61.59,61.59,0,0,1,56.78,38l.07.18A61.43,61.43,0,0,1,18,104.88h0A61.54,61.54,0,0,1,4.66,84.94l-.07-.19A61.35,61.35,0,0,1,18,18h0A61.54,61.54,0,0,1,37.94,4.66l.18-.07A61.25,61.25,0,0,1,61.44,0ZM49.54,79.32c-2.14-1.83-4.2-3.89-4.54-7.65h-.28a3.79,3.79,0,0,1-1.87-.49,5.1,5.1,0,0,1-2.05-2.49c-.95-2.18-1.7-7.91.68-9.55L41,58.85l0-.64c-.1-1.15-.12-2.55-.14-4-.09-5.39-.2-11.91-4.53-13.22l-1.85-.56,1.22-1.51a70,70,0,0,1,10.84-11c4.17-3.28,8.41-5.47,12.56-6.1A15.09,15.09,0,0,1,71.3,25.22a23,23,0,0,1,3.27,3.28,13.93,13.93,0,0,1,9.78,5.72,19.89,19.89,0,0,1,3.18,6.42,22.34,22.34,0,0,1,.86,7.28,17.54,17.54,0,0,1-5.08,11.81,3.62,3.62,0,0,1,1.58.4c1.81,1,1.87,3.07,1.39,4.83-.47,1.47-1.06,3.17-1.63,4.6C84,71.5,83,71.86,81,71.65c-.08,4.18-2.8,6.18-5.47,8.49l.08.12a31.89,31.89,0,0,0,3.51,4.52.75.75,0,0,1,.12.14c6.19,4.38,19.56,5.44,25.34,8.66l.23.14a54.09,54.09,0,1,0-86.83,0h0l.23-.14C24,90.36,40.73,89.3,47,85a19.43,19.43,0,0,0,1.43-2.77c.41-1,.81-2,1.15-2.86Z"/>
-                </svg>
-              </Button>
-            </CardHeader>
-            <CardHeader className='py-6 px-6'>
-              <CardTitle className='text-[#FAFAFA]'>
-                {activeTab === 'deliveries' ? 'My Activities' : 
-                 activeTab === 'jobs' ? 'My Activities' :
-                 activeTab === 'my-packages' ? 'My Activities' :
-                 'My Activities'}
-              </CardTitle>
-              <CardDescription className='text-[#FAFAFA]/70'>
-                {activeTab === 'deliveries' 
-                  ? 'Manage your deliveries and view QR codes'
-                  : activeTab === 'jobs'
-                  ? 'Manage your posted jobs'
-                  : activeTab === 'my-packages'
-                  ? 'View your posted packages'
-                  : 'View your posted jobs'
-                }
-              </CardDescription>
               <Button
                 onClick={
+                  activeTab === 'all' ? () => {
+                    handleRefresh();
+                    loadMyJobs();
+                    loadMyPackages();
+                    loadMyPostedJobs();
+                  } :
                   activeTab === 'deliveries' ? handleRefresh : 
                   activeTab === 'jobs' ? loadMyJobs :
                   activeTab === 'my-packages' ? loadMyPackages :
@@ -427,81 +430,337 @@ export default function MyActivities() {
                 }
                 variant='outline'
                 size='icon'
-                className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-[#FAFAFA] -mt-2 -mr-2'
+                className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-[#FAFAFA] ml-3'
                 disabled={refreshing || jobsLoading || myPackagesLoading || myPostedJobsLoading}
               >
                 <RefreshCw
                   className={`h-4 w-4 ${(refreshing || jobsLoading || myPackagesLoading || myPostedJobsLoading) ? 'animate-spin' : ''}`}
                 />
               </Button>
+              
+
             </CardHeader>
+
             <CardContent className='flex flex-col flex-grow overflow-hidden px-6 pb-6'>
               <div className='space-y-4 overflow-y-auto pr-2 flex-1 transition-opacity duration-200'>
-                {activeTab === 'deliveries' ? (
+                {activeTab === 'all' ? (
                   <>
-                    {deliveries.length === 0 ? (
+                    {/* All Activities View */}
+                    {deliveries.length === 0 && myJobs.length === 0 && myPackages.length === 0 && myPostedJobs.length === 0 ? (
                       <div className='text-center py-8 text-[#FAFAFA]/70'>
-                        No active deliveries
+                        No activities found
+                      </div>
+                    ) : (
+                      <>
+                        {/* Deliveries */}
+                        {deliveries.map((delivery) => (
+                          <Card
+                            key={`delivery-${delivery.id}`}
+                            className={`cursor-pointer ${getCardBorderStyle('delivery')} ${
+                              selectedDelivery?.id === delivery.id ? 'bg-blue-400/10 border-blue-400/30' : ''
+                            }`}
+                            onClick={() => {
+                              setSelectedDelivery(delivery);
+                              setSelectedJob(null);
+                              setSelectedItemType('delivery');
+                              setShowQR(false);
+                            }}
+                          >
+                                                         <CardHeader className='p-4'>
+                               <div className='flex items-center justify-between mb-2'>
+                                 <div className='flex items-center gap-2'>
+                                   <Truck className='h-4 w-4 text-cyan-400' />
+                                   <Badge variant='outline' className='bg-cyan-400/10 text-cyan-400 border-cyan-400/30 text-xs'>
+                                     Delivery
+                                   </Badge>
+                                 </div>
+                                 <Badge
+                                   variant='outline'
+                                   className='bg-blue-400/10 text-blue-400 border-blue-400/30 px-3 py-1 text-sm font-medium'
+                                 >
+                                   {delivery.cost} sats
+                                 </Badge>
+                               </div>
+                               <div>
+                                 <CardTitle className='text-lg font-semibold mb-1 text-[#FAFAFA]'>
+                                   {delivery.title}
+                                 </CardTitle>
+                                 <CardDescription className='text-sm text-[#FAFAFA]/70'>
+                                   {delivery.description || 'No description provided'}
+                                 </CardDescription>
+                               </div>
+                             </CardHeader>
+                            <CardContent className='p-4 pt-0'>
+                              <div className='flex justify-between items-center'>
+                                <div className='text-sm text-[#FAFAFA]/70'>
+                                  {delivery.pickupLocation} → {delivery.destination}
+                                </div>
+                                <Button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleComplete(delivery.id);
+                                  }}
+                                  variant='outline'
+                                  size='sm'
+                                  className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-[#FAFAFA]'
+                                  disabled={completingId === delivery.id}
+                                >
+                                  {completingId === delivery.id ? (
+                                    <span className='animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full' />
+                                  ) : (
+                                    'Complete'
+                                  )}
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+
+                                                {/* Jobs */}
+                        {myJobs.map((job) => (
+                          <Card
+                            key={`job-${job.id}`}
+                            className={`cursor-pointer ${getCardBorderStyle('job')}`}
+                            onClick={() => {
+                              setSelectedJob(job);
+                              setSelectedDelivery(null);
+                              setSelectedItemType('job');
+                              loadApplicantProfiles(job);
+                            }}
+                          >
+                                                         <CardHeader className='p-4'>
+                               <div className='flex items-center gap-2 mb-2'>
+                                 <svg className='h-4 w-4 text-green-400' viewBox="0 0 122.49 122.88" fill="currentColor">
+                                   <g><path d="M101.12,37.47c14.95,18.54,22.23,40.44,21.28,60.48c-6.91-16.93-17.64-34.09-31.87-49.9l-4.77,4.77 c-0.54,0.54-1.42,0.54-1.96,0L68.72,37.75c-0.54-0.54-0.54-1.42,0-1.96l4.63-4.63C57.16,17.12,39.68,6.67,22.54,0.2 c20.2-1.52,42.5,5.45,61.44,20.33l2.09-2.09c0.54-0.54,1.42-0.54,1.96,0l15.08,15.08c0.54,0.54,0.54,1.42,0,1.96L101.12,37.47 L101.12,37.47z M68.16,42.51l12.22,12.22l-65.64,65.64c-3.36,3.36-8.86,3.36-12.22,0l0,0c-3.36-3.36-3.36-8.86,0-12.22L68.16,42.51 L68.16,42.51z"/></g></svg>
+                                   <Badge variant='outline' className='bg-green-400/10 text-green-400 border-green-400/30 text-xs'>
+                                     Work
+                                   </Badge>
+                                 </div>
+                                 <div className='flex-1 min-w-0'>
+                                   <CardTitle className='text-lg font-semibold mb-1 text-[#FAFAFA]'>
+                                     {job.title}
+                                   </CardTitle>
+                                   <CardDescription className='text-sm text-[#FAFAFA]/70'>
+                                     {job.description || 'No description provided'}
+                                   </CardDescription>
+                                 </div>
+                             </CardHeader>
+                            <CardContent className='p-4 pt-0'>
+                              <div className='flex justify-between items-center'>
+                                <div className='text-sm text-[#FAFAFA]/70'>
+                                  {job.location} • {job.peopleNeeded} needed
+                                </div>
+                                <Badge
+                                  variant='outline'
+                                  className={`text-xs ${
+                                    job.status === 'open'
+                                      ? 'bg-green-400/10 text-green-400 border-green-400/30'
+                                      : job.status === 'in_progress'
+                                      ? 'bg-blue-400/10 text-blue-400 border-blue-400/30'
+                                      : 'bg-gray-400/10 text-gray-400 border-gray-400/30'
+                                  }`}
+                                >
+                                  {job.status === 'open' ? 'Open' : job.status === 'in_progress' ? 'In Progress' : 'Completed'}
+                                </Badge>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+
+                        {/* My Packages */}
+                        {myPackages.map((pkg) => (
+                          <Card
+                            key={`package-${pkg.id}`}
+                            className={`cursor-pointer ${getCardBorderStyle('package')}`}
+                            onClick={() => {
+                              setSelectedDelivery(pkg);
+                              setSelectedJob(null);
+                              setSelectedItemType('package');
+                            }}
+                          >
+                                                         <CardHeader className='p-4'>
+                               <div className='flex items-center justify-between mb-2'>
+                                 <div className='flex items-center gap-2'>
+                                   <svg className='h-4 w-4 text-purple-400' viewBox="0 0 122.88 122.25" fill="currentColor">
+                                     <g><path d="M122.57,29.25l0.31,62.88c0.01,3.28-2.05,6.1-5,7.29l0.01,0.01l-54.64,22.09c-0.99,0.4-2.05,0.6-3.12,0.6 c-0.11,0-0.22,0-0.33-0.01c-0.47,0.08-0.95,0.13-1.42,0.13c-1.06,0-2.11-0.21-3.08-0.62L4.94,100.46l0-0.01 C2.03,99.22-0.01,96.32,0,92.94l0.3-62.08c-0.04-0.66,0-1.33,0.12-1.99c0.02-0.95,0.22-1.88,0.58-2.76 c0.84-2.04,2.47-3.55,4.42-4.33l0-0.01L57.98,0.6c2.14-0.86,4.44-0.77,6.4,0.07l52.47,18.97c3.14,1.13,5.13,3.96,5.27,7.01 C122.41,27.49,122.57,28.37,122.57,29.25L122.57,29.25z M51.51,108.46l0.39-54.77L9.82,35.5L8.93,90.49L51.51,108.46L51.51,108.46 L51.51,108.46z M113.58,35.5L66.55,53.7l0.37,54.71l46.94-17.54L113.58,35.5L113.58,35.5L113.58,35.5z"/></g></svg>
+                                   <Badge variant='outline' className='bg-purple-400/10 text-purple-400 border-purple-400/30 text-xs'>
+                                     My Package
+                                   </Badge>
+                                 </div>
+                                 <Badge
+                                   variant='outline'
+                                   className='bg-blue-400/10 text-blue-400 border-blue-400/30 px-3 py-1 text-sm font-medium'
+                                 >
+                                   {pkg.cost} sats
+                                 </Badge>
+                               </div>
+                               <div>
+                                 <CardTitle className='text-lg font-semibold mb-1 text-[#FAFAFA]'>
+                                   {pkg.title}
+                                 </CardTitle>
+                                 <CardDescription className='text-sm text-[#FAFAFA]/70'>
+                                   {pkg.description || 'No description provided'}
+                                 </CardDescription>
+                               </div>
+                             </CardHeader>
+                            <CardContent className='p-4 pt-0'>
+                              <div className='flex justify-between items-center'>
+                                <div className='text-sm text-[#FAFAFA]/70'>
+                                  {pkg.pickupLocation} → {pkg.destination}
+                                </div>
+                                <Badge
+                                  variant='outline'
+                                  className={`text-xs ${
+                                    getEffectiveStatus(pkg) === 'available'
+                                      ? 'bg-green-400/10 text-green-400 border-green-400/30'
+                                      : getEffectiveStatus(pkg) === 'in_transit'
+                                      ? 'bg-blue-400/10 text-blue-400 border-blue-400/30'
+                                      : 'bg-gray-400/10 text-gray-400 border-gray-400/30'
+                                  }`}
+                                >
+                                  {getEffectiveStatus(pkg) === 'available' ? 'Available' : 
+                                   getEffectiveStatus(pkg) === 'in_transit' ? 'In Transit' : 
+                                   'Delivered'}
+                                </Badge>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+
+                        {/* My Posted Jobs */}
+                        {myPostedJobs.map((job) => (
+                          <Card
+                            key={`posted-job-${job.id}`}
+                            className={`cursor-pointer ${getCardBorderStyle('posted-job')} ${
+                              selectedJob?.id === job.id ? 'bg-blue-400/10 border-blue-400/30' : ''
+                            }`}
+                            onClick={() => {
+                              setSelectedJob(job);
+                              loadApplicantProfiles(job);
+                            }}
+                          >
+                                                         <CardHeader className='p-4'>
+                               <div className='flex items-center justify-between mb-2'>
+                                 <div className='flex items-center gap-2'>
+                                   <Briefcase className='h-4 w-4 text-orange-400' />
+                                   <Badge variant='outline' className='bg-orange-400/10 text-orange-400 border-orange-400/30 text-xs'>
+                                     My Job
+                                   </Badge>
+                                 </div>
+                                 <Badge
+                                   variant='outline'
+                                   className='bg-blue-400/10 text-blue-400 border-blue-400/30 px-3 py-1 text-sm font-medium'
+                                 >
+                                   {job.compensation} sats
+                                 </Badge>
+                               </div>
+                               <div>
+                                 <CardTitle className='text-lg font-semibold mb-1 text-[#FAFAFA]'>
+                                   {job.title}
+                                 </CardTitle>
+                                 <CardDescription className='text-sm text-[#FAFAFA]/70'>
+                                   {job.description || 'No description provided'}
+                                 </CardDescription>
+                               </div>
+                             </CardHeader>
+                            <CardContent className='p-4 pt-0'>
+                              <div className='flex justify-between items-center'>
+                                <div className='text-sm text-[#FAFAFA]/70'>
+                                  {job.location} • {job.peopleNeeded} needed
+                                </div>
+                                <Badge
+                                  variant='outline'
+                                  className={`text-xs ${
+                                    job.status === 'open'
+                                      ? 'bg-green-400/10 text-green-400 border-green-400/30'
+                                      : job.status === 'in_progress'
+                                      ? 'bg-blue-400/10 text-blue-400 border-blue-400/30'
+                                      : 'bg-gray-400/10 text-gray-400 border-gray-400/30'
+                                  }`}
+                                >
+                                  {job.status === 'open' ? 'Open' : job.status === 'in_progress' ? 'In Progress' : 'Completed'}
+                                </Badge>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </>
+                    )}
+                  </>
+                ) : activeTab === 'deliveries' ? (
+                  <>
+                    {deliveriesLoading && deliveries.length === 0 ? (
+                      <div className='text-center py-8 text-[#FAFAFA]/70'>
+                        <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4'></div>
+                        Loading deliveries...
+                      </div>
+                    ) : deliveries.length === 0 ? (
+                      <div className='text-center py-8 text-[#FAFAFA]/70'>
+                        No deliveries found
                       </div>
                     ) : (
                       deliveries.map((delivery) => (
-                    <Card
-                      key={delivery.id}
-                      className={`cursor-pointer transition-all duration-300 hover:-translate-y-1 ${
-                        selectedDelivery?.id === delivery.id
-                          ? 'bg-blue-400/10 border-blue-400/30'
-                          : 'bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30'
-                      }`}
-                      onClick={() => {
-                        setSelectedDelivery(delivery);
-                        setShowQR(false);
-                      }}
-                    >
-                      <CardHeader className='p-4'>
-                        <div className='flex justify-between items-start'>
-                          <div>
-                            <CardTitle className='text-lg font-semibold mb-1 text-[#FAFAFA]'>
-                              {delivery.title}
-                            </CardTitle>
-                            <CardDescription className='text-sm text-[#FAFAFA]/70'>
-                              {delivery.description || 'No description provided'}
-                            </CardDescription>
-                          </div>
-                          <Badge
-                            variant='outline'
-                            className='bg-blue-400/10 text-blue-400 border-blue-400/30'
-                          >
-                            {delivery.cost} sats
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent className='p-4 pt-0'>
-                        <div className='flex justify-between items-center'>
-                          <div className='text-sm text-[#FAFAFA]/70'>
-                            {delivery.pickupLocation} → {delivery.destination}
-                          </div>
-                          <Button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleComplete(delivery.id);
-                            }}
-                            variant='outline'
-                            size='sm'
-                            className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-[#FAFAFA]'
-                            disabled={completingId === delivery.id}
-                          >
-                            {completingId === delivery.id ? (
-                              <span className='animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full' />
-                            ) : (
-                              'Complete'
-                            )}
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </>
+                        <Card
+                          key={`delivery-${delivery.id}`}
+                          className={`cursor-pointer ${getCardBorderStyle('delivery')} ${
+                            selectedDelivery?.id === delivery.id ? 'bg-blue-400/10 border-blue-400/30' : ''
+                          }`}
+                          onClick={() => {
+                            setSelectedDelivery(delivery);
+                            setShowQR(false);
+                          }}
+                        >
+                          <CardHeader className='p-4'>
+                            <div className='flex items-center justify-between mb-2'>
+                              <div className='flex items-center gap-2'>
+                                <Truck className='h-4 w-4 text-cyan-400' />
+                                <Badge variant='outline' className='bg-cyan-400/10 text-cyan-400 border-cyan-400/30 text-xs'>
+                                  Delivery
+                                </Badge>
+                              </div>
+                              <Badge
+                                variant='outline'
+                                className='bg-blue-400/10 text-blue-400 border-blue-400/30 px-3 py-1 text-sm font-medium'
+                              >
+                                {delivery.cost} sats
+                              </Badge>
+                            </div>
+                            <div>
+                              <CardTitle className='text-lg font-semibold mb-1 text-[#FAFAFA]'>
+                                {delivery.title}
+                              </CardTitle>
+                              <CardDescription className='text-sm text-[#FAFAFA]/70'>
+                                {delivery.description || 'No description provided'}
+                              </CardDescription>
+                            </div>
+                          </CardHeader>
+                          <CardContent className='p-4 pt-0'>
+                            <div className='flex justify-between items-center'>
+                              <div className='text-sm text-[#FAFAFA]/70'>
+                                {delivery.pickupLocation} → {delivery.destination}
+                              </div>
+                              <Button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleComplete(delivery.id);
+                                }}
+                                variant='outline'
+                                size='sm'
+                                className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-[#FAFAFA]'
+                                disabled={completingId === delivery.id}
+                              >
+                                {completingId === delivery.id ? (
+                                  <span className='animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full' />
+                                ) : (
+                                  'Complete'
+                                )}
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    )}
+                  </>
                 ) : activeTab === 'my-packages' ? (
                   <>
                     {myPackagesLoading && myPackages.length === 0 ? (
@@ -520,6 +779,15 @@ export default function MyActivities() {
                           className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 transition-all duration-300'
                         >
                           <CardHeader className='p-4'>
+                            {/* Mobile: Badge at top, Desktop: Badge on right */}
+                            <div className='md:hidden mb-3 flex justify-end'>
+                              <Badge
+                                variant='outline'
+                                className='bg-blue-400/10 text-blue-400 border-blue-400/30 px-3 py-1 text-sm font-medium'
+                              >
+                                {pkg.cost} sats
+                              </Badge>
+                            </div>
                             <div className='flex justify-between items-start'>
                               <div>
                                 <CardTitle className='text-lg font-semibold mb-1 text-[#FAFAFA]'>
@@ -531,7 +799,7 @@ export default function MyActivities() {
                               </div>
                               <Badge
                                 variant='outline'
-                                className='bg-blue-400/10 text-blue-400 border-blue-400/30'
+                                className='hidden md:block bg-blue-400/10 text-blue-400 border-blue-400/30'
                               >
                                 {pkg.cost} sats
                               </Badge>
@@ -584,10 +852,21 @@ export default function MyActivities() {
                           }`}
                           onClick={() => {
                             setSelectedJob(job);
+                            setSelectedDelivery(null);
+                            setSelectedItemType('job');
                             loadApplicantProfiles(job);
                           }}
                         >
                           <CardHeader className='p-4'>
+                            {/* Mobile: Badge at top, Desktop: Badge on right */}
+                            <div className='md:hidden mb-3 flex justify-end'>
+                              <Badge
+                                variant='outline'
+                                className='bg-blue-400/10 text-blue-400 border-blue-400/30 px-3 py-1 text-sm font-medium'
+                              >
+                                {job.compensation} sats
+                              </Badge>
+                            </div>
                             <div className='flex justify-between items-start'>
                               <div>
                                 <CardTitle className='text-lg font-semibold mb-1 text-[#FAFAFA]'>
@@ -599,7 +878,7 @@ export default function MyActivities() {
                               </div>
                               <Badge
                                 variant='outline'
-                                className='bg-blue-400/10 text-blue-400 border-blue-400/30'
+                                className='hidden md:block bg-blue-400/10 text-blue-400 border-blue-400/30'
                               >
                                 {job.compensation} sats
                               </Badge>
@@ -646,8 +925,8 @@ export default function MyActivities() {
                           className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 transition-all duration-300'
                         >
                           <CardHeader className='p-4'>
-                            <div className='flex justify-between items-start'>
-                              <div>
+                            <div className='flex justify-between items-start gap-3'>
+                              <div className='flex-1 min-w-0'>
                                 <CardTitle className='text-lg font-semibold mb-1 text-[#FAFAFA]'>
                                   {job.title}
                                 </CardTitle>
@@ -657,7 +936,7 @@ export default function MyActivities() {
                               </div>
                               <Badge
                                 variant='outline'
-                                className='bg-blue-400/10 text-blue-400 border-blue-400/30'
+                                className='hidden md:block bg-blue-400/10 text-blue-400 border-blue-400/30 flex-shrink-0'
                               >
                                 {job.compensation} sats
                               </Badge>
@@ -697,18 +976,20 @@ export default function MyActivities() {
           <Card className='bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10 h-full flex flex-col p-0 gap-0'>
             <CardHeader className='py-6 px-6'>
               <CardTitle className='text-[#FAFAFA]'>
-                {activeTab === 'my-jobs' && selectedJob ? 'Applicant Details' : 'Delivery Details'}
+                {selectedItemType === 'job' ? 'Job Details' : 
+                 selectedItemType === 'delivery' ? 'Delivery Details' :
+                 selectedItemType === 'package' ? 'Package Details' :
+                 'Details'}
               </CardTitle>
               <CardDescription className='text-[#FAFAFA]/70'>
-                {activeTab === 'my-jobs' && selectedJob
-                  ? `View applicants for ${selectedJob.title}`
-                  : selectedDelivery
-                  ? 'Show QR code to recipient to confirm delivery'
-                  : 'Select a delivery to view details'}
+                {selectedItemType === 'job' ? `View job information and applicants` : 
+                 selectedItemType === 'delivery' ? 'View delivery information and QR code' :
+                 selectedItemType === 'package' ? 'View package information and location' :
+                 'Select an item to view details'}
               </CardDescription>
             </CardHeader>
             <CardContent className='flex items-center justify-center p-0 flex-grow'>
-              {activeTab === 'my-jobs' && selectedJob ? (
+              {selectedItemType === 'job' && selectedJob ? (
                 <div className='space-y-4 w-full p-6 overflow-y-auto'>
                   {profilesLoading ? (
                     <div className='text-center py-8 text-[#FAFAFA]/70'>
@@ -753,8 +1034,8 @@ export default function MyActivities() {
                                   {profile.about || 'No description available'}
                                 </CardDescription>
                                 <CourierBadges
-                                  reputationScore={profile.deliveries * 10 + (profile.followers || 0) * 2 + (profile.following || 0)}
-                                  deliveries={profile.deliveries || 0}
+                                  trustScore={Math.min(5, (profile.deliveries || 0) * 0.1 + (profile.followers || 0) * 0.02 + (profile.following || 0) * 0.01)}
+                                  deliveryCount={profile.deliveries || 0}
                                   followers={profile.followers || 0}
                                   following={profile.following || 0}
                                 />
@@ -793,51 +1074,91 @@ export default function MyActivities() {
                     </div>
                   )}
                 </div>
-              ) : selectedDelivery ? (
-                <div className='space-y-6 w-full p-6'>
-                  <div className='flex justify-center'>
-                    {showQR ? (
-                      <div className='bg-white p-4 rounded-lg'>
-                        <QRCodeSVG
-                          value={generateQRValue(selectedDelivery.id)}
-                          size={200}
-                          level='H'
-                          includeMargin={true}
-                        />
-                      </div>
-                    ) : (
-                      <Button
-                        onClick={() => setShowQR(true)}
-                        className='w-full bg-blue-400 hover:bg-blue-400/90 text-[#FAFAFA] font-medium shadow-[0_0_15px_rgba(96,165,250,0.15)] hover:shadow-[0_0_25px_rgba(96,165,250,0.25)] transform hover:-translate-y-1 transition-all duration-300'
-                      >
-                        Show QR Code
-                      </Button>
+              ) : selectedItemType === 'delivery' && selectedDelivery ? (
+                <div className='h-full p-6'>
+                  <div className='bg-black/20 border border-cyan-400/20 rounded-lg p-4 mb-4'>
+                    <h3 className='text-lg font-semibold text-cyan-400 mb-2'>Delivery Details</h3>
+                    <p className='text-gray-300 mb-2'><strong>Title:</strong> {selectedDelivery.title || 'No title'}</p>
+                    <p className='text-gray-300 mb-2'><strong>From:</strong> {selectedDelivery.pickupLocation || 'Location not specified'}</p>
+                    <p className='text-gray-300 mb-2'><strong>To:</strong> {selectedDelivery.destination || 'Destination not specified'}</p>
+                    <p className='text-gray-300 mb-2'><strong>Cost:</strong> {selectedDelivery.cost || '0'} sats</p>
+                    <p className='text-gray-300 mb-2'><strong>Status:</strong> {getEffectiveStatus(selectedDelivery)}</p>
+                    {selectedDelivery.description && (
+                      <p className='text-gray-300'><strong>Description:</strong> {selectedDelivery.description}</p>
                     )}
                   </div>
-                  <div className='space-y-4'>
-                    <div>
-                      <h3 className='text-sm font-medium text-[#FAFAFA]'>Pickup Location</h3>
-                      <p className='text-[#FAFAFA]/70'>{selectedDelivery.pickupLocation}</p>
-                    </div>
-                    <div>
-                      <h3 className='text-sm font-medium text-[#FAFAFA]'>Destination</h3>
-                      <p className='text-[#FAFAFA]/70'>{selectedDelivery.destination}</p>
-                    </div>
-                    <div>
-                      <h3 className='text-sm font-medium text-[#FAFAFA]'>Cost</h3>
-                      <p className='text-[#FAFAFA]/70'>{selectedDelivery.cost} sats</p>
-                    </div>
+                  <div className='bg-gray-800/50 rounded-lg p-4 text-center text-gray-400'>
+                    <p>Map view temporarily unavailable</p>
+                    <p className='text-sm mt-2'>
+                      Location: {selectedDelivery.pickupLocation || 'Unknown'} → {selectedDelivery.destination || 'Unknown'}
+                    </p>
+                    {/* Debug info */}
+                    <details className='mt-4 text-xs'>
+                      <summary className='cursor-pointer text-gray-500'>Debug Info</summary>
+                      <pre className='mt-2 text-left bg-black/20 p-2 rounded text-gray-400 overflow-auto'>
+                        {JSON.stringify(selectedDelivery, null, 2)}
+                      </pre>
+                    </details>
+                  </div>
+                </div>
+              ) : selectedItemType === 'package' && selectedDelivery ? (
+                <div className='h-full p-6'>
+                  <div className='bg-black/20 border border-purple-400/20 rounded-lg p-4 mb-4'>
+                    <h3 className='text-lg font-semibold text-purple-400 mb-2'>Package Details</h3>
+                    <p className='text-gray-300 mb-2'><strong>Title:</strong> {selectedDelivery.title || 'No title'}</p>
+                    <p className='text-gray-300 mb-2'><strong>From:</strong> {selectedDelivery.pickupLocation || 'Location not specified'}</p>
+                    <p className='text-gray-300 mb-2'><strong>To:</strong> {selectedDelivery.destination || 'Destination not specified'}</p>
+                    <p className='text-gray-300 mb-2'><strong>Cost:</strong> {selectedDelivery.cost || '0'} sats</p>
+                    <p className='text-gray-300 mb-2'><strong>Status:</strong> {getEffectiveStatus(selectedDelivery)}</p>
                     {selectedDelivery.description && (
-                      <div>
-                        <h3 className='text-sm font-medium text-[#FAFAFA]'>Description</h3>
-                        <p className='text-[#FAFAFA]/70'>{selectedDelivery.description}</p>
-                      </div>
+                      <p className='text-gray-300'><strong>Description:</strong> {selectedDelivery.description}</p>
                     )}
+                  </div>
+                  <div className='bg-gray-800/50 rounded-lg p-4 text-center text-gray-400'>
+                    <p>Map view temporarily unavailable</p>
+                    <p className='text-sm mt-2'>
+                      Location: {selectedDelivery.pickupLocation || 'Unknown'} → {selectedDelivery.destination || 'Unknown'}
+                    </p>
+                    {/* Debug info */}
+                    <details className='mt-4 text-xs'>
+                      <summary className='cursor-pointer text-gray-500'>Debug Info</summary>
+                      <pre className='mt-2 text-left bg-black/20 p-2 rounded text-gray-400 overflow-auto'>
+                        {JSON.stringify(selectedDelivery, null, 2)}
+                      </pre>
+                    </details>
+                  </div>
+                </div>
+              ) : selectedItemType === 'job' && selectedJob ? (
+                <div className='h-full p-6'>
+                  <div className='bg-black/20 border border-green-400/20 rounded-lg p-4 mb-4'>
+                    <h3 className='text-lg font-semibold text-green-400 mb-2'>Job Details</h3>
+                    <p className='text-gray-300 mb-2'><strong>Title:</strong> {selectedJob.title || 'No title'}</p>
+                    <p className='text-gray-300 mb-2'><strong>Location:</strong> {selectedJob.location || 'Location not specified'}</p>
+                    <p className='text-gray-300 mb-2'><strong>Compensation:</strong> {selectedJob.compensation || '0'} sats</p>
+                    <p className='text-gray-300 mb-2'><strong>People Needed:</strong> {selectedJob.peopleNeeded || '1'}</p>
+                    <p className='text-gray-300 mb-2'><strong>Status:</strong> {selectedJob.status || 'Unknown'}</p>
+                    {selectedJob.description && (
+                      <p className='text-gray-300 mb-2'><strong>Description:</strong> {selectedJob.description}</p>
+                    )}
+                    {selectedJob.requirements && (
+                      <p className='text-gray-300'><strong>Requirements:</strong> {selectedJob.requirements}</p>
+                    )}
+                  </div>
+                  <div className='bg-gray-800/50 rounded-lg p-4 text-center text-gray-400'>
+                    <p>Map view temporarily unavailable</p>
+                    <p className='text-sm mt-2'>Location: {selectedJob.location || 'Unknown'}</p>
+                    {/* Debug info */}
+                    <details className='mt-4 text-xs'>
+                      <summary className='cursor-pointer text-gray-500'>Debug Info</summary>
+                      <pre className='mt-2 text-left bg-black/20 p-2 rounded text-gray-400 overflow-auto'>
+                        {JSON.stringify(selectedJob, null, 2)}
+                      </pre>
+                    </details>
                   </div>
                 </div>
               ) : (
                 <div className='text-center py-8 text-[#FAFAFA]/70'>
-                  {activeTab === 'my-jobs' ? 'Select a job to view applicants' : 'Select a delivery to view details'}
+                  Select an item to view details
                 </div>
               )}
             </CardContent>
