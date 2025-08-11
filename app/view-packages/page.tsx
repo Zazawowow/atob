@@ -20,6 +20,7 @@ import { PostPackageModal } from '@/components/post-package-modal';
 import { DeleteConfirmationModal } from '@/components/delete-confirmation-modal';
 import { useNostr } from '@/components/nostr-provider';
 import Image from 'next/image';
+import ActivityMap from '@/components/activity-map';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -53,7 +54,6 @@ export default function ViewPackages() {
     try {
       const allPackages = await getPackages();
       setPackages(allPackages);
-      console.log('Loaded packages:', allPackages.length);
     } catch (err) {
       console.error('Failed to load packages:', err);
       setError('Failed to load packages. Please try again.');
@@ -70,8 +70,6 @@ export default function ViewPackages() {
     try {
       const allJobs = await getJobs();
       setJobs(allJobs);
-      console.log('Loaded jobs:', allJobs.length, 'publicKey:', publicKey);
-      console.log('Jobs with assignedWorkers:', allJobs.filter(job => job.assignedWorkers && job.assignedWorkers.length > 0));
     } catch (err) {
       console.error('Failed to load jobs:', err);
       setError('Failed to load jobs. Please try again.');
@@ -124,17 +122,10 @@ export default function ViewPackages() {
 
   const handleApplyForJob = async (jobId: string) => {
     try {
-      console.log('Applying for job:', jobId, 'with publicKey:', publicKey);
-      
-      // Debug: Check what's in localStorage before applying
-      const { debugJobStorage } = await import('@/lib/local-job-service');
-      debugJobStorage();
       
       await applyForJob(jobId);
       toast.success('Application submitted successfully!');
-      console.log('Application successful, reloading jobs...');
       await loadJobs();
-      console.log('Jobs reloaded');
     } catch (error) {
       console.error('Failed to apply for job:', error);
       toast.error('Failed to apply for job. Please try again.');
@@ -205,7 +196,6 @@ export default function ViewPackages() {
 
   const hasAppliedToJob = (job: any) => {
     const hasApplied = job.assignedWorkers && job.assignedWorkers.includes(publicKey);
-    console.log(`Job ${job.id} - assignedWorkers:`, job.assignedWorkers, 'publicKey:', publicKey, 'hasApplied:', hasApplied);
     return hasApplied;
   };
 
@@ -565,7 +555,6 @@ export default function ViewPackages() {
                                 <Button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    console.log('Apply button clicked for job:', job.id);
                                     handleApplyForJob(job.id);
                                   }}
                                   size='sm'
@@ -587,12 +576,7 @@ export default function ViewPackages() {
                                 </Button>
                               )}
                               
-                              {/* Debug info */}
-                              {job.status === 'open' && !ownJob && (
-                                <div className='text-xs text-gray-500'>
-                                  Debug: ownJob={ownJob}, hasApplied={hasAppliedToJob(job)}, assignedWorkers={JSON.stringify(job.assignedWorkers)}
-                                </div>
-                              )}
+                              
                               
                               {ownJob && job.status === 'open' && (
                                 <Button
@@ -626,113 +610,25 @@ export default function ViewPackages() {
         </div>
 
         <div className='h-[calc(100vh-10rem)]'>
-          <Card className='bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm h-full flex flex-col'>
-            <CardHeader className='py-4 px-4 lg:px-6'>
-                <CardTitle className='text-off-white text-xl'>
-              Browse Packages & Jobs
-            </CardTitle>
-            <CardDescription className='text-purple-300'>
-              {selectedPackage 
-                ? `Selected Package: ${selectedPackage.title}`
-                : selectedJob
-                ? `Selected Job: ${selectedJob.title}`
-                : 'Browse available packages and jobs. Click on an item to view details.'}
-            </CardDescription>
-            </CardHeader>
-            <CardContent className='flex-1 p-0'>
-              <div className='h-full w-full'>
-                <div className='h-full w-full bg-gray-800/50 rounded-lg flex flex-col'>
-                  {/* Header */}
-                  <div className='p-4 border-b border-gray-700/50'>
-                    <div className='text-center text-gray-400'>
-                      <p className='text-lg mb-2'>Activity Overview</p>
-                      <div className='flex justify-center gap-4 text-xs'>
-                        <div className='flex items-center gap-2'>
-                          <div className='w-3 h-3 bg-purple-500 rounded-full'></div>
-                          <span>Packages ({packages.length})</span>
-                        </div>
-                        <div className='flex items-center gap-2'>
-                          <div className='w-3 h-3 bg-green-500 rounded-full'></div>
-                          <span>Jobs ({jobs.length})</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Scrollable Content */}
-                  <div className='flex-1 overflow-y-auto p-4'>
-                    {/* Selected Item Details - Show at top when selected */}
-                    {selectedPackage && (
-                      <div className='mb-4 p-3 bg-black/20 border border-purple-400/20 rounded-lg'>
-                        <p className='text-purple-400 font-medium text-sm'>Selected Package</p>
-                        <p className='text-sm font-medium'>{selectedPackage.title || 'No title'}</p>
-                        <p className='text-xs text-gray-400 mt-1'>
-                          📍 {selectedPackage.pickupLocation || 'Unknown'} → {selectedPackage.destination || 'Unknown'}
-                        </p>
-                        <p className='text-xs text-gray-500 mt-1'>
-                          {selectedPackage.cost || '0'} sats • {getEffectiveStatus(selectedPackage)}
-                        </p>
-                      </div>
-                    )}
-                    
-                    {selectedJob && (
-                      <div className='mb-4 p-3 bg-black/20 border border-green-400/20 rounded-lg'>
-                        <p className='text-green-400 font-medium text-sm'>Selected Job</p>
-                        <p className='text-sm font-medium'>{selectedJob.title || 'No title'}</p>
-                        <p className='text-xs text-gray-400 mt-1'>
-                          📍 {selectedJob.location || 'Unknown'}
-                        </p>
-                        <p className='text-xs text-gray-500 mt-1'>
-                          {selectedJob.compensation || '0'} sats • {selectedJob.peopleNeeded || '1'} needed
-                        </p>
-                      </div>
-                    )}
-                    
-                    {/* All Items Summary */}
-                    {packages.length > 0 && (
-                      <div className='mb-4'>
-                        <h4 className='text-purple-400 font-medium text-sm mb-2'>All Packages</h4>
-                        <div className='space-y-1'>
-                          {packages.slice(0, 8).map((pkg) => (
-                            <div key={pkg.id} className='text-xs bg-black/20 p-2 rounded border-l-2 border-purple-400/30'>
-                              <p className='font-medium truncate'>{pkg.title || 'No title'}</p>
-                              <p className='text-gray-400 truncate'>
-                                📍 {pkg.pickupLocation || 'Unknown'} → {pkg.destination || 'Unknown'}
-                              </p>
-                            </div>
-                          ))}
-                          {packages.length > 8 && (
-                            <p className='text-xs text-gray-500 text-center py-2'>... and {packages.length - 8} more</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {jobs.length > 0 && (
-                      <div className='mb-4'>
-                        <h4 className='text-green-400 font-medium text-sm mb-2'>All Jobs</h4>
-                        <div className='space-y-1'>
-                          {jobs.slice(0, 8).map((job) => (
-                            <div key={job.id} className='text-xs bg-black/20 p-2 rounded border-l-2 border-green-400/30'>
-                              <p className='font-medium truncate'>{job.title || 'No title'}</p>
-                              <p className='text-gray-400 truncate'>
-                                📍 {job.location || 'Unknown'}
-                              </p>
-                            </div>
-                          ))}
-                          {jobs.length > 8 && (
-                            <p className='text-xs text-gray-500 text-center py-2'>... and {jobs.length - 8} more</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {packages.length === 0 && jobs.length === 0 && (
-                      <div className='text-center text-gray-500 py-8'>
-                        <p>No packages or jobs available</p>
-                      </div>
-                    )}
-                  </div>
+          <Card className='bg-black/30 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm h-full flex flex-col p-0 gap-0'>
+            <CardContent className='p-0 h-full'>
+              <div className='h-full w-full flex flex-col'>
+                <div className='px-6 pt-6 pb-4'>
+                  <CardTitle className='text-off-white text-xl'>Find Jobs</CardTitle>
+                  <CardDescription className='text-purple-300'>
+                    Browse available jobs and packages on the map
+                  </CardDescription>
+                </div>
+                <div className='flex-1 rounded-b-2xl rounded-tl-none rounded-tr-none overflow-hidden'>
+                  <ActivityMap
+                    deliveries={[]}
+                    jobs={selectedJob ? [selectedJob] : jobs}
+                    packages={selectedPackage ? [selectedPackage] : packages}
+                    selectedJob={selectedJob || undefined}
+                    selectedPackage={selectedPackage || undefined}
+                    onSelectJob={handleJobSelect}
+                    onSelectPackage={handlePackageSelect}
+                  />
                 </div>
               </div>
             </CardContent>

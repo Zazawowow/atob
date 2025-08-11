@@ -313,6 +313,28 @@ export default function MyActivities() {
     }
   }, [loadMyPostedJobs]);
 
+  // Combine job sources for the map
+  const allJobsForMap = useMemo(() => {
+    return [...myJobs, ...myPostedJobs];
+  }, [myJobs, myPostedJobs]);
+
+  // Dynamic header content for the map container
+  const mapHeader = useMemo(() => {
+    const title =
+      selectedItemType === 'job' ? 'Job Details' :
+      selectedItemType === 'delivery' ? 'Delivery Details' :
+      selectedItemType === 'package' ? 'Package Details' :
+      'Package Details';
+
+    const description =
+      selectedItemType === 'job' ? 'View job information and applicants' :
+      selectedItemType === 'delivery' ? 'View delivery information and location' :
+      selectedItemType === 'package' ? 'View package information and location' :
+      'Select an item to view details';
+
+    return { title, description };
+  }, [selectedItemType]);
+
   // Load all data once when component mounts and when isReady changes
   useEffect(() => {
     if (isReady) {
@@ -971,196 +993,41 @@ export default function MyActivities() {
           </Card>
         </div>
 
-        {/* Right Column: Delivery Details or Applicant Details */}
+        {/* Right Column: Map with dynamic header */}
         <div className='h-[calc(100vh-10rem)]'>
           <Card className='bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10 h-full flex flex-col p-0 gap-0'>
-            <CardHeader className='py-6 px-6'>
-              <CardTitle className='text-[#FAFAFA]'>
-                {selectedItemType === 'job' ? 'Job Details' : 
-                 selectedItemType === 'delivery' ? 'Delivery Details' :
-                 selectedItemType === 'package' ? 'Package Details' :
-                 'Details'}
-              </CardTitle>
-              <CardDescription className='text-[#FAFAFA]/70'>
-                {selectedItemType === 'job' ? `View job information and applicants` : 
-                 selectedItemType === 'delivery' ? 'View delivery information and QR code' :
-                 selectedItemType === 'package' ? 'View package information and location' :
-                 'Select an item to view details'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className='flex items-center justify-center p-0 flex-grow'>
-              {selectedItemType === 'job' && selectedJob ? (
-                <div className='space-y-4 w-full p-6 overflow-y-auto'>
-                  {profilesLoading ? (
-                    <div className='text-center py-8 text-[#FAFAFA]/70'>
-                      <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4'></div>
-                      Loading applicant profiles...
-                    </div>
-                  ) : selectedJob.assignedWorkers && selectedJob.assignedWorkers.length > 0 ? (
-                    selectedJob.assignedWorkers.map((workerPubkey) => {
-                      const profile = applicantProfiles[workerPubkey];
-                      if (!profile) return null;
-                      
-                      return (
-                        <Card
-                          key={workerPubkey}
-                          className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 transition-all duration-300'
-                        >
-                          <CardHeader className='p-4'>
-                            <div className='flex items-start space-x-4'>
-                              <div className='relative'>
-                                {profile.picture ? (
-                                  <Image
-                                    src={profile.picture}
-                                    alt={profile.displayName || profile.name}
-                                    width={48}
-                                    height={48}
-                                    className='rounded-full'
-                                    onError={(e) => {
-                                      e.currentTarget.style.display = 'none';
-                                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                                    }}
-                                  />
-                                ) : null}
-                                <div className={`w-12 h-12 rounded-full bg-blue-400/20 flex items-center justify-center text-blue-400 font-semibold ${profile.picture ? 'hidden' : ''}`}>
-                                  {(profile.displayName || profile.name || 'U').charAt(0).toUpperCase()}
-                                </div>
-                              </div>
-                              <div className='flex-1'>
-                                <CardTitle className='text-lg font-semibold mb-1 text-[#FAFAFA]'>
-                                  {profile.displayName || profile.name || 'Unknown User'}
-                                </CardTitle>
-                                <CardDescription className='text-sm text-[#FAFAFA]/70 mb-3'>
-                                  {profile.about || 'No description available'}
-                                </CardDescription>
-                                <CourierBadges
-                                  trustScore={Math.min(5, (profile.deliveries || 0) * 0.1 + (profile.followers || 0) * 0.02 + (profile.following || 0) * 0.01)}
-                                  deliveryCount={profile.deliveries || 0}
-                                  followers={profile.followers || 0}
-                                  following={profile.following || 0}
-                                />
-                              </div>
-                            </div>
-                          </CardHeader>
-                          <CardContent className='p-4 pt-0'>
-                            <div className='flex justify-between items-center'>
-                              <div className='text-sm text-[#FAFAFA]/70'>
-                                {profile.deliveries || 0} deliveries • {profile.followers || 0} followers
-                              </div>
-                              <Button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleAcceptWorker(selectedJob.id, workerPubkey);
-                                }}
-                                variant='outline'
-                                size='sm'
-                                className='bg-green-400/10 border-green-400/20 hover:bg-green-400/20 hover:border-green-400/30 text-green-400'
-                                disabled={acceptingWorker === workerPubkey}
-                              >
-                                {acceptingWorker === workerPubkey ? (
-                                  <span className='animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full' />
-                                ) : (
-                                  'Accept'
-                                )}
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })
-                  ) : (
-                    <div className='text-center py-8 text-[#FAFAFA]/70'>
-                      No applicants yet for this job
-                    </div>
-                  )}
+            <CardContent className='p-0 h-full'>
+              <div className='h-full w-full flex flex-col'>
+                <div className='px-6 pt-6 pb-4'>
+                  <CardTitle className='text-[#FAFAFA] text-xl'>{mapHeader.title}</CardTitle>
+                  <CardDescription className='text-[#FAFAFA]/70'>
+                    {mapHeader.description}
+                  </CardDescription>
                 </div>
-              ) : selectedItemType === 'delivery' && selectedDelivery ? (
-                <div className='h-full p-6'>
-                  <div className='bg-black/20 border border-cyan-400/20 rounded-lg p-4 mb-4'>
-                    <h3 className='text-lg font-semibold text-cyan-400 mb-2'>Delivery Details</h3>
-                    <p className='text-gray-300 mb-2'><strong>Title:</strong> {selectedDelivery.title || 'No title'}</p>
-                    <p className='text-gray-300 mb-2'><strong>From:</strong> {selectedDelivery.pickupLocation || 'Location not specified'}</p>
-                    <p className='text-gray-300 mb-2'><strong>To:</strong> {selectedDelivery.destination || 'Destination not specified'}</p>
-                    <p className='text-gray-300 mb-2'><strong>Cost:</strong> {selectedDelivery.cost || '0'} sats</p>
-                    <p className='text-gray-300 mb-2'><strong>Status:</strong> {getEffectiveStatus(selectedDelivery)}</p>
-                    {selectedDelivery.description && (
-                      <p className='text-gray-300'><strong>Description:</strong> {selectedDelivery.description}</p>
-                    )}
-                  </div>
-                  <div className='bg-gray-800/50 rounded-lg p-4 text-center text-gray-400'>
-                    <p>Map view temporarily unavailable</p>
-                    <p className='text-sm mt-2'>
-                      Location: {selectedDelivery.pickupLocation || 'Unknown'} → {selectedDelivery.destination || 'Unknown'}
-                    </p>
-                    {/* Debug info */}
-                    <details className='mt-4 text-xs'>
-                      <summary className='cursor-pointer text-gray-500'>Debug Info</summary>
-                      <pre className='mt-2 text-left bg-black/20 p-2 rounded text-gray-400 overflow-auto'>
-                        {JSON.stringify(selectedDelivery, null, 2)}
-                      </pre>
-                    </details>
-                  </div>
+                <div className='flex-1 rounded-b-2xl rounded-tl-none rounded-tr-none overflow-hidden'>
+                  <ActivityMap
+                    deliveries={selectedItemType === 'delivery' && selectedDelivery ? [selectedDelivery] : deliveries}
+                    jobs={selectedItemType === 'job' && selectedJob ? [selectedJob] : allJobsForMap}
+                    packages={selectedItemType === 'package' && selectedDelivery ? [selectedDelivery] : myPackages}
+                    selectedDelivery={selectedDelivery || undefined}
+                    selectedJob={selectedJob || undefined}
+                    selectedPackage={selectedItemType === 'package' ? (selectedDelivery || undefined) : undefined}
+                    onSelectDelivery={(d) => {
+                      setSelectedDelivery(d);
+                      setSelectedItemType('delivery');
+                    }}
+                    onSelectJob={(j) => {
+                      setSelectedJob(j);
+                      setSelectedItemType('job');
+                      loadApplicantProfiles(j);
+                    }}
+                    onSelectPackage={(p) => {
+                      setSelectedDelivery(p);
+                      setSelectedItemType('package');
+                    }}
+                  />
                 </div>
-              ) : selectedItemType === 'package' && selectedDelivery ? (
-                <div className='h-full p-6'>
-                  <div className='bg-black/20 border border-purple-400/20 rounded-lg p-4 mb-4'>
-                    <h3 className='text-lg font-semibold text-purple-400 mb-2'>Package Details</h3>
-                    <p className='text-gray-300 mb-2'><strong>Title:</strong> {selectedDelivery.title || 'No title'}</p>
-                    <p className='text-gray-300 mb-2'><strong>From:</strong> {selectedDelivery.pickupLocation || 'Location not specified'}</p>
-                    <p className='text-gray-300 mb-2'><strong>To:</strong> {selectedDelivery.destination || 'Destination not specified'}</p>
-                    <p className='text-gray-300 mb-2'><strong>Cost:</strong> {selectedDelivery.cost || '0'} sats</p>
-                    <p className='text-gray-300 mb-2'><strong>Status:</strong> {getEffectiveStatus(selectedDelivery)}</p>
-                    {selectedDelivery.description && (
-                      <p className='text-gray-300'><strong>Description:</strong> {selectedDelivery.description}</p>
-                    )}
-                  </div>
-                  <div className='bg-gray-800/50 rounded-lg p-4 text-center text-gray-400'>
-                    <p>Map view temporarily unavailable</p>
-                    <p className='text-sm mt-2'>
-                      Location: {selectedDelivery.pickupLocation || 'Unknown'} → {selectedDelivery.destination || 'Unknown'}
-                    </p>
-                    {/* Debug info */}
-                    <details className='mt-4 text-xs'>
-                      <summary className='cursor-pointer text-gray-500'>Debug Info</summary>
-                      <pre className='mt-2 text-left bg-black/20 p-2 rounded text-gray-400 overflow-auto'>
-                        {JSON.stringify(selectedDelivery, null, 2)}
-                      </pre>
-                    </details>
-                  </div>
-                </div>
-              ) : selectedItemType === 'job' && selectedJob ? (
-                <div className='h-full p-6'>
-                  <div className='bg-black/20 border border-green-400/20 rounded-lg p-4 mb-4'>
-                    <h3 className='text-lg font-semibold text-green-400 mb-2'>Job Details</h3>
-                    <p className='text-gray-300 mb-2'><strong>Title:</strong> {selectedJob.title || 'No title'}</p>
-                    <p className='text-gray-300 mb-2'><strong>Location:</strong> {selectedJob.location || 'Location not specified'}</p>
-                    <p className='text-gray-300 mb-2'><strong>Compensation:</strong> {selectedJob.compensation || '0'} sats</p>
-                    <p className='text-gray-300 mb-2'><strong>People Needed:</strong> {selectedJob.peopleNeeded || '1'}</p>
-                    <p className='text-gray-300 mb-2'><strong>Status:</strong> {selectedJob.status || 'Unknown'}</p>
-                    {selectedJob.description && (
-                      <p className='text-gray-300 mb-2'><strong>Description:</strong> {selectedJob.description}</p>
-                    )}
-                    {selectedJob.requirements && (
-                      <p className='text-gray-300'><strong>Requirements:</strong> {selectedJob.requirements}</p>
-                    )}
-                  </div>
-                  <div className='bg-gray-800/50 rounded-lg p-4 text-center text-gray-400'>
-                    <p>Map view temporarily unavailable</p>
-                    <p className='text-sm mt-2'>Location: {selectedJob.location || 'Unknown'}</p>
-                    {/* Debug info */}
-                    <details className='mt-4 text-xs'>
-                      <summary className='cursor-pointer text-gray-500'>Debug Info</summary>
-                      <pre className='mt-2 text-left bg-black/20 p-2 rounded text-gray-400 overflow-auto'>
-                        {JSON.stringify(selectedJob, null, 2)}
-                      </pre>
-                    </details>
-                  </div>
-                </div>
-              ) : (
-                <div className='text-center py-8 text-[#FAFAFA]/70'>
-                  Select an item to view details
-                </div>
-              )}
+              </div>
             </CardContent>
           </Card>
         </div>

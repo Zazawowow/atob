@@ -36,13 +36,13 @@ const createIcon = (color: string, className: string) => {
 };
 
 // Helper component to recenter map
-function RecenterMap({ lat, lng }: { lat: number; lng: number }) {
+function RecenterMap({ lat, lng, zoom }: { lat: number; lng: number; zoom: number }) {
   const map = useMap();
   useEffect(() => {
     if (map && typeof map.setView === 'function' && typeof map.getZoom === 'function') {
-      map.setView([lat, lng], map.getZoom());
+      map.setView([lat, lng], zoom ?? map.getZoom());
     }
-  }, [lat, lng, map]);
+  }, [lat, lng, zoom, map]);
   return null;
 }
 
@@ -137,6 +137,9 @@ interface ActivityMapProps {
   selectedDelivery?: PackageData | null;
   selectedJob?: JobData | null;
   selectedPackage?: PackageData | null;
+  onSelectJob?: (job: JobData) => void;
+  onSelectPackage?: (pkg: PackageData) => void;
+  onSelectDelivery?: (delivery: PackageData) => void;
 }
 
 export default function ActivityMap({
@@ -146,8 +149,12 @@ export default function ActivityMap({
   selectedDelivery,
   selectedJob,
   selectedPackage,
+  onSelectJob,
+  onSelectPackage,
+  onSelectDelivery,
 }: ActivityMapProps) {
   const [center, setCenter] = useState<[number, number]>([20, 0]);
+  const [zoom, setZoom] = useState<number>(2);
   const [coordinates, setCoordinates] = useState<Record<string, [number, number]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [geocodingErrors, setGeocodingErrors] = useState<string[]>([]);
@@ -246,10 +253,16 @@ export default function ActivityMap({
   useEffect(() => {
     if (selectedDelivery && coordinates[`delivery-${selectedDelivery.id}`]) {
       setCenter(coordinates[`delivery-${selectedDelivery.id}`]);
+      setZoom(13);
     } else if (selectedJob && coordinates[`job-${selectedJob.id}`]) {
       setCenter(coordinates[`job-${selectedJob.id}`]);
+      setZoom(13);
     } else if (selectedPackage && coordinates[`package-${selectedPackage.id}`]) {
       setCenter(coordinates[`package-${selectedPackage.id}`]);
+      setZoom(13);
+    } else {
+      // No selection: zoom out to show broader area
+      setZoom(3);
     }
   }, [selectedDelivery, selectedJob, selectedPackage, coordinates]);
 
@@ -270,7 +283,7 @@ export default function ActivityMap({
       ) : (
         <MapContainer
           center={center}
-          zoom={2}
+          zoom={zoom}
           style={{ height: '100%', width: '100%', display: 'block' }}
           className='z-0'
           attributionControl={true}
@@ -295,7 +308,7 @@ export default function ActivityMap({
                     icon={deliveryIcon}
                     eventHandlers={{
                       click: () => {
-                        // Handle delivery selection if needed
+                        if (onSelectDelivery) onSelectDelivery(delivery);
                       },
                     }}
                   >
@@ -329,7 +342,7 @@ export default function ActivityMap({
                     icon={jobIcon}
                     eventHandlers={{
                       click: () => {
-                        // Handle job selection if needed
+                        if (onSelectJob) onSelectJob(job);
                       },
                     }}
                   >
@@ -363,7 +376,7 @@ export default function ActivityMap({
                     icon={packageIcon}
                     eventHandlers={{
                       click: () => {
-                        // Handle package selection if needed
+                        if (onSelectPackage) onSelectPackage(pkg);
                       },
                     }}
                   >
@@ -386,7 +399,7 @@ export default function ActivityMap({
             </>
           )}
 
-          <RecenterMap lat={center[0]} lng={center[1]} />
+          <RecenterMap lat={center[0]} lng={center[1]} zoom={zoom} />
           <CenterOnMe />
         </MapContainer>
       )}
