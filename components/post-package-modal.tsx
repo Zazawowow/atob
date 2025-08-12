@@ -128,80 +128,82 @@ export function PostPackageModal({ open, onOpenChange }: PostPackageModalProps) 
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-black/95 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center text-off-white text-xl">
-            <div className="p-2 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-md mr-3">
-              <Package className="h-5 w-5 text-off-white" />
+      <DialogContent className="max-w-2xl w-full bg-black/95 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm p-0">
+        <form onSubmit={handleSubmit} className="flex h-full min-h-0 flex-col">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-purple-500/20 bg-black/95">
+            <DialogTitle className="flex items-center text-off-white text-xl">
+              <div className="p-2 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-md mr-3">
+                <Package className="h-5 w-5 text-off-white" />
+              </div>
+              POST A PACKAGE
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="px-6 pb-4 pt-2 overflow-y-auto flex-1 min-h-0 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="title" className="text-off-white-90">Package Title</Label>
+              <Input
+                id="title"
+                name="title"
+                placeholder="E.g., Important Documents, Electronics, etc."
+                value={formData.title}
+                onChange={handleChange}
+                required
+                className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
+              />
             </div>
-            POST A PACKAGE
-          </DialogTitle>
-        </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="title" className="text-off-white-90">Package Title</Label>
-            <Input
-              id="title"
-              name="title"
-              placeholder="E.g., Important Documents, Electronics, etc."
-              value={formData.title}
-              onChange={handleChange}
-              required
-              className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
-            />
+
+            <div className="space-y-2">
+              <Label htmlFor="pickupLocation" className="text-off-white-90">Pickup Location</Label>
+              <AddressInput
+                id="pickupLocation"
+                value={formData.pickupLocation}
+                onChange={(value) => handleAddressChange('pickupLocation', value)}
+                placeholder="E.g., Neo-Tokyo, Tech District"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="destination" className="text-off-white-90">Destination</Label>
+              <AddressInput
+                id="destination"
+                value={formData.destination}
+                onChange={(value) => handleAddressChange('destination', value)}
+                placeholder="E.g., Cyber-City, Business District"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cost" className="text-off-white-90">Delivery Cost (sats)</Label>
+              <Input
+                id="cost"
+                name="cost"
+                type="number"
+                placeholder="25000"
+                value={formData.cost}
+                onChange={handleChange}
+                required
+                className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description" className="text-off-white-90">Package Description</Label>
+              <Textarea
+                id="description"
+                name="description"
+                placeholder="Describe the package contents, size, weight, special handling requirements..."
+                value={formData.description}
+                onChange={handleChange}
+                rows={4}
+                className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="pickupLocation" className="text-off-white-90">Pickup Location</Label>
-            <AddressInput
-              id="pickupLocation"
-              value={formData.pickupLocation}
-              onChange={(value) => handleAddressChange('pickupLocation', value)}
-              placeholder="E.g., Neo-Tokyo, Tech District"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="destination" className="text-off-white-90">Destination</Label>
-            <AddressInput
-              id="destination"
-              value={formData.destination}
-              onChange={(value) => handleAddressChange('destination', value)}
-              placeholder="E.g., Cyber-City, Business District"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="cost" className="text-off-white-90">Delivery Cost (sats)</Label>
-            <Input
-              id="cost"
-              name="cost"
-              type="number"
-              placeholder="25000"
-              value={formData.cost}
-              onChange={handleChange}
-              required
-              className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description" className="text-off-white-90">Package Description</Label>
-            <Textarea
-              id="description"
-              name="description"
-              placeholder="Describe the package contents, size, weight, special handling requirements..."
-              value={formData.description}
-              onChange={handleChange}
-              rows={4}
-              className="bg-background/5 border-blue-400/20 focus:border-blue-400/40 focus:ring-blue-400/10 !text-gray-100 placeholder:!text-gray-400"
-            />
-          </div>
-
-          <DialogFooter className="pt-4">
+          <DialogFooter className="px-6 pb-6 pt-4 border-t border-purple-500/20 bg-black/95">
             <Button
               type="submit"
               className="w-full btn-purple"

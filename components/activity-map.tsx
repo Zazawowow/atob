@@ -67,14 +67,34 @@ function CenterOnMe() {
   );
 }
 
-// Geocoding cache to prevent repeated API calls
-const geocodingCache = new Map<string, [number, number] | null>();
+// Geocoding cache with basic TTL for failed lookups to prevent stale nulls
+type CachedGeocode = {
+  coords: [number, number] | null;
+  timestamp: number;
+  attempts: number;
+};
+const geocodingCache = new Map<string, CachedGeocode>();
+const NULL_TTL_MS = 5 * 60 * 1000; // retry failed addresses after 5 minutes
 
 // Convert address to coordinates using OpenStreetMap Nominatim with caching
-async function getCoordinates(address: string): Promise<[number, number] | null> {
-  // Check cache first
-  if (geocodingCache.has(address)) {
-    return geocodingCache.get(address) || null;
+async function getCoordinates(address: string, options?: { force?: boolean }): Promise<[number, number] | null> {
+  const force = options?.force === true;
+  // Guard against missing/empty addresses
+  if (!address || address.trim().length === 0) {
+    return null;
+  }
+  // Check cache first unless forcing
+  if (!force && geocodingCache.has(address)) {
+    const entry = geocodingCache.get(address)!;
+    // If we have valid coords and they're fresh, return immediately
+    if (entry.coords) {
+      return entry.coords;
+    }
+    // For null entries, only retry if TTL expired
+    const ageMs = Date.now() - entry.timestamp;
+    if (ageMs < NULL_TTL_MS) {
+      return null;
+    }
   }
   try {
     // Check if input is already coordinates
@@ -114,18 +134,18 @@ async function getCoordinates(address: string): Promise<[number, number] | null>
     
     if (data && data.length > 0) {
       const coords: [number, number] = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-      geocodingCache.set(address, coords);
+      geocodingCache.set(address, { coords, timestamp: Date.now(), attempts: (geocodingCache.get(address)?.attempts || 0) + 1 });
       return coords;
     }
     
     console.warn(`Geocoding failed for address: ${address}`);
-    // Cache null results to prevent repeated failed requests
-    geocodingCache.set(address, null);
+    // Cache null results with timestamp so we can retry later
+    geocodingCache.set(address, { coords: null, timestamp: Date.now(), attempts: (geocodingCache.get(address)?.attempts || 0) + 1 });
     return null;
   } catch (error) {
     console.error('Error geocoding address:', error);
-    // Cache null results for failed requests too
-    geocodingCache.set(address, null);
+    // Cache null results for failed requests too, with timestamp
+    geocodingCache.set(address, { coords: null, timestamp: Date.now(), attempts: (geocodingCache.get(address)?.attempts || 0) + 1 });
     return null;
   }
 }
@@ -158,6 +178,7 @@ export default function ActivityMap({
   const [coordinates, setCoordinates] = useState<Record<string, [number, number]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [geocodingErrors, setGeocodingErrors] = useState<string[]>([]);
+  const [lastAddressById, setLastAddressById] = useState<Record<string, string>>({});
 
   // Create icons safely
   const deliveryIcon = createIcon('#06B6D4', 'delivery-marker');
@@ -181,31 +202,40 @@ export default function ActivityMap({
 
   // Collect all items that need geocoding
   const itemsToGeocode = useMemo(() => {
-    const items: Array<{ id: string; location: string; type: string }> = [];
+    const items: Array<{ id: string; location: string; type: string; force: boolean }> = [];
     
     // Add deliveries
     deliveries.forEach(delivery => {
-      if (!coordinates[`delivery-${delivery.id}`]) {
-        items.push({ id: `delivery-${delivery.id}`, location: delivery.pickupLocation, type: 'delivery' });
+      const id = `delivery-${delivery.id}`;
+      const location = delivery.pickupLocation;
+      const addressChanged = lastAddressById[id] !== location;
+      if (!coordinates[id] || addressChanged) {
+        items.push({ id, location, type: 'delivery', force: addressChanged });
       }
     });
     
     // Add jobs
     jobs.forEach(job => {
-      if (!coordinates[`job-${job.id}`]) {
-        items.push({ id: `job-${job.id}`, location: job.location, type: 'job' });
+      const id = `job-${job.id}`;
+      const location = job.location;
+      const addressChanged = lastAddressById[id] !== location;
+      if (!coordinates[id] || addressChanged) {
+        items.push({ id, location, type: 'job', force: addressChanged });
       }
     });
     
     // Add packages
     packages.forEach(pkg => {
-      if (!coordinates[`package-${pkg.id}`]) {
-        items.push({ id: `package-${pkg.id}`, location: pkg.pickupLocation, type: 'package' });
+      const id = `package-${pkg.id}`;
+      const location = pkg.pickupLocation;
+      const addressChanged = lastAddressById[id] !== location;
+      if (!coordinates[id] || addressChanged) {
+        items.push({ id, location, type: 'package', force: addressChanged });
       }
     });
     
     return items;
-  }, [deliveries, jobs, packages, coordinates]);
+  }, [deliveries, jobs, packages, coordinates, lastAddressById]);
 
   // Geocode locations
   useEffect(() => {
@@ -218,6 +248,7 @@ export default function ActivityMap({
       setIsLoading(true);
       const newCoordinates: Record<string, [number, number]> = {};
       const errors: string[] = [];
+      const newLastAddresses: Record<string, string> = {};
 
       // Process items in batches
       const BATCH_SIZE = 3;
@@ -225,12 +256,13 @@ export default function ActivityMap({
         const batch = itemsToGeocode.slice(i, i + BATCH_SIZE);
         
         const batchPromises = batch.map(async (item) => {
-          const coords = await getCoordinates(item.location);
+          const coords = await getCoordinates(item.location, { force: item.force });
           if (coords) {
             newCoordinates[item.id] = coords;
           } else {
             errors.push(`Could not geocode address: ${item.location}`);
           }
+          newLastAddresses[item.id] = item.location;
         });
 
         await Promise.all(batchPromises);
@@ -242,6 +274,9 @@ export default function ActivityMap({
 
       setCoordinates(prev => ({ ...prev, ...newCoordinates }));
       setGeocodingErrors(errors);
+      if (Object.keys(newLastAddresses).length > 0) {
+        setLastAddressById(prev => ({ ...prev, ...newLastAddresses }));
+      }
       setIsLoading(false);
     };
 

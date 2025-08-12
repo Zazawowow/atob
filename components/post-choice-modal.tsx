@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Briefcase, Package, Plus } from 'lucide-react';
+ 
 
 interface PostChoiceModalProps {
   open: boolean;
@@ -34,40 +34,29 @@ export function PostChoiceModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-black/95 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-center text-off-white text-xl">
-            <div className="p-2 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-full mr-3">
-              <Plus className="h-5 w-5 text-off-white" />
-            </div>
+      <DialogContent className="bg-black/95 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm p-0">
+        <DialogHeader className="px-5 sm:px-6 md:px-8 pt-6 pb-5 border-b border-purple-500/20 bg-black/95">
+          <DialogTitle className="text-center text-off-white text-xl">
             What would you like to post?
           </DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4 pt-4">
-          <Button
-            onClick={handleJobSelect}
-            className="w-full h-16 bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border border-purple-500/30 hover:from-purple-500/30 hover:to-cyan-500/30 hover:border-purple-500/50 transition-all duration-300 text-off-white"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-md">
-                <Briefcase className="h-5 w-5 text-off-white" />
-              </div>
+        <div className="px-5 sm:px-6 md:px-8 py-5 sm:py-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Button
+              onClick={handleJobSelect}
+              className="w-full h-16 px-4 rounded-xl bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border border-purple-500/30 hover:from-purple-500/30 hover:to-cyan-500/30 hover:border-purple-500/50 transition-all duration-300 text-off-white justify-center"
+            >
               <span className="text-lg font-medium">Post a Job</span>
-            </div>
-          </Button>
+            </Button>
 
-          <Button
-            onClick={handlePackageSelect}
-            className="w-full h-16 bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border border-purple-500/30 hover:from-purple-500/30 hover:to-cyan-500/30 hover:border-purple-500/50 transition-all duration-300 text-off-white"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-md">
-                <Package className="h-5 w-5 text-off-white" />
-              </div>
+            <Button
+              onClick={handlePackageSelect}
+              className="w-full h-16 px-4 rounded-xl bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border border-purple-500/30 hover:from-purple-500/30 hover:to-cyan-500/30 hover:border-purple-500/50 transition-all duration-300 text-off-white justify-center"
+            >
               <span className="text-lg font-medium">Post a Package</span>
-            </div>
-          </Button>
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -38,7 +38,7 @@ export function DeleteConfirmationModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-black/95 border border-red-500/20 rounded-2xl shadow-red-glow/10 backdrop-blur-sm">
+      <DialogContent className="max-w-md w-full max-h-[85vh] bg-black/95 border border-red-500/20 rounded-2xl shadow-red-glow/10 backdrop-blur-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3 text-off-white text-xl">
             <div className="p-2 bg-gradient-to-r from-red-500 to-orange-500 rounded-full">
