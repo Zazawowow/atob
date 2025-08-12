@@ -142,9 +142,9 @@ export function PostJobModal({ open, onOpenChange }: PostJobModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl w-full bg-black/95 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm p-0 my-12">
+      <DialogContent className="max-w-2xl w-full bg-black/95 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm p-0 my-0 max-h-[calc(100dvh-6rem)] sm:max-h-[calc(100dvh-8rem)] overflow-hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <form onSubmit={handleSubmit} className="flex h-full min-h-0 flex-col">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b border-purple-500/20 bg-black/95">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-purple-500/20 bg-black/95 sticky top-0 z-10">
             <DialogTitle className="flex items-center text-off-white text-xl">
               <div className="p-2 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-md mr-3">
                 <Briefcase className="h-5 w-5 text-off-white" />
@@ -153,7 +153,7 @@ export function PostJobModal({ open, onOpenChange }: PostJobModalProps) {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="px-6 pb-4 pt-2 overflow-y-auto flex-1 min-h-0 space-y-4">
+          <div className="px-6 pb-24 pt-2 overflow-y-auto flex-1 min-h-0 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="title" className="text-off-white-90">Job Title</Label>
               <Input
@@ -259,7 +259,7 @@ export function PostJobModal({ open, onOpenChange }: PostJobModalProps) {
             </div>
           </div>
 
-          <DialogFooter className="px-6 pb-6 pt-4 border-t border-purple-500/20 bg-black/95">
+          <DialogFooter className="px-6 pb-6 pt-4 border-t border-purple-500/20 bg-black/95 sticky bottom-0 z-10">
             <Button
               type="submit"
               className="w-full btn-purple"
