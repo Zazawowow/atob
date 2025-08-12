@@ -128,7 +128,7 @@ export function PostPackageModal({ open, onOpenChange }: PostPackageModalProps) 
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl w-full bg-black/95 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm p-0">
+      <DialogContent className="max-w-2xl w-full bg-black/95 border border-purple-500/20 rounded-2xl shadow-purple-glow/10 backdrop-blur-sm p-0 my-12">
         <form onSubmit={handleSubmit} className="flex h-full min-h-0 flex-col">
           <DialogHeader className="px-6 pt-6 pb-4 border-b border-purple-500/20 bg-black/95">
             <DialogTitle className="flex items-center text-off-white text-xl">
