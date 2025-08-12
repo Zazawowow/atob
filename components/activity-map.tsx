@@ -59,7 +59,7 @@ function CenterOnMe() {
   return (
     <button
       onClick={handleClick}
-      className='absolute bottom-4 right-4 z-[999] bg-white px-4 py-2 rounded-md shadow-md text-sm font-medium hover:bg-gray-100 transition-colors'
+      className='absolute bottom-4 right-4 z-[999] px-3 py-2 rounded-lg border bg-black/60 border-purple-400/30 text-[#FAFAFA] text-sm font-medium shadow-purple-glow/10 backdrop-blur-sm hover:bg-purple-400/10 hover:border-purple-400/40 transition-colors'
       style={{ zIndex: 999 }}
     >
       Center on Me
@@ -129,7 +129,9 @@ async function getCoordinates(address: string, options?: { force?: boolean }): P
         },
       }
     );
-
+    if (!response.ok) {
+      throw new Error(`Geocoding HTTP ${response.status}`);
+    }
     const data = await response.json();
     
     if (data && data.length > 0) {
@@ -143,7 +145,10 @@ async function getCoordinates(address: string, options?: { force?: boolean }): P
     geocodingCache.set(address, { coords: null, timestamp: Date.now(), attempts: (geocodingCache.get(address)?.attempts || 0) + 1 });
     return null;
   } catch (error) {
-    console.error('Error geocoding address:', error);
+    // Use warn instead of error to avoid Next dev overlay while still surfacing issues
+    if (typeof window !== 'undefined') {
+      console.warn('Geocoding request failed; continuing without pin:', error);
+    }
     // Cache null results for failed requests too, with timestamp
     geocodingCache.set(address, { coords: null, timestamp: Date.now(), attempts: (geocodingCache.get(address)?.attempts || 0) + 1 });
     return null;

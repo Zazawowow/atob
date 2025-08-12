@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import {
   Card,
   CardContent,
@@ -33,6 +33,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
 
 // Force dynamic rendering to avoid SSR issues
@@ -44,10 +46,31 @@ export default function MyActivities() {
     publicKey,
   } = useNostr();
   const [mounted, setMounted] = useState(false);
+  const mobileFilterTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [mobileFilterWidth, setMobileFilterWidth] = useState<number | null>(null);
+  const measureFilterWidth = useCallback(() => {
+    if (mobileFilterTriggerRef.current) {
+      setMobileFilterWidth(
+        mobileFilterTriggerRef.current.getBoundingClientRect().width
+      );
+    }
+  }, []);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+  useEffect(() => {
+    const update = () => setIsMobile(window.innerWidth < 1024);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+  // Track mobile dropdown trigger width so content matches trigger width
+  useEffect(() => {
+    measureFilterWidth();
+    window.addEventListener('resize', measureFilterWidth);
+    return () => window.removeEventListener('resize', measureFilterWidth);
+  }, [measureFilterWidth]);
   const [selectedDelivery, setSelectedDelivery] = useState<PackageData | null>(
     null
   );
@@ -75,6 +98,7 @@ export default function MyActivities() {
   const [myPostedJobsLoading, setMyPostedJobsLoading] = useState(false);
   const [applicantProfiles, setApplicantProfiles] = useState<{[key: string]: any}>({});
   const [profilesLoading, setProfilesLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const loadDeliveries = useCallback(async () => {
     if (!isReady) return;
@@ -391,7 +415,7 @@ export default function MyActivities() {
   }
 
   return (
-    <div className='container mx-auto px-4 pt-24 pb-8 relative z-10'>
+    <div className='container mx-auto px-4 pt-20 md:pt-24 pb-0 md:pb-8 relative z-10'>
       <div className='fixed inset-0 -z-10'>
         <Image
           src='/hero-3.jpeg'
@@ -405,65 +429,75 @@ export default function MyActivities() {
 
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
         {/* Left Column: Delivery List */}
-        <div className='h-[calc(100vh-10rem)]'>
+        <div className='h-[calc(100dvh-5rem-6rem)] md:h-[calc(100vh-10rem)]'>
           <Card className='bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10 h-full flex flex-col p-0 gap-0'>
-            <CardHeader className='flex flex-row justify-between items-center py-6 px-6'>
-              <div className='flex-1'>
+            {/* Page header to match Find Jobs */}
+            <CardHeader className='px-6 pt-4 pb-3 border-b border-blue-400/20'>
+              <div className='flex items-center justify-between'>
+                <div>
+                  <CardTitle className='text-[#FAFAFA] text-xl leading-tight mb-1'>My Activities</CardTitle>
+                  <CardDescription className='text-[#FAFAFA]/70 text-sm'>Manage your deliveries, work, and posts</CardDescription>
+                </div>
+                <Button
+                  onClick={
+                    activeTab === 'all' ? () => {
+                      handleRefresh();
+                      loadMyJobs();
+                      loadMyPackages();
+                      loadMyPostedJobs();
+                    } :
+                    activeTab === 'deliveries' ? handleRefresh :
+                    activeTab === 'jobs' ? loadMyJobs :
+                    activeTab === 'my-packages' ? loadMyPackages :
+                    loadMyPostedJobs
+                  }
+                  variant='outline'
+                  size='icon'
+                  className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-[#FAFAFA]'
+                  disabled={refreshing || jobsLoading || myPackagesLoading || myPostedJobsLoading}
+                >
+                  <RefreshCw className={`h-4 w-4 ${(refreshing || jobsLoading || myPackagesLoading || myPostedJobsLoading) ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            </CardHeader>
+
+            {/* Desktop filter dropdown below header */}
+            <div className='hidden md:block px-6 py-3 border-b border-blue-400/20'>
+              <div className='w-full'>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
+                      ref={mobileFilterTriggerRef}
                       variant='outline'
                       size='sm'
-                      className='bg-black/20 text-[#FAFAFA]/70 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 w-full justify-between'
+                      className='w-full h-10 bg-black/20 text-[#FAFAFA]/80 border-blue-400/30 hover:bg-blue-400/10 hover:border-blue-400/40 flex justify-between'
                     >
-                      <div className='flex items-center'>
+                      <span className='flex items-center'>
                         {currentTab?.icon}
                         {currentTab?.label}
-                      </div>
+                      </span>
                       <ChevronDown className='h-4 w-4 ml-2' />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className='bg-black/95 border-blue-400/20 text-[#FAFAFA] min-w-[200px]'>
-                    {tabOptions.map((tab) => (
-                      <DropdownMenuItem
-                        key={tab.value}
-                        onClick={() => handleTabChange(tab.value as 'all' | 'deliveries' | 'jobs' | 'my-packages' | 'my-jobs')}
-                        className='hover:bg-blue-400/10 focus:bg-blue-400/10 cursor-pointer'
-                      >
-                        {tab.icon}
-                        {tab.label}
-                      </DropdownMenuItem>
-                    ))}
+                  <DropdownMenuContent align='start' className='bg-black/95 border-blue-400/20 text-[#FAFAFA] p-1' style={{ width: mobileFilterWidth || undefined }}>
+                    <DropdownMenuRadioGroup value={activeTab} onValueChange={(v)=>handleTabChange(v as any)}>
+                      {tabOptions.map((tab) => (
+                        <DropdownMenuRadioItem
+                          key={tab.value}
+                          value={tab.value}
+                          className='hover:bg-blue-400/10 focus:bg-blue-400/10 cursor-pointer'
+                        >
+                          {tab.icon}
+                          {tab.label}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              <Button
-                onClick={
-                  activeTab === 'all' ? () => {
-                    handleRefresh();
-                    loadMyJobs();
-                    loadMyPackages();
-                    loadMyPostedJobs();
-                  } :
-                  activeTab === 'deliveries' ? handleRefresh : 
-                  activeTab === 'jobs' ? loadMyJobs :
-                  activeTab === 'my-packages' ? loadMyPackages :
-                  loadMyPostedJobs
-                }
-                variant='outline'
-                size='icon'
-                className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-[#FAFAFA] ml-3'
-                disabled={refreshing || jobsLoading || myPackagesLoading || myPostedJobsLoading}
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${(refreshing || jobsLoading || myPackagesLoading || myPostedJobsLoading) ? 'animate-spin' : ''}`}
-                />
-              </Button>
-              
+            </div>
 
-            </CardHeader>
-
-            <CardContent className='flex flex-col flex-grow overflow-hidden px-6 pb-6'>
+            <CardContent className='flex flex-col flex-grow overflow-hidden px-6 pb-14 md:pb-0'>
               <div className='space-y-4 overflow-y-auto pr-2 flex-1 transition-opacity duration-200'>
                 {activeTab === 'all' ? (
                   <>
@@ -990,11 +1024,47 @@ export default function MyActivities() {
                 )}
               </div>
             </CardContent>
+
+            {/* Mobile bottom dropdown (opens upward) */}
+            <div className='md:hidden px-6 py-4'>
+              <div className='mx-auto pt-3 pb-1 border-t border-blue-400/20' style={{ width: mobileFilterWidth || 'auto' }}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      ref={mobileFilterTriggerRef}
+                      variant='outline'
+                      size='sm'
+                      className='w-full h-10 bg-black/20 text-[#FAFAFA]/80 border-blue-400/30 hover:bg-blue-400/10 hover:border-blue-400/40 flex justify-between'
+                    >
+                      <span className='flex items-center'>
+                        {currentTab?.icon}
+                        {currentTab?.label}
+                      </span>
+                      <ChevronDown className='h-4 w-4 ml-2 rotate-180' />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side='top' align='start' className='bg-black/95 border-blue-400/20 text-[#FAFAFA] p-1' style={{ width: mobileFilterWidth || undefined }}>
+                    <DropdownMenuRadioGroup value={activeTab} onValueChange={(v)=>handleTabChange(v as any)}>
+                      {tabOptions.map((tab) => (
+                        <DropdownMenuRadioItem
+                          key={tab.value}
+                          value={tab.value}
+                          className='hover:bg-blue-400/10 focus:bg-blue-400/10 cursor-pointer'
+                        >
+                          {tab.icon}
+                          {tab.label}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
           </Card>
         </div>
 
-        {/* Right Column: Map with dynamic header */}
-        <div className='h-[calc(100vh-10rem)]'>
+        {/* Right Column: Map with dynamic header (hidden on mobile) */}
+        <div className='h-[calc(100vh-10rem)] hidden lg:block'>
           <Card className='bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10 h-full flex flex-col p-0 gap-0'>
             <CardContent className='p-0 h-full'>
               <div className='h-full w-full flex flex-col'>
@@ -1032,6 +1102,36 @@ export default function MyActivities() {
           </Card>
         </div>
       </div>
+      {isMobile && (selectedItemType !== null) && (
+        <div className='fixed inset-0 z-50 bg-black/90 backdrop-blur-sm pt-16'>
+          <div className='h-full flex flex-col'>
+            <div className='flex items-center gap-3 p-4 border-b border-blue-400/20 sticky top-0 bg-black/90'>
+              <Button
+                variant='outline'
+                size='icon'
+                className='bg-black/20 border-blue-400/20 text-[#FAFAFA]'
+                onClick={() => { setSelectedDelivery(null); setSelectedJob(null); setSelectedItemType(null); }}
+              >
+                <ArrowLeft className='h-5 w-5' />
+              </Button>
+              <div>
+                <p className='text-off-white text-base font-medium'>Details</p>
+                <p className='text-xs text-blue-300'>View on map</p>
+              </div>
+            </div>
+            <div className='flex-1'>
+              <ActivityMap
+                deliveries={selectedItemType === 'delivery' && selectedDelivery ? [selectedDelivery] : []}
+                jobs={selectedItemType === 'job' && selectedJob ? [selectedJob] : []}
+                packages={selectedItemType === 'package' && selectedDelivery ? [selectedDelivery] : []}
+                selectedDelivery={selectedDelivery || undefined}
+                selectedJob={selectedJob || undefined}
+                selectedPackage={selectedItemType === 'package' ? (selectedDelivery || undefined) : undefined}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
