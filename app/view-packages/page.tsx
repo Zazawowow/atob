@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,13 +40,40 @@ export default function ViewPackages() {
   const [error, setError] = useState<string | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<any | null>(null);
   const [selectedJob, setSelectedJob] = useState<any | null>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'packages' | 'jobs'>('packages');
+  const [activeTab, setActiveTab] = useState<'all' | 'packages' | 'jobs'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = window.sessionStorage.getItem('find-jobs-active-tab');
+      if (saved === 'all' || saved === 'packages' || saved === 'jobs') return saved as 'all' | 'packages' | 'jobs';
+    }
+    return 'all';
+  });
   const [showJobModal, setShowJobModal] = useState(false);
   const [showPackageModal, setShowPackageModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteItem, setDeleteItem] = useState<{ id: string; title: string; type: 'job' | 'package' } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Ensure lists have unique ids to avoid duplicate key warnings
+  const uniquePackages = useMemo(() => {
+    const seen = new Set<string>();
+    return packages.filter((p) => {
+      if (!p?.id) return false;
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+  }, [packages]);
+
+  const uniqueJobs = useMemo(() => {
+    const seen = new Set<string>();
+    return jobs.filter((j) => {
+      if (!j?.id) return false;
+      if (seen.has(j.id)) return false;
+      seen.add(j.id);
+      return true;
+    });
+  }, [jobs]);
 
   const loadPackages = useCallback(async () => {
     if (!isReady || !isLoggedIn) return;
@@ -118,6 +145,13 @@ export default function ViewPackages() {
   const handleJobClick = () => {
     setShowJobModal(true);
   };
+
+  // Persist activeTab for the session
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem('find-jobs-active-tab', activeTab);
+    }
+  }, [activeTab]);
 
   const handlePackageSelect = (pkg: any) => {
     setSelectedPackage(pkg);
@@ -335,26 +369,43 @@ export default function ViewPackages() {
                 <div className='flex-1'>
                   <CardTitle className='text-off-white text-xl leading-tight mb-1'>
                     {activeTab === 'packages'
-                      ? `Available Work (${packages.length})`
+                      ? `Available Work (${uniquePackages.length})`
                       : activeTab === 'jobs'
-                      ? `Available Work (${jobs.length})`
-                      : `Available Work (${packages.length + jobs.length})`}
+                      ? `Available Work (${uniqueJobs.length})`
+                      : `Available Work (${uniquePackages.length + uniqueJobs.length})`}
                   </CardTitle>
                   <CardDescription className='text-purple-300 text-sm'>
                     Select an item to view it on the map
                   </CardDescription>
                 </div>
                 <Button
-                  onClick={activeTab === 'packages' ? handleRefresh : loadJobs}
+                  onClick={() => {
+                    if (activeTab === 'packages') return handleRefresh();
+                    if (activeTab === 'jobs') return loadJobs();
+                    handleRefresh();
+                    loadJobs();
+                  }}
                   variant='outline'
                   size='icon'
                   className='shrink-0 bg-black/20 border-purple-400/20 hover:bg-purple-400/10 hover:border-purple-400/30 text-purple-300'
-                  disabled={activeTab === 'packages' ? loading : jobsLoading}
+                  disabled={activeTab === 'packages' ? loading : activeTab === 'jobs' ? jobsLoading : (loading || jobsLoading)}
                 >
-                  <RefreshCw className={`h-4 w-4 ${(activeTab === 'packages' ? loading : jobsLoading) ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`h-4 w-4 ${((activeTab === 'packages' && loading) || (activeTab === 'jobs' && jobsLoading) || (activeTab === 'all' && (loading || jobsLoading))) ? 'animate-spin' : ''}`} />
                 </Button>
               </div>
-              <div className='hidden md:flex space-x-1'>
+              <div className='hidden md:grid grid-cols-3 gap-2'>
+                <Button
+                  variant={activeTab === 'all' ? 'default' : 'outline'}
+                  size='sm'
+                  onClick={() => setActiveTab('all')}
+                  className={`${
+                    activeTab === 'all'
+                      ? 'bg-purple-400/20 text-purple-400 border-purple-400/30'
+                      : 'bg-black/20 text-[#FAFAFA]/70 border-purple-400/20 hover:bg-purple-400/10'
+                  } w-full`}
+                >
+                  All
+                </Button>
                 <Button
                   variant={activeTab === 'packages' ? 'default' : 'outline'}
                   size='sm'
@@ -363,7 +414,7 @@ export default function ViewPackages() {
                     activeTab === 'packages'
                       ? 'bg-purple-400/20 text-purple-400 border-purple-400/30'
                       : 'bg-black/20 text-[#FAFAFA]/70 border-purple-400/20 hover:bg-purple-400/10'
-                  }`}
+                  } w-full`}
                 >
                   <Package className='h-4 w-4 mr-2' />
                   Packages
@@ -376,15 +427,15 @@ export default function ViewPackages() {
                     activeTab === 'jobs'
                       ? 'bg-purple-400/20 text-purple-400 border-purple-400/30'
                       : 'bg-black/20 text-[#FAFAFA]/70 border-purple-400/20 hover:bg-purple-400/10'
-                  }`}
+                  } w-full`}
                 >
                   <Briefcase className='h-4 w-4 mr-2' />
                   Jobs
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className='flex flex-col flex-grow overflow-hidden px-4 lg:px-6 pb-0 md:pb-6'>
-              <div className='space-y-2 lg:space-y-3 overflow-y-auto pr-2 flex-1'>
+            <CardContent className='flex flex-col flex-grow overflow-hidden px-4 lg:px-6 pb-0 md:pb-0'>
+              <div className='space-y-2 lg:space-y-3 overflow-y-auto pr-2 flex-1 pt-0 pb-0'>
                 {activeTab === 'packages' ? (
                   loading ? (
                     <div className='flex justify-center items-center h-full min-h-[200px]'>
@@ -398,7 +449,7 @@ export default function ViewPackages() {
                         Try Again
                       </Button>
                     </div>
-                  ) : packages.length === 0 ? (
+                  ) : uniquePackages.length === 0 ? (
                     <div className='text-center text-gray-400 py-8'>
                       <Package className='h-16 w-16 mx-auto mb-4 opacity-50' />
                       <p>No packages available</p>
@@ -407,7 +458,7 @@ export default function ViewPackages() {
                       </Button>
                     </div>
                   ) : (
-                    packages.map((pkg) => {
+                    uniquePackages.map((pkg) => {
                       const ownPackage = isOwnPackage(pkg);
                       const isSelected = selectedPackage?.id === pkg.id;
                       
@@ -523,7 +574,7 @@ export default function ViewPackages() {
                       </Button>
                     </div>
                   ) : (
-                    jobs.map((job) => {
+                    uniqueJobs.map((job) => {
                       const ownJob = isOwnJob(job);
                       const isSelected = selectedJob?.id === job.id;
                       

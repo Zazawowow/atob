@@ -481,16 +481,16 @@ export default function MyActivities() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align='start' className='bg-black/95 border-blue-400/20 text-[#FAFAFA] p-1' style={{ width: mobileFilterWidth || undefined }}>
                     <DropdownMenuRadioGroup value={activeTab} onValueChange={(v)=>handleTabChange(v as any)}>
-                      {tabOptions.map((tab) => (
+                    {tabOptions.map((tab) => (
                         <DropdownMenuRadioItem
-                          key={tab.value}
+                        key={tab.value}
                           value={tab.value}
-                          className='hover:bg-blue-400/10 focus:bg-blue-400/10 cursor-pointer'
-                        >
-                          {tab.icon}
-                          {tab.label}
+                        className='hover:bg-blue-400/10 focus:bg-blue-400/10 cursor-pointer'
+                      >
+                        {tab.icon}
+                        {tab.label}
                         </DropdownMenuRadioItem>
-                      ))}
+                    ))}
                     </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -498,7 +498,7 @@ export default function MyActivities() {
             </div>
 
             <CardContent className='flex flex-col flex-grow overflow-hidden px-6 pb-14 md:pb-0'>
-              <div className='space-y-4 overflow-y-auto pr-2 flex-1 transition-opacity duration-200'>
+              <div className='space-y-4 overflow-y-auto pr-2 flex-1 transition-opacity duration-200 pt-4 pb-24'>
                 {activeTab === 'all' ? (
                   <>
                     {/* All Activities View */}
@@ -1063,46 +1063,56 @@ export default function MyActivities() {
           </Card>
         </div>
 
-        {/* Right Column: Map with dynamic header (hidden on mobile) */}
+        {/* Right Column: Applications panel (hidden on mobile) */}
         <div className='h-[calc(100vh-10rem)] hidden lg:block'>
           <Card className='bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10 h-full flex flex-col p-0 gap-0'>
             <CardContent className='p-0 h-full'>
               <div className='h-full w-full flex flex-col'>
                 <div className='px-6 pt-6 pb-4'>
-                  <CardTitle className='text-[#FAFAFA] text-xl'>{mapHeader.title}</CardTitle>
+                  <CardTitle className='text-[#FAFAFA] text-xl'>
+                    {selectedItemType === 'job' && selectedJob ? selectedJob.title : 'Applications'}
+                  </CardTitle>
                   <CardDescription className='text-[#FAFAFA]/70'>
-                    {mapHeader.description}
+                    {selectedItemType === 'job' && selectedJob ? 'Review and accept applicants' : 'Select a job to view applicants'}
                   </CardDescription>
                 </div>
-                <div className='flex-1 rounded-b-2xl rounded-tl-none rounded-tr-none overflow-hidden'>
-                  <ActivityMap
-                    deliveries={selectedItemType === 'delivery' && selectedDelivery ? [selectedDelivery] : deliveries}
-                    jobs={selectedItemType === 'job' && selectedJob ? [selectedJob] : allJobsForMap}
-                    packages={selectedItemType === 'package' && selectedDelivery ? [selectedDelivery] : myPackages}
-                    selectedDelivery={selectedDelivery || undefined}
-                    selectedJob={selectedJob || undefined}
-                    selectedPackage={selectedItemType === 'package' ? (selectedDelivery || undefined) : undefined}
-                    onSelectDelivery={(d) => {
-                      setSelectedDelivery(d);
-                      setSelectedItemType('delivery');
-                    }}
-                    onSelectJob={(j) => {
-                      setSelectedJob(j);
-                      setSelectedItemType('job');
-                      loadApplicantProfiles(j);
-                    }}
-                    onSelectPackage={(p) => {
-                      setSelectedDelivery(p);
-                      setSelectedItemType('package');
-                    }}
-                  />
+                <div className='flex-1 overflow-y-auto px-6 pb-6'>
+                  {selectedItemType === 'job' && selectedJob ? (
+                    <div className='space-y-3'>
+                      {(!selectedJob.assignedWorkers || selectedJob.assignedWorkers.length === 0) && (
+                        <p className='text-sm text-[#FAFAFA]/60'>No applications yet.</p>
+                      )}
+                      {selectedJob.assignedWorkers && selectedJob.assignedWorkers.map((worker) => {
+                        const profile = applicantProfiles[worker];
+                        const level = profile ? (profile.deliveries >= 50 ? 'CypherMax' : profile.deliveries >= 30 ? 'Local Driver' : profile.deliveries >= 20 ? 'Cypherpunk' : profile.deliveries >= 10 ? 'Novice Courier' : 'Neophyte') : 'Neophyte';
+                        return (
+                          <div key={worker} className='flex items-center justify-between bg-black/20 border border-blue-400/20 rounded-lg p-3'>
+                            <div className='flex items-center gap-3'>
+                              <img src={profile?.picture || '/avatar.png'} alt={profile?.displayName || 'User'} className='w-9 h-9 rounded-full object-cover' />
+                              <div>
+                                <Link href={`/profile?pubkey=${worker}`} className='text-sm text-[#FAFAFA] hover:underline'>
+                                  {profile?.displayName || profile?.name || 'Unknown User'}
+                                </Link>
+                                <div className='text-xs text-[#FAFAFA]/60'>Level: {level}</div>
+                              </div>
+                            </div>
+                            <Button size='sm' onClick={() => handleAcceptWorker(selectedJob.id, worker)} disabled={acceptingWorker === worker} className='bg-blue-500/20 border border-blue-400/30 hover:bg-blue-500/30'>
+                              {acceptingWorker === worker ? 'Accepting...' : 'Accept'}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className='text-sm text-[#FAFAFA]/60'>Select a job on the left to view its applicants.</div>
+                  )}
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
-      {isMobile && (selectedItemType !== null) && (
+      {isMobile && (
         <div className='fixed inset-0 z-50 bg-black/90 backdrop-blur-sm pt-16'>
           <div className='h-full flex flex-col'>
             <div className='flex items-center gap-3 p-4 border-b border-blue-400/20 sticky top-0 bg-black/90'>
@@ -1115,21 +1125,61 @@ export default function MyActivities() {
                 <ArrowLeft className='h-5 w-5' />
               </Button>
               <div>
-                <p className='text-off-white text-base font-medium'>Details</p>
-                <p className='text-xs text-blue-300'>View on map</p>
+                <p className='text-off-white text-base font-medium'>
+                  {selectedItemType === 'job' ? 'Applications' : 'Details'}
+                </p>
+                <p className='text-xs text-blue-300'>
+                  {selectedItemType ? (selectedItemType === 'job' ? 'Review and accept applicants' : 'Map view') : 'Select an item to view details'}
+                </p>
               </div>
             </div>
             <div className='flex-1'>
-              <ActivityMap
-                deliveries={selectedItemType === 'delivery' && selectedDelivery ? [selectedDelivery] : []}
-                jobs={selectedItemType === 'job' && selectedJob ? [selectedJob] : []}
-                packages={selectedItemType === 'package' && selectedDelivery ? [selectedDelivery] : []}
-                selectedDelivery={selectedDelivery || undefined}
-                selectedJob={selectedJob || undefined}
-                selectedPackage={selectedItemType === 'package' ? (selectedDelivery || undefined) : undefined}
-              />
-            </div>
-          </div>
+              {!selectedItemType && (
+                <div className='h-full w-full flex items-center justify-center text-[#FAFAFA]/60'>
+                  Select an item to view details
+                </div>
+              )}
+              {selectedItemType === 'job' && selectedJob && (
+                <div className='h-full w-full flex flex-col px-4 py-3'>
+                  <div className='space-y-3 overflow-y-auto'>
+                    {(!selectedJob.assignedWorkers || selectedJob.assignedWorkers.length === 0) && (
+                      <p className='text-sm text-[#FAFAFA]/60'>No applications yet.</p>
+                    )}
+                    {selectedJob.assignedWorkers && selectedJob.assignedWorkers.map((worker) => {
+                      const profile = applicantProfiles[worker];
+                      const level = profile ? (profile.deliveries >= 50 ? 'CypherMax' : profile.deliveries >= 30 ? 'Local Driver' : profile.deliveries >= 20 ? 'Cypherpunk' : profile.deliveries >= 10 ? 'Novice Courier' : 'Neophyte') : 'Neophyte';
+                      return (
+                        <div key={worker} className='flex items-center justify-between bg-black/20 border border-blue-400/20 rounded-lg p-3'>
+                          <div className='flex items-center gap-3'>
+                            <img src={profile?.picture || '/avatar.png'} alt={profile?.displayName || 'User'} className='w-9 h-9 rounded-full object-cover' />
+                            <div>
+                              <Link href={`/profile?pubkey=${worker}`} className='text-sm text-[#FAFAFA] hover:underline'>
+                                {profile?.displayName || profile?.name || 'Unknown User'}
+                              </Link>
+                              <div className='text-xs text-[#FAFAFA]/60'>Level: {level}</div>
+                            </div>
+                          </div>
+                          <Button size='sm' onClick={() => handleAcceptWorker(selectedJob.id, worker)} disabled={acceptingWorker === worker} className='bg-blue-500/20 border border-blue-400/30 hover:bg-blue-500/30'>
+                            {acceptingWorker === worker ? 'Accepting...' : 'Accept'}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {selectedItemType && selectedItemType !== 'job' && (
+                  <ActivityMap
+                  deliveries={selectedItemType === 'delivery' && selectedDelivery ? [selectedDelivery] : []}
+                  jobs={selectedItemType === 'job' && selectedJob ? [selectedJob] : []}
+                  packages={selectedItemType === 'package' && selectedDelivery ? [selectedDelivery] : []}
+                    selectedDelivery={selectedDelivery || undefined}
+                    selectedJob={selectedJob || undefined}
+                    selectedPackage={selectedItemType === 'package' ? (selectedDelivery || undefined) : undefined}
+                />
+              )}
+                </div>
+              </div>
         </div>
       )}
     </div>
