@@ -436,7 +436,6 @@ export default function MyActivities() {
               <div className='flex items-center justify-between'>
                 <div>
                   <CardTitle className='text-[#FAFAFA] text-xl leading-tight mb-1'>My Activities</CardTitle>
-                  <CardDescription className='text-[#FAFAFA]/70 text-sm'>Manage your deliveries, work, and posts</CardDescription>
                 </div>
                 <Button
                   onClick={
@@ -497,7 +496,7 @@ export default function MyActivities() {
               </div>
             </div>
 
-            <CardContent className='flex flex-col flex-grow overflow-hidden px-6 pb-14 md:pb-0'>
+            <CardContent className='flex flex-col flex-grow overflow-hidden px-6 pb-0 md:pb-0'>
               <div className='space-y-4 overflow-y-auto pr-2 flex-1 transition-opacity duration-200 pt-4 pb-24'>
                 {activeTab === 'all' ? (
                   <>
@@ -1112,7 +1111,7 @@ export default function MyActivities() {
           </Card>
         </div>
       </div>
-      {isMobile && (
+      {isMobile && (selectedItemType !== null) && (
         <div className='fixed inset-0 z-50 bg-black/90 backdrop-blur-sm pt-16'>
           <div className='h-full flex flex-col'>
             <div className='flex items-center gap-3 p-4 border-b border-blue-400/20 sticky top-0 bg-black/90'>
