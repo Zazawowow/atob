@@ -1167,14 +1167,14 @@ export default function MyActivities() {
                   </div>
                 </div>
               )}
-              {selectedItemType && selectedItemType !== 'job' && (
-                  <ActivityMap
+              {(selectedItemType === 'delivery' || selectedItemType === 'package') && (
+                <ActivityMap
                   deliveries={selectedItemType === 'delivery' && selectedDelivery ? [selectedDelivery] : []}
-                  jobs={selectedItemType === 'job' && selectedJob ? [selectedJob] : []}
+                  jobs={[]}
                   packages={selectedItemType === 'package' && selectedDelivery ? [selectedDelivery] : []}
-                    selectedDelivery={selectedDelivery || undefined}
-                    selectedJob={selectedJob || undefined}
-                    selectedPackage={selectedItemType === 'package' ? (selectedDelivery || undefined) : undefined}
+                  selectedDelivery={selectedDelivery || undefined}
+                  selectedJob={undefined}
+                  selectedPackage={selectedItemType === 'package' ? (selectedDelivery || undefined) : undefined}
                 />
               )}
                 </div>
