@@ -415,7 +415,7 @@ export default function MyActivities() {
   }
 
   return (
-    <div className='container mx-auto px-4 pt-20 md:pt-24 pb-0 md:pb-8 relative z-10'>
+    <div className='container mx-auto h-[100svh] overflow-hidden md:h-auto md:overflow-visible px-4 pt-20 md:pt-24 pb-0 md:pb-8 relative z-10'>
       <div className='fixed inset-0 -z-10'>
         <Image
           src='/hero-3.jpeg'
@@ -427,10 +427,10 @@ export default function MyActivities() {
         <div className='absolute inset-0 bg-black/30' />
       </div>
 
-      <div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
+      <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 h-[calc(100svh-10rem)]'>
         {/* Left Column: Delivery List */}
-        <div className='h-[calc(100dvh-5rem-6rem)] md:h-[calc(100vh-10rem)]'>
-          <Card className='bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10 h-full flex flex-col p-0 gap-0'>
+        <div className='min-h-0 h-full'>
+          <Card className='bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10 h-full min-h-0 flex flex-col p-0 gap-0'>
             {/* Page header to match Find Jobs */}
             <CardHeader className='px-6 pt-4 pb-3 border-b border-blue-400/20'>
               <div className='flex items-center justify-between'>
@@ -496,8 +496,8 @@ export default function MyActivities() {
               </div>
             </div>
 
-            <CardContent className='flex flex-col flex-grow overflow-hidden px-6 pb-0 md:pb-0'>
-              <div className='space-y-4 overflow-y-auto pr-2 flex-1 transition-opacity duration-200 pt-4 pb-24'>
+            <CardContent className='flex flex-col flex-1 min-h-0 overflow-hidden px-6 pb-0'>
+              <div className='space-y-4 overflow-y-auto pr-2 flex-1 min-h-0 transition-opacity duration-200 pt-4 pb-24'>
                 {activeTab === 'all' ? (
                   <>
                     {/* All Activities View */}
@@ -1063,7 +1063,7 @@ export default function MyActivities() {
         </div>
 
         {/* Right Column: Applications panel (hidden on mobile) */}
-        <div className='h-[calc(100vh-10rem)] hidden lg:block'>
+        <div className='h-full hidden lg:block'>
           <Card className='bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10 h-full flex flex-col p-0 gap-0'>
             <CardContent className='p-0 h-full'>
               <div className='h-full w-full flex flex-col'>
@@ -1168,13 +1168,13 @@ export default function MyActivities() {
                 </div>
               )}
               {(selectedItemType === 'delivery' || selectedItemType === 'package') && (
-                <ActivityMap
+                  <ActivityMap
                   deliveries={selectedItemType === 'delivery' && selectedDelivery ? [selectedDelivery] : []}
                   jobs={[]}
                   packages={selectedItemType === 'package' && selectedDelivery ? [selectedDelivery] : []}
-                  selectedDelivery={selectedDelivery || undefined}
+                    selectedDelivery={selectedDelivery || undefined}
                   selectedJob={undefined}
-                  selectedPackage={selectedItemType === 'package' ? (selectedDelivery || undefined) : undefined}
+                    selectedPackage={selectedItemType === 'package' ? (selectedDelivery || undefined) : undefined}
                 />
               )}
                 </div>
