@@ -95,21 +95,51 @@ async function getConnection(relay: string): Promise<any> {
       throw new Error('Failed to load SimplePool');
     }
     
-    const connection = new SimplePool();
-    
-    // Test the connection without timeout since ensureRelay is synchronous
+    let connection;
     try {
-      // Test the connection by ensuring relay
-      connection.ensureRelay(relay);
-      pool.set(relay, connection);
-      console.log(`✅ Connected to ${relay}`);
-      return connection;
-    } catch (error) {
-      console.warn(`⚠️ Failed to ensure relay ${relay}:`, error);
-      // Still return the connection as it might work for publishing
-      pool.set(relay, connection);
-      return connection;
+      connection = new SimplePool();
+    } catch (poolError) {
+      console.warn(`❌ Failed to create SimplePool for ${relay}:`, poolError);
+      return null;
     }
+    
+    // Add comprehensive error handling for the pool
+    try {
+      // Wrap all pool operations in try-catch
+      if (connection && typeof connection === 'object') {
+        if ('onerror' in connection) {
+          connection.onerror = (error: any) => {
+            console.warn(`🔌 WebSocket error on ${relay}:`, error);
+            // Don't propagate the error, just log it
+          };
+        }
+
+        // Add error event listeners if supported
+        if (typeof connection.addEventListener === 'function') {
+          connection.addEventListener('error', (error: any) => {
+            console.warn(`🔌 WebSocket error event on ${relay}:`, error);
+          });
+        }
+
+        // Wrap ensureRelay in try-catch to prevent WebSocket errors
+        if (typeof connection.ensureRelay === 'function') {
+          try {
+            connection.ensureRelay(relay);
+            console.log(`✅ Connected to ${relay}`);
+          } catch (ensureError) {
+            console.warn(`⚠️ Failed to ensure relay ${relay}:`, ensureError);
+            // Don't throw, just log the warning
+          }
+        }
+      }
+    } catch (errorHandlerError) {
+      console.warn('Failed to setup error handlers for WebSocket:', errorHandlerError);
+    }
+    
+    // Store the connection even if some operations failed
+    pool.set(relay, connection);
+    return connection;
+    
   } catch (error) {
     console.warn(`❌ Failed to connect to ${relay}:`, error);
     // Don't store failed connections
@@ -284,27 +314,49 @@ async function fetchEventsWithTimeout(
       
       const sub = pool.subscribe(relays, filter, {
         onevent: (event: any) => { // Changed from NostrEvent to any
-          if (!seen.has(event.id)) {
-            seen.add(event.id);
-            events.push(event);
-            console.log(`📦 Received event ${event.id} (total: ${events.length})`);
+          try {
+            if (!seen.has(event.id)) {
+              seen.add(event.id);
+              events.push(event);
+              console.log(`📦 Received event ${event.id} (total: ${events.length})`);
+            }
+          } catch (eventError) {
+            console.warn('Error processing event:', eventError);
           }
         },
         oneose: () => {
-          if (!hasReceivedEose) {
-            hasReceivedEose = true;
-            clearTimeout(timeoutId);
-            console.log(`✅ EOSE received, resolving with ${events.length} events`);
+          try {
+            if (!hasReceivedEose) {
+              hasReceivedEose = true;
+              clearTimeout(timeoutId);
+              console.log(`✅ EOSE received, resolving with ${events.length} events`);
+              resolve(events);
+            }
+          } catch (eoseError) {
+            console.warn('Error in EOSE handler:', eoseError);
             resolve(events);
           }
+        },
+        onerror: (error: any) => {
+          console.warn(`🔌 Subscription error:`, error);
+          // Don't reject, just continue with what we have
         }
       });
 
       // Close subscription after timeout to prevent memory leaks
       setTimeout(() => {
-        if (!hasReceivedEose) {
-          console.log(`⏰ Timeout reached, closing subscription`);
-          sub.close();
+        try {
+          if (!hasReceivedEose) {
+            console.log(`⏰ Timeout reached, closing subscription`);
+            if (sub && typeof sub.close === 'function') {
+              sub.close();
+            }
+            clearTimeout(timeoutId);
+            resolve(events);
+          }
+        } catch (timeoutError) {
+          console.warn('Error in timeout handler:', timeoutError);
+          resolve(events);
         }
       }, timeoutMs);
 

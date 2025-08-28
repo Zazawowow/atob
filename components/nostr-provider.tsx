@@ -13,6 +13,8 @@ import { useRouter } from 'next/navigation';
 import { type PackageData } from '@/lib/nostr-types';
 import { getPackages } from '@/lib/nostr';
 import { toast } from 'sonner';
+import { NostrErrorHandler } from '@/lib/error-handler';
+import { DataConsistencyManager } from '@/lib/data-consistency-manager';
 
 interface NostrContextType {
   publicKey: string;
@@ -57,24 +59,28 @@ export function NostrProvider({ children }: { children: ReactNode }) {
     }
     
     console.log('Fetching packages in provider...');
-    try {
-      const pkgs = await getPackages();
-      setPackages(pkgs);
-    } catch (error) {
-      // Only show error toast if it's not a network timeout or temporary issue
-      if (error instanceof Error && !error.message.includes('timeout')) {
-        toast.error('Error Fetching Packages', {
-          description: 'Could not update package list.',
-        });
-      }
-      console.error('Error fetching packages in provider:', error);
-    } finally {
-      setPackagesLoading(false);
-    }
+    
+    // Use error handler for WebSocket-related failures
+    const pkgs = await NostrErrorHandler.withErrorHandling(
+      async () => await getPackages(),
+      [], // Fallback to empty array
+      'Failed to fetch packages, using cached data'
+    );
+    
+    setPackages(pkgs);
+    setPackagesLoading(false);
   }, []); // Empty dependency array to prevent recreation
 
   useEffect(() => {
     setMounted(true);
+
+    // Install error handler for WebSocket errors (double-check installation)
+    try {
+      NostrErrorHandler.install();
+      console.log('🛡️ NostrErrorHandler installed in NostrProvider');
+    } catch (installError) {
+      console.warn('Failed to install NostrErrorHandler in NostrProvider:', installError);
+    }
 
     // Only access localStorage in browser environment
     if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
@@ -101,9 +107,26 @@ export function NostrProvider({ children }: { children: ReactNode }) {
       setPackagesLoading(true);
       fetchPackages(); // Initial fetch on login
 
-      const interval = setInterval(fetchPackages, 15000); // Refresh every 15 seconds
+      // Start data consistency manager for real-time updates
+      DataConsistencyManager.start({
+        enableRealtime: true,
+        syncInterval: 30000, // 30 seconds
+        onPackageUpdate: (packages) => {
+          console.log('📊 Real-time package update received:', packages.length);
+          setPackages(packages);
+        },
+        onError: (error) => {
+          console.error('📊 Data consistency error:', error);
+          // Don't show toast for consistency errors to avoid spam
+        }
+      });
 
-      return () => clearInterval(interval);
+      return () => {
+        DataConsistencyManager.stop();
+      };
+    } else {
+      // Stop data consistency manager when logged out
+      DataConsistencyManager.stop();
     }
   }, [isLoggedIn, fetchPackages]); // Add fetchPackages back to satisfy ESLint
 

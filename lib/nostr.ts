@@ -4,9 +4,9 @@ import { EVENT_KINDS, type PackageData, type JobData, type ProfileData } from '.
 import {
   listEvents,
   createSignedEvent,
-  publishEvent as publishNostrEvent,
   getEventById,
 } from './nostr-service';
+import { publishEvent as publishNostrEvent } from './nostr-publisher';
 import {
   saveLocalPackage,
   getLocalPackages,
@@ -316,13 +316,13 @@ export async function createPackage(
       );
 
       // Try to publish the event with increased retries
-      const results = await publishNostrEvent(event);
-      console.log('Package published to relays:', results);
+      const publishResult = await publishNostrEvent(event);
+      console.log('Package published to relays:', publishResult);
       console.log('Package event:', event);
       console.log('Package pubkey:', event.pubkey);
 
       // Count successful publishes
-      const successCount = results.filter((r) => r === 'ok').length;
+      const successCount = publishResult.successCount;
 
       // Save to localStorage with the same ID as Nostr to avoid duplicates
       const localPackage: PackageData = {
@@ -369,10 +369,38 @@ export async function getJobs(): Promise<JobData[]> {
   try {
     // First try to get jobs from Nostr
     try {
-      const events = await listEvents([{ kinds: [EVENT_KINDS.JOB] }]);
-      const jobs: JobData[] = [];
+      // Fetch both job events and deletion events
+      const [jobEvents, deletionEvents] = await Promise.all([
+        listEvents([{ kinds: [EVENT_KINDS.JOB] }]),
+        listEvents([{ kinds: [5] }]) // Kind 5 = deletion events
+      ]);
 
-      for (const event of events) {
+      console.log('getJobs - Found', jobEvents.length, 'job events from Nostr');
+      console.log('getJobs - Found', deletionEvents.length, 'deletion events from Nostr');
+
+      // Get IDs of deleted events
+      const deletedEventIds = new Set<string>();
+      for (const deletionEvent of deletionEvents) {
+        // Check if this deletion event references any job events
+        const eTags = deletionEvent.tags?.filter((tag: any[]) => tag[0] === 'e') || [];
+        for (const eTag of eTags) {
+          if (eTag[1]) {
+            deletedEventIds.add(eTag[1]);
+          }
+        }
+      }
+
+      console.log('getJobs - Found', deletedEventIds.size, 'deleted job IDs:', Array.from(deletedEventIds));
+
+      // Parse jobs and filter out deleted ones
+      const jobs: JobData[] = [];
+      for (const event of jobEvents) {
+        // Skip if this job has been deleted
+        if (deletedEventIds.has(event.id)) {
+          console.log('getJobs - Skipping deleted job:', event.id);
+          continue;
+        }
+
         const job = parseJobFromEvent(event);
         if (job) {
           jobs.push(job);
@@ -383,21 +411,34 @@ export async function getJobs(): Promise<JobData[]> {
       const localJobs = getLocalJobs();
       console.log('getJobs - Found', localJobs.length, 'local jobs');
       console.log('getJobs - Local jobs:', localJobs.map(job => ({ id: job.id, applicants: job.applicants, acceptedWorker: job.acceptedWorker })));
-      console.log('getJobs - Found', jobs.length, 'jobs from Nostr');
+      console.log('getJobs - Found', jobs.length, 'non-deleted jobs from Nostr');
       console.log('getJobs - Nostr jobs:', jobs.map(job => ({ id: job.id, applicants: job.applicants, acceptedWorker: job.acceptedWorker })));
 
-      // Save Nostr jobs to localStorage if they don't exist locally
+      // Remove any locally stored jobs that have been deleted on Nostr
+      const { deleteLocalJob } = await import('@/lib/local-job-service');
+      for (const deletedId of deletedEventIds) {
+        const localJobExists = localJobs.find(job => job.id === deletedId);
+        if (localJobExists) {
+          console.log('getJobs - Removing locally stored deleted job:', deletedId);
+          deleteLocalJob(deletedId);
+        }
+      }
+
+      // Get updated local jobs after deletion cleanup
+      const updatedLocalJobs = getLocalJobs();
+
+      // Save Nostr jobs to localStorage if they don't exist locally AND haven't been deleted
       const { saveExistingJobToLocal } = await import('@/lib/local-job-service');
       for (const job of jobs) {
-        const existingLocalJob = localJobs.find(localJob => localJob.id === job.id);
-        if (!existingLocalJob) {
+        const existingLocalJob = updatedLocalJobs.find(localJob => localJob.id === job.id);
+        if (!existingLocalJob && !deletedEventIds.has(job.id)) {
           console.log('Saving Nostr job to localStorage:', job.id);
           saveExistingJobToLocal(job);
         }
       }
 
       // Merge and deduplicate, prioritizing localStorage data
-      const allJobs = [...localJobs, ...jobs];
+      const allJobs = [...updatedLocalJobs, ...jobs];
       const uniqueJobs = allJobs.filter((job, index, self) => 
         index === self.findIndex(j => j.id === job.id)
       );
@@ -450,8 +491,8 @@ export async function applyForJob(jobId: string): Promise<void> {
         tags
       );
 
-      await publishNostrEvent(event);
-      console.log('Job application published to Nostr');
+      const publishResult = await publishNostrEvent(event);
+      console.log('Job application published to Nostr:', publishResult);
     } catch (nostrError) {
       console.error('Nostr error, application saved locally only:', nostrError);
     }
@@ -491,8 +532,8 @@ export async function acceptJobApplicant(jobId: string, workerPubkey: string): P
         tags
       );
 
-      await publishNostrEvent(event);
-      console.log('Job acceptance published to Nostr');
+      const publishResult = await publishNostrEvent(event);
+      console.log('Job acceptance published to Nostr:', publishResult);
     } catch (nostrError) {
       console.error('Nostr error, acceptance saved locally only:', nostrError);
     }
@@ -531,8 +572,8 @@ export async function rejectJobApplicant(jobId: string): Promise<void> {
         tags
       );
 
-      await publishNostrEvent(event);
-      console.log('Job rejection published to Nostr');
+      const publishResult = await publishNostrEvent(event);
+      console.log('Job rejection published to Nostr:', publishResult);
     } catch (nostrError) {
       console.error('Nostr error, rejection saved locally only:', nostrError);
     }
@@ -581,8 +622,8 @@ export async function deleteJob(jobId: string): Promise<void> {
           '',
           [['e', jobId]]
         );
-        await publishNostrEvent(event);
-        console.log('Job deletion (kind 5) published to Nostr');
+        const publishResult = await publishNostrEvent(event);
+        console.log('Job deletion (kind 5) published to Nostr:', publishResult);
       } else {
         console.log('Local-only job id, skipped relay deletion');
       }
@@ -623,8 +664,8 @@ export async function completeJob(jobId: string): Promise<void> {
         tags
       );
 
-      await publishNostrEvent(event);
-      console.log('Job completion published to Nostr');
+      const publishResult = await publishNostrEvent(event);
+      console.log('Job completion published to Nostr:', publishResult);
     } catch (nostrError) {
       console.error('Nostr error, job completed locally only:', nostrError);
     }
@@ -681,13 +722,13 @@ export async function createJob(
       );
 
       // Try to publish the event with increased retries
-      const results = await publishNostrEvent(event);
-      console.log('Job published to relays:', results);
+      const publishResult = await publishNostrEvent(event);
+      console.log('Job published to relays:', publishResult);
       console.log('Job event:', event);
       console.log('Job pubkey:', event.pubkey);
 
       // Count successful publishes
-      const successCount = results.filter((r) => r === 'ok').length;
+      const successCount = publishResult.successCount;
 
       // Save to localStorage with the same ID as Nostr to avoid duplicates
       const localJob: JobData = {
@@ -748,9 +789,9 @@ export async function deletePackage(packageId: string): Promise<void> {
       );
 
       // Publish the event
-      await publishNostrEvent(event);
+      const publishResult = await publishNostrEvent(event);
 
-      console.log('Package deletion event published to Nostr');
+      console.log('Package deletion event published to Nostr:', publishResult);
     } catch (nostrError) {
       console.error(
         "Failed to delete package in Nostr, but it's deleted in localStorage:",
@@ -803,34 +844,58 @@ export async function getPackages(): Promise<PackageData[]> {
     });
 
     try {
-      // Use a simpler filter format for better compatibility
-      const events = await listEvents(
-        [
-          {
-            kinds: [EVENT_KINDS.PACKAGE],
-            limit: 100,
-          },
-        ],
-        10000
-      );
+      // Fetch both package events and deletion events
+      const [packageEvents, deletionEvents] = await Promise.all([
+        listEvents([{ kinds: [EVENT_KINDS.PACKAGE], limit: 100 }], 10000),
+        listEvents([{ kinds: [5] }], 10000) // Kind 5 = deletion events
+      ]);
 
-      console.log(`Found ${events.length} package events from Nostr`);
+      console.log(`Found ${packageEvents.length} package events from Nostr`);
+      console.log(`Found ${deletionEvents.length} deletion events from Nostr`);
 
-      // Parse packages from events and filter out null values
-      const nostrPackages = events
+      // Get IDs of deleted events
+      const deletedEventIds = new Set<string>();
+      for (const deletionEvent of deletionEvents) {
+        // Check if this deletion event references any package events
+        const eTags = deletionEvent.tags?.filter((tag: any[]) => tag[0] === 'e') || [];
+        for (const eTag of eTags) {
+          if (eTag[1]) {
+            deletedEventIds.add(eTag[1]);
+          }
+        }
+      }
+
+      console.log(`Found ${deletedEventIds.size} deleted package IDs:`, Array.from(deletedEventIds));
+
+      // Parse packages from events, filter out deleted ones, and filter out null values
+      const nostrPackages = packageEvents
+        .filter(event => !deletedEventIds.has(event.id)) // Filter out deleted packages
         .map(parsePackageFromEvent)
         .filter((pkg): pkg is PackageData => pkg !== null);
 
       console.log(
-        `Successfully parsed ${nostrPackages.length} out of ${events.length} events`
+        `Successfully parsed ${nostrPackages.length} out of ${packageEvents.length} non-deleted package events`
       );
 
-      // Combine local and Nostr packages, removing duplicates by ID
-      const allPackages = [...localPackages];
+      // Remove any locally stored packages that have been deleted on Nostr
+      const { deleteLocalPackage } = await import('@/lib/local-package-service');
+      for (const deletedId of deletedEventIds) {
+        const localPackageExists = localPackages.find(pkg => pkg.id === deletedId);
+        if (localPackageExists) {
+          console.log('getPackages - Removing locally stored deleted package:', deletedId);
+          deleteLocalPackage(deletedId);
+        }
+      }
 
-      // Add Nostr packages that aren't already in local packages
+      // Get updated local packages after deletion cleanup
+      const updatedLocalPackages = getLocalPackages();
+
+      // Combine local and Nostr packages, removing duplicates by ID
+      const allPackages = [...updatedLocalPackages];
+
+      // Add Nostr packages that aren't already in local packages AND haven't been deleted
       for (const nostrPkg of nostrPackages) {
-        if (!allPackages.some((pkg) => pkg.id === nostrPkg.id)) {
+        if (!allPackages.some((pkg) => pkg.id === nostrPkg.id) && !deletedEventIds.has(nostrPkg.id)) {
           allPackages.push(nostrPkg);
         }
       }
@@ -1255,9 +1320,9 @@ export async function pickupPackage(packageId: string): Promise<void> {
       );
 
       // Publish the event
-      await publishNostrEvent(event);
+      const publishResult = await publishNostrEvent(event);
 
-      console.log('Package picked up successfully in Nostr');
+      console.log('Package picked up successfully in Nostr:', publishResult);
     } catch (nostrError) {
       console.error(
         "Failed to pick up package in Nostr, but it's picked up in localStorage:",
@@ -1359,12 +1424,12 @@ export async function completeDelivery(packageId: string): Promise<void> {
         );
 
         // Try to publish to all relays
-        const results = await publishNostrEvent(event);
-        successCount = results.filter((r) => !r.startsWith('failed:')).length;
+        const publishResult = await publishNostrEvent(event);
+        successCount = publishResult.successCount;
 
         if (successCount > 0) {
           console.log(
-            `Successfully published to ${successCount}/${relays.length} relays`
+            `Successfully published to ${successCount}/${publishResult.totalRelays} relays`
           );
           break; // At least some relays got the update
         }
@@ -1507,9 +1572,9 @@ export async function updateProfile(profileData: {
     );
 
     // Publish the event
-    await publishNostrEvent(event);
+    const publishResult = await publishNostrEvent(event);
 
-    console.log('Profile updated successfully');
+    console.log('Profile updated successfully:', publishResult);
   } catch (error) {
     console.error('Failed to update profile:', error);
     throw error;
@@ -1892,46 +1957,7 @@ export async function forceClearAllData(): Promise<void> {
   }
 }
 
-// Publish event to relays
-export async function publishEvent(event: Event): Promise<string[]> {
-  try {
-    const relays = getRelays();
-    if (relays.length === 0) {
-      throw new Error('No relays available');
-    }
-
-    return new Promise(async (resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Publish timeout'));
-      }, 5000);
-
-      const { SimplePool } = await import('nostr-tools');
-      const pool = new SimplePool();
-      
-      const publishPromises = relays.map(async (relay) => {
-        try {
-          await pool.publish([relay], event as any);
-          return 'ok';
-        } catch (error) {
-          return 'failed: ' + (error instanceof Error ? error.message : String(error));
-        }
-      });
-
-      Promise.all(publishPromises)
-        .then(publishResults => {
-          clearTimeout(timeout);
-          resolve(publishResults);
-        })
-        .catch((error: Error) => {
-          clearTimeout(timeout);
-          reject(error);
-        });
-    });
-  } catch (error) {
-    console.error('Failed to publish event:', error);
-    return ['failed: ' + (error instanceof Error ? error.message : String(error))];
-  }
-}
+// Note: publishEvent is now handled by the robust nostr-publisher module
 
 // Admin utility: purge all job and package events from the relay and clear local caches
 export async function purgeAllPostsRelay(): Promise<{deleted: number; errors: number}> {
@@ -1953,8 +1979,8 @@ export async function purgeAllPostsRelay(): Promise<{deleted: number; errors: nu
           '',
           [['e', ev.id], ['reason', 'admin purge']]
         );
-        const results = await publishNostrEvent(deletion);
-        const ok = results.some((r) => r === 'ok');
+        const publishResult = await publishNostrEvent(deletion);
+        const ok = publishResult.success;
         if (ok) deleted += 1; else errors += 1;
       } catch (e) {
         console.error('Failed to delete event', ev.id, e);

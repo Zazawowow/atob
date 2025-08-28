@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { Package, MapPin, Bitcoin, Eye, RefreshCw, Briefcase, Truck, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { getPackages, pickupPackage, deletePackage, getEffectiveStatus, getJobs, applyForJob, deleteJob, acceptJobApplicant, rejectJobApplicant } from '@/lib/nostr-client';
+import { DataConsistencyManager } from '@/lib/data-consistency-manager';
 import { PostJobModal } from '@/components/post-job-modal';
 import { PostPackageModal } from '@/components/post-package-modal';
 import { DeleteConfirmationModal } from '@/components/delete-confirmation-modal';
@@ -116,6 +117,19 @@ export default function ViewPackages() {
   useEffect(() => {
     if (isReady) {
       loadJobs();
+      
+      // Set up real-time job updates
+      DataConsistencyManager.start({
+        enableRealtime: true,
+        syncInterval: 30000,
+        onJobUpdate: (jobs) => {
+          console.log('📊 Real-time job update received:', jobs.length);
+          setJobs(jobs);
+        },
+        onError: (error) => {
+          console.error('📊 Job consistency error:', error);
+        }
+      });
     }
   }, [isReady, loadJobs]);
 
@@ -172,7 +186,7 @@ export default function ViewPackages() {
       
       // Add a small delay to ensure localStorage is updated
       setTimeout(async () => {
-        await loadJobs();
+      await loadJobs();
       }, 100);
       
     } catch (error) {
@@ -383,7 +397,7 @@ export default function ViewPackages() {
               <div className='flex justify-between items-center'>
                 <div className='flex-1'>
                   <CardTitle className='text-off-white text-xl leading-tight mb-1'>
-                    {activeTab === 'packages'
+                    {activeTab === 'packages' 
                       ? `Available Work (${uniquePackages.length})`
                       : activeTab === 'jobs'
                       ? `Available Work (${uniqueJobs.length})`
@@ -543,19 +557,19 @@ export default function ViewPackages() {
                               <Badge variant='outline' className='mt-3 w-full text-center bg-blue-400/10 text-blue-400 border-blue-400/30'>Picked up</Badge>
                             )}
                             {pkg.status === 'available' && !ownPackage && (
-                              <Button
-                                onClick={(e) => {
-                                  e.stopPropagation();
+                                  <Button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                   handlePickup(pkg.id);
-                                }}
+                                    }}
                                 variant='outline'
-                                size='sm'
+                                    size='sm'
                                 className='mt-3 w-full bg-purple-500/20 border-purple-400/30 text-off-white hover:bg-purple-500/30 hover:border-purple-400'
-                              >
+                                  >
                                 <Truck className='h-4 w-4 mr-2' />
                                 Pick Up
-                              </Button>
-                            )}
+                                  </Button>
+                                )}
                           </CardContent>
                         </Card>
                       );
@@ -711,26 +725,26 @@ export default function ViewPackages() {
                                 <div className='flex items-center gap-2 mb-2'>
                                   <svg className='h-4 w-4 text-purple-400' viewBox="0 0 122.88 122.25" fill="currentColor"><g><path d="M122.57,29.25l0.31,62.88c0.01,3.28-2.05,6.1-5,7.29l0.01,0.01l-54.64,22.09c-0.99,0.4-2.05,0.6-3.12,0.6 c-0.11,0-0.22,0-0.33-0.01c-0.47,0.08-0.95,0.13-1.42,0.13c-1.06,0-2.11-0.21-3.08-0.62L4.94,100.46l0-0.01 C2.03,99.22-0.01,96.32,0,92.94l0.3-62.08c-0.04-0.66,0-1.33,0.12-1.99c0.02-0.95,0.22-1.88,0.58-2.76 c0.84-2.04,2.47-3.55,4.42-4.33l0-0.01L57.98,0.6c2.14-0.86,4.44-0.77,6.4,0.07l52.47,18.97c3.14,1.13,5.13,3.96,5.27,7.01 C122.41,27.49,122.57,28.37,122.57,29.25L122.57,29.25z M51.51,108.46l0.39-54.77L9.82,35.5L8.93,90.49L51.51,108.46L51.51,108.46 L51.51,108.46z M113.58,35.5L66.55,53.7l0.37,54.71l46.94-17.54L113.58,35.5L113.58,35.5L113.58,35.5z"/></g></svg>
                                   <Badge variant='outline' className='bg-purple-400/10 text-purple-400 border-purple-400/30 text-xs'>Package</Badge>
-                                </div>
+              </div>
                                 <div className='flex justify-between items-start gap-3'>
                                   <div className='flex-1 min-w-0'>
                                     <CardTitle className='text-lg font-semibold mb-1 text-[#FAFAFA]'>
                                       {pkg.title}
-                                    </CardTitle>
+            </CardTitle>
                                     <CardDescription className='text-sm text-[#FAFAFA]/70'>
                                       {pkg.description || 'No description provided'}
-                                    </CardDescription>
-                                  </div>
+            </CardDescription>
+                        </div>
                                   <Badge variant='outline' className='hidden md:block bg-blue-400/10 text-blue-400 border-blue-400/30 flex-shrink-0'>
                                     {pkg.cost} sats
                                   </Badge>
-                                </div>
+                        </div>
                               </CardHeader>
                               <CardContent className='p-4 pt-0'>
                                 <div className='flex justify-between items-center'>
                                   <div className='text-sm text-[#FAFAFA]/70'>
                                     {pkg.pickupLocation} → {pkg.destination}
-                                  </div>
+                      </div>
                                   {/* Desktop/tablet action buttons */}
                                   <div className='hidden md:flex gap-2 items-center'>
                                     {pkg.status === 'in_transit' && (
@@ -749,9 +763,9 @@ export default function ViewPackages() {
                                         Delete
                                       </Button>
                                     )}
-                                  </div>
-                                </div>
-
+                    </div>
+                  </div>
+                  
                                 {/* Full-width Pick Up button */}
                                 {pkg.status === 'in_transit' && (
                                   <Badge variant='outline' className='mt-3 w-full bg-blue-400/10 text-blue-400 border-blue-400/30 whitespace-nowrap text-center'>Picked up</Badge>
@@ -789,7 +803,7 @@ export default function ViewPackages() {
                         })}
                       </div>
                     )}
-
+                    
                     {/* Jobs section */}
                     {jobs.length > 0 && (
                       <div className='space-y-2'>
@@ -814,7 +828,7 @@ export default function ViewPackages() {
                                   <Badge className={getStatusColor(job.status, job)}>
                                     {getStatusText(job.status, job)}
                                   </Badge>
-                                </div>
+                            </div>
                               </CardHeader>
                               <CardContent className='space-y-2 px-4 pb-4'>
                                 <div className='flex items-center gap-2 text-sm'>
@@ -822,13 +836,13 @@ export default function ViewPackages() {
                                   <span className='text-gray-300'>
                                     {job.location}
                                   </span>
-                                </div>
+                        </div>
                                 <div className='flex items-center gap-2 text-sm'>
                                   <Bitcoin className='h-4 w-4 text-yellow-400' />
                                   <span className='text-gray-300'>
                                     {formatCompensation(job.compensation)}
                                   </span>
-                                </div>
+                      </div>
                                 <div className='flex items-center gap-2 text-sm'>
                                   <Briefcase className='h-4 w-4 text-blue-400' />
                                   <span className='text-gray-300'>
@@ -868,8 +882,8 @@ export default function ViewPackages() {
                       </div>
                     )}
                   </>
-                )}
-              </div>
+                    )}
+                  </div>
             </CardContent>
 
             {/* Mobile bottom tabs */}

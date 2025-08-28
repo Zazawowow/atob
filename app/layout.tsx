@@ -8,7 +8,7 @@ import { Navbar } from '@/components/navbar';
 import { UIAnimationProvider } from '@/components/ui-animation-context';
 import { ConditionalNavigation } from '@/components/conditional-navigation';
 import { PWAInstallModal } from '@/components/pwa-install-modal';
-import '@/lib/error-handler'; // Install global error handlers
+import { NostrErrorHandler } from '@/lib/error-handler';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -38,6 +38,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Install error handler immediately
+  if (typeof window !== 'undefined') {
+    NostrErrorHandler.install();
+  }
+
   return (
     <html lang='en'>
       <body className={`${inter.className} min-h-screen flex flex-col`}>
