@@ -329,7 +329,21 @@ async function fetchEventsWithTimeout(
             if (!seen.has(event.id)) {
               seen.add(event.id);
               events.push(event);
-              console.log(`📦 Received event ${event.id} (total: ${events.length})`);
+              // Only log every 100th event to reduce console spam
+              if (events.length % 100 === 0) {
+                console.log(`📦 Received ${events.length} events so far...`);
+              }
+              
+              // Limit to maximum 1000 events to prevent infinite loops
+              if (events.length >= 1000) {
+                console.warn('📦 Event limit reached (1000), closing subscription early');
+                if (sub && typeof sub.close === 'function') {
+                  sub.close();
+                }
+                clearTimeout(timeoutId);
+                resolve(events);
+                return;
+              }
             }
           } catch (eventError) {
             console.warn('Error processing event:', eventError);
@@ -370,6 +384,23 @@ async function fetchEventsWithTimeout(
           resolve(events);
         }
       }, timeoutMs);
+      
+      // Additional safety: force close subscription after timeout + 5 seconds
+      setTimeout(() => {
+        try {
+          if (!hasReceivedEose) {
+            console.warn(`🚨 FORCE CLOSING subscription after ${timeoutMs + 5000}ms`);
+            if (sub && typeof sub.close === 'function') {
+              sub.close();
+            }
+            clearTimeout(timeoutId);
+            resolve(events);
+          }
+        } catch (forceError) {
+          console.warn('Error in force close handler:', forceError);
+          resolve(events);
+        }
+      }, timeoutMs + 5000);
 
     } catch (error) {
       console.warn('Error in fetchEventsWithTimeout:', error);

@@ -369,23 +369,66 @@ export async function getJobs(): Promise<JobData[]> {
         listEvents([{ kinds: [EVENT_KINDS.JOB] }]),
         listEvents([{ kinds: [5] }]) // Kind 5 = deletion events
       ]);
+      
+      // Also fetch deletion events with more specific filters to ensure we get them
+      const specificDeletionEvents = await listEvents([
+        { 
+          kinds: [5], // Kind 5 = deletion events
+          limit: 100 // Get more deletion events to ensure we don't miss any
+        }
+      ]);
+      
+      // Combine both deletion event sources
+      const allDeletionEvents = [...deletionEvents, ...specificDeletionEvents];
+      const uniqueDeletionEvents = allDeletionEvents.filter((event, index, self) => 
+        index === self.findIndex(e => e.id === event.id)
+      );
+      
+      console.log('getJobs - Combined deletion events:', uniqueDeletionEvents.length);
 
       console.log('getJobs - Found', jobEvents.length, 'job events from Nostr');
       console.log('getJobs - Found', deletionEvents.length, 'deletion events from Nostr');
 
       // Get IDs of deleted events
       const deletedEventIds = new Set<string>();
-      for (const deletionEvent of deletionEvents) {
+      for (const deletionEvent of uniqueDeletionEvents) {
+        console.log('getJobs - Processing deletion event:', {
+          id: deletionEvent.id,
+          pubkey: deletionEvent.pubkey,
+          tags: deletionEvent.tags,
+          content: deletionEvent.content
+        });
+        
         // Check if this deletion event references any job events
         const eTags = deletionEvent.tags?.filter((tag: any[]) => tag[0] === 'e') || [];
+        console.log('getJobs - eTags found:', eTags);
+        
         for (const eTag of eTags) {
           if (eTag[1]) {
             deletedEventIds.add(eTag[1]);
+            console.log('getJobs - Added deleted event ID:', eTag[1]);
           }
         }
       }
 
       console.log('getJobs - Found', deletedEventIds.size, 'deleted job IDs:', Array.from(deletedEventIds));
+      
+      // Debug: Check if any specific jobs we know about have been deleted
+      const allJobIds = jobEvents.map(event => event.id);
+      console.log('getJobs - All job IDs from Nostr:', allJobIds);
+      
+      // Check for any deletion events that reference jobs
+      const jobDeletionEvents = uniqueDeletionEvents.filter(event => {
+        const eTags = event.tags?.filter((tag: any[]) => tag[0] === 'e') || [];
+        return eTags.some(eTag => eTag[1] && allJobIds.includes(eTag[1]));
+      });
+      
+      console.log('getJobs - Deletion events that reference jobs:', jobDeletionEvents.length);
+      jobDeletionEvents.forEach(event => {
+        const eTags = event.tags?.filter((tag: any[]) => tag[0] === 'e') || [];
+        const referencedJobIds = eTags.map(tag => tag[1]).filter(Boolean);
+        console.log('getJobs - Deletion event references jobs:', referencedJobIds);
+      });
 
       // Parse jobs and filter out deleted ones
       const jobs: JobData[] = [];
@@ -472,6 +515,120 @@ export async function getJobs(): Promise<JobData[]> {
   } catch (error) {
     console.error('Failed to get jobs:', error);
     return [];
+  }
+}
+
+// Debug function to check if a job has been deleted
+export async function checkJobDeletionStatus(jobId: string): Promise<{
+  isDeleted: boolean;
+  deletionEvents: any[];
+  jobEvents: any[];
+}> {
+  try {
+    console.log(`🔍 Checking deletion status for job: ${jobId}`);
+    
+    // Fetch deletion events that reference this job
+    const deletionEvents = await listEvents([
+      { 
+        kinds: [5], // Kind 5 = deletion events
+        limit: 100
+      }
+    ]);
+    
+    // Check if any deletion events reference this job
+    const relevantDeletionEvents = deletionEvents.filter(event => {
+      const eTags = event.tags?.filter((tag: any[]) => tag[0] === 'e') || [];
+      return eTags.some(eTag => eTag[1] === jobId);
+    });
+    
+    // Fetch job events to see if the job still exists
+    const jobEvents = await listEvents([
+      { 
+        kinds: [EVENT_KINDS.JOB],
+        limit: 100
+      }
+    ]);
+    
+    const jobStillExists = jobEvents.some(event => event.id === jobId);
+    
+    const result = {
+      isDeleted: relevantDeletionEvents.length > 0,
+      deletionEvents: relevantDeletionEvents,
+      jobEvents: jobEvents.filter(event => event.id === jobId)
+    };
+    
+    console.log(`🔍 Job ${jobId} deletion status:`, result);
+    return result;
+  } catch (error) {
+    console.error(`Failed to check deletion status for job ${jobId}:`, error);
+    return {
+      isDeleted: false,
+      deletionEvents: [],
+      jobEvents: []
+    };
+  }
+}
+
+// Cleanup function to remove obsolete test items from relay
+export async function cleanupObsoleteTestItems(): Promise<void> {
+  try {
+    console.log('🧹 Starting cleanup of obsolete test items...');
+    
+    // Get all jobs and packages to identify test items
+    const allJobs = await getJobs();
+    const allPackages = await getPackages();
+    
+    console.log(`Found ${allJobs.length} jobs and ${allPackages.length} packages to check`);
+    
+    // Identify test items (you can customize these patterns)
+    const testJobPatterns = ['test', 'Test', 'TEST'];
+    const testPackagePatterns = ['test', 'Test', 'TEST'];
+    
+    const testJobs = allJobs.filter(job => 
+      testJobPatterns.some(pattern => 
+        job.title.includes(pattern) || 
+        job.description?.includes(pattern) ||
+        job.location.includes(pattern)
+      )
+    );
+    
+    const testPackages = allPackages.filter(pkg => 
+      testPackagePatterns.some(pattern => 
+        pkg.title.includes(pattern) || 
+        pkg.description?.includes(pattern) ||
+        pkg.pickupLocation.includes(pattern) ||
+        pkg.destination.includes(pattern)
+      )
+    );
+    
+    console.log(`Found ${testJobs.length} test jobs and ${testPackages.length} test packages to remove`);
+    
+    // Remove test jobs
+    for (const job of testJobs) {
+      try {
+        console.log(`🗑️ Removing test job: ${job.title} (${job.id})`);
+        await deleteJob(job.id);
+        console.log(`✅ Test job removed: ${job.title}`);
+      } catch (error) {
+        console.error(`❌ Failed to remove test job ${job.title}:`, error);
+      }
+    }
+    
+    // Remove test packages
+    for (const pkg of testPackages) {
+      try {
+        console.log(`🗑️ Removing test package: ${pkg.title} (${pkg.id})`);
+        await deletePackage(pkg.id);
+        console.log(`✅ Test package removed: ${pkg.title}`);
+      } catch (error) {
+        console.error(`❌ Failed to remove test package ${pkg.title}:`, error);
+      }
+    }
+    
+    console.log('🧹 Cleanup completed!');
+    
+  } catch (error) {
+    console.error('Failed to cleanup obsolete test items:', error);
   }
 }
 

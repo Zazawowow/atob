@@ -26,6 +26,7 @@ import {
   rejectJobApplicant,
   acceptPackageCourier,
   rejectPackageCourier,
+  cleanupObsoleteTestItems,
 } from '@/lib/nostr-client';
 import { useNostr } from '@/components/nostr-provider';
 import { QRCodeSVG } from 'qrcode.react';
@@ -539,26 +540,50 @@ export default function MyActivities() {
                 <div>
                   <CardTitle className='text-[#FAFAFA] text-xl leading-tight mb-1'>My Activities</CardTitle>
                 </div>
-                <Button
-                  onClick={
-                    activeTab === 'all' ? () => {
-                      handleRefresh();
-                      loadMyJobs();
-                      loadMyPackages();
-                      loadMyPostedJobs();
-                    } :
-                    activeTab === 'deliveries' ? handleRefresh :
-                    activeTab === 'jobs' ? loadMyJobs :
-                    activeTab === 'my-packages' ? loadMyPackages :
-                    loadMyPostedJobs
-                  }
-                  variant='outline'
-                  size='icon'
-                  className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-[#FAFAFA]'
-                  disabled={refreshing || jobsLoading || myPackagesLoading || myPostedJobsLoading}
-                >
-                  <RefreshCw className={`h-4 w-4 ${(refreshing || jobsLoading || myPackagesLoading || myPostedJobsLoading) ? 'animate-spin' : ''}`} />
-                </Button>
+                <div className='flex items-center gap-2'>
+                  <Button
+                    onClick={async () => {
+                      try {
+                        await cleanupObsoleteTestItems();
+                        toast.success('🧹 Test items cleaned up from relay!');
+                        // Refresh all data to show the changes
+                        handleRefresh();
+                        loadMyJobs();
+                        loadMyPackages();
+                        loadMyPostedJobs();
+                      } catch (error) {
+                        toast.error('❌ Cleanup failed');
+                        console.error('Cleanup error:', error);
+                      }
+                    }}
+                    variant='outline'
+                    size='sm'
+                    className='bg-red-600/20 hover:bg-red-600/30 border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 text-xs px-3'
+                    title="Remove test items from relay"
+                  >
+                    🧹 Cleanup Test Items
+                  </Button>
+                  <Button
+                    onClick={
+                      activeTab === 'all' ? () => {
+                        handleRefresh();
+                        loadMyJobs();
+                        loadMyPackages();
+                        loadMyPostedJobs();
+                      } :
+                      activeTab === 'deliveries' ? handleRefresh :
+                      activeTab === 'jobs' ? loadMyJobs :
+                      activeTab === 'my-packages' ? loadMyPackages :
+                      loadMyPostedJobs
+                    }
+                    variant='outline'
+                    size='icon'
+                    className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 text-[#FAFAFA]'
+                    disabled={refreshing || jobsLoading || myPackagesLoading || myPostedJobsLoading}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${(refreshing || jobsLoading || myPackagesLoading || myPostedJobsLoading) ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
               </div>
             </CardHeader>
 

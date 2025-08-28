@@ -253,4 +253,20 @@ export async function getPackageById(packageId: string): Promise<any> {
   }
   const { getPackageById: originalGetPackageById } = await import('./nostr');
   return originalGetPackageById(packageId);
+}
+
+export async function checkJobDeletionStatus(jobId: string): Promise<any> {
+  if (typeof window === 'undefined') {
+    return { isDeleted: false, deletionEvents: [], jobEvents: [] };
+  }
+  const { checkJobDeletionStatus: originalCheckJobDeletionStatus } = await import('./nostr');
+  return originalCheckJobDeletionStatus(jobId);
+}
+
+export async function cleanupObsoleteTestItems(): Promise<void> {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  const { cleanupObsoleteTestItems: originalCleanup } = await import('./nostr');
+  return originalCleanup();
 } 

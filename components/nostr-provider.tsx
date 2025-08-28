@@ -199,7 +199,7 @@ export function NostrProvider({ children }: { children: ReactNode }) {
       // Start data consistency manager with improved error handling
       DataConsistencyManager.start({
         enableRealtime: false, // Disable realtime for now to prevent loops
-        syncInterval: 60000, // Increase to 60 seconds to reduce frequency
+        syncInterval: 120000, // Increase to 2 minutes to reduce frequency even more
         onPackageUpdate: (packages) => {
           console.log('📊 Data sync update received:', packages.length);
           
