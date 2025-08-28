@@ -14,12 +14,24 @@ const useMap = dynamic(() => import('react-leaflet').then(mod => mod.useMap), { 
 
 // Dynamically import Leaflet CSS
 if (typeof window !== 'undefined') {
-  import('leaflet/dist/leaflet.css');
+  // Use a try-catch to handle any import errors gracefully
+  try {
+    import('leaflet/dist/leaflet.css').catch(() => {
+      console.warn('Failed to load Leaflet CSS, map may not display correctly');
+    });
+  } catch (error) {
+    console.warn('Failed to import Leaflet CSS:', error);
+  }
 }
 
 let L: any;
 if (typeof window !== 'undefined') {
-  L = require('leaflet');
+  try {
+    L = require('leaflet');
+  } catch (error) {
+    console.warn('Failed to load Leaflet library:', error);
+    L = null;
+  }
 }
 
 // Helper function to create icons safely
@@ -338,6 +350,21 @@ export default function ActivityMap({
   }, [selectedDelivery, selectedJob, selectedPackage]);
 
   const allItems = [...deliveries, ...jobs, ...packages];
+
+  // Safety check: only render map if Leaflet is loaded
+  if (typeof window === 'undefined' || !L) {
+    return (
+      <div className='flex justify-center items-center h-full text-gray-400'>
+        <div className='text-center'>
+          <MapPin className='h-16 w-16 mx-auto mb-4 text-purple-400' />
+          <p>Map loading...</p>
+          <p className='text-sm text-gray-500 mt-2'>
+            Please wait while the map loads
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className='relative h-full w-full' style={{ zIndex: 1 }}>

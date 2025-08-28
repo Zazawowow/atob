@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { ArrowLeft, CheckCircle, QrCode } from 'lucide-react';
 import Link from 'next/link';
-import { confirmDelivery, getPackageById, getEffectiveStatus } from '@/lib/nostr';
+import { confirmDelivery, getPackageById, getEffectiveStatus } from '@/lib/nostr-client';
 import { useNostr } from '@/components/nostr-provider';
 import { QrScanner } from '@/components/qr-scanner';
 import { type PackageData } from '@/lib/nostr-types';

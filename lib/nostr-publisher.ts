@@ -21,7 +21,7 @@ export async function publishEventRobust(
   options: PublishOptions = {}
 ): Promise<PublishResult> {
   const {
-    timeout = 10000,
+    timeout = 20000,
     minSuccessRequired = 1,
     retries = 3,
     retryDelay = 1000
@@ -80,7 +80,13 @@ async function attemptPublish(
 ): Promise<PublishResult> {
   return new Promise(async (resolve, reject) => {
     const timeoutId = setTimeout(() => {
-      reject(new Error(`Publish timeout after ${timeout}ms`));
+      console.warn(`📡 Publish timeout after ${timeout}ms - resolving with partial results`);
+      resolve({
+        success: false,
+        results: ['timeout'],
+        successCount: 0,
+        totalRelays: relays.length
+      });
     }, timeout);
 
     try {

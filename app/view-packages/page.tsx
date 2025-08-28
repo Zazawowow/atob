@@ -54,6 +54,7 @@ export default function ViewPackages() {
   const [deleteItem, setDeleteItem] = useState<{ id: string; title: string; type: 'job' | 'package' } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [applyingToJob, setApplyingToJob] = useState<string | null>(null);
 
   // Ensure lists have unique ids to avoid duplicate key warnings
   const uniquePackages = useMemo(() => {
@@ -179,19 +180,22 @@ export default function ViewPackages() {
     setSelectedPackage(null);
   };
 
-  const handleApplyForJob = async (jobId: string) => {
+    const handleApplyForJob = async (jobId: string) => {
     try {
+      setApplyingToJob(jobId);
       await applyForJob(jobId);
       toast.success('Application submitted successfully!');
       
       // Add a small delay to ensure localStorage is updated
       setTimeout(async () => {
-      await loadJobs();
+        await loadJobs();
       }, 100);
       
     } catch (error) {
       console.error('Failed to apply for job:', error);
       toast.error('Failed to apply for job. Please try again.');
+    } finally {
+      setApplyingToJob(null);
     }
   };
 
@@ -659,8 +663,9 @@ export default function ViewPackages() {
                                   size='sm'
                                   variant='outline'
                                   className='flex-1 bg-transparent border-purple-400/50 text-purple-400 hover:bg-purple-400/10 hover:border-purple-400'
+                                  disabled={applyingToJob === job.id}
                                 >
-                                  Apply
+                                  {applyingToJob === job.id ? 'Applying...' : 'Apply'}
                                 </Button>
                               )}
                               
@@ -865,8 +870,9 @@ export default function ViewPackages() {
                                       size='sm'
                                       variant='outline'
                                       className='w-full bg-transparent border-purple-400/50 text-purple-400 hover:bg-purple-400/10 hover:border-purple-400'
+                                      disabled={applyingToJob === job.id}
                                     >
-                                      Apply
+                                      {applyingToJob === job.id ? 'Applying...' : 'Apply'}
                                     </Button>
                                   )
                                 )}

@@ -132,13 +132,33 @@ export async function rejectJobApplicant(jobId: string): Promise<string> {
   return originalRejectJobApplicant(jobId);
 }
 
-export async function getEffectiveStatus(packageId: string): Promise<string> {
+export function getEffectiveStatus(pkg: any): string {
   if (typeof window === 'undefined') {
     return 'unknown';
   }
   
-  const { getEffectiveStatus: originalGetEffectiveStatus } = await import('./nostr');
-  return originalGetEffectiveStatus(packageId);
+  // Inline the logic to avoid import issues during SSR
+  // This mirrors the logic from lib/nostr.ts getEffectiveStatus function
+  
+  // If it has a delivery_time, it's delivered
+  if (pkg.delivery_time && pkg.delivery_time > 0) {
+    return 'delivered';
+  }
+
+  // If it has a pickup_time but no delivery_time, it's in_transit
+  if (pkg.pickup_time && pkg.pickup_time > 0 && (!pkg.delivery_time || pkg.delivery_time === 0)) {
+    return 'in_transit';
+  }
+
+  // Check expiration (30 days from creation)
+  const now = Math.floor(Date.now() / 1000);
+  const thirtyDaysInSeconds = 30 * 24 * 60 * 60;
+  if (now > (pkg.created_at + thirtyDaysInSeconds)) {
+    return 'expired';
+  }
+
+  // Otherwise use the status field
+  return pkg.status || 'available';
 }
 
 export async function getJobs(): Promise<any[]> {
@@ -193,4 +213,44 @@ export async function forceClearAllData(): Promise<void> {
   
   const { forceClearAllData: originalForceClearAllData } = await import('./nostr');
   return originalForceClearAllData();
+}
+
+export async function applyForPackage(packageId: string): Promise<void> {
+  if (typeof window === 'undefined') {
+    throw new Error('Cannot apply for package during SSR');
+  }
+  const { applyForPackage: originalApplyForPackage } = await import('./nostr');
+  return originalApplyForPackage(packageId);
+}
+
+export async function acceptPackageCourier(packageId: string, courierPubkey: string): Promise<void> {
+  if (typeof window === 'undefined') {
+    throw new Error('Cannot accept package courier during SSR');
+  }
+  const { acceptPackageCourier: originalAcceptPackageCourier } = await import('./nostr');
+  return originalAcceptPackageCourier(packageId, courierPubkey);
+}
+
+export async function rejectPackageCourier(packageId: string): Promise<void> {
+  if (typeof window === 'undefined') {
+    throw new Error('Cannot reject package courier during SSR');
+  }
+  const { rejectPackageCourier: originalRejectPackageCourier } = await import('./nostr');
+  return originalRejectPackageCourier(packageId);
+}
+
+export async function completeDelivery(packageId: string): Promise<void> {
+  if (typeof window === 'undefined') {
+    throw new Error('Cannot complete delivery during SSR');
+  }
+  const { completeDelivery: originalCompleteDelivery } = await import('./nostr');
+  return originalCompleteDelivery(packageId);
+}
+
+export async function getPackageById(packageId: string): Promise<any> {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  const { getPackageById: originalGetPackageById } = await import('./nostr');
+  return originalGetPackageById(packageId);
 } 

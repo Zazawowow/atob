@@ -58,6 +58,61 @@ export class NostrErrorHandler {
     });
 
     console.log('✅ NostrErrorHandler installed with comprehensive WebSocket error catching');
+    
+    // Add a more aggressive global promise rejection handler
+    // This catches ALL unhandled rejections and suppresses timeout/connection errors
+    const aggressiveHandler = (event: PromiseRejectionEvent) => {
+      const error = event.reason;
+      const errorString = String(error);
+      const errorMessage = error?.message || '';
+      
+      // Check if this is any kind of timeout, connection, or websocket error
+      if (
+        errorString.includes('timeout') ||
+        errorString.includes('connection') ||
+        errorString.includes('websocket') ||
+        errorString.includes('WebSocket') ||
+        errorString.includes('relay') ||
+        errorString.includes('network') ||
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('connection') ||
+        errorMessage.includes('websocket') ||
+        errorMessage.includes('relay') ||
+        errorMessage.includes('network') ||
+        error?.code === 'TIMEOUT' ||
+        error?.code === 'CONNECTION_ERROR' ||
+        error?.code === 'WEBSOCKET_ERROR'
+      ) {
+        console.warn('🛡️ AGGRESSIVE: Suppressed timeout/connection error:', errorString);
+        event.preventDefault(); // Prevent the error from showing
+        return;
+      }
+      
+      // Log other errors but don't prevent them
+      console.warn('🛡️ Unhandled rejection (not timeout/connection related):', errorString);
+    };
+    
+    window.addEventListener('unhandledrejection', aggressiveHandler);
+    
+    // Also add a global error handler for any remaining errors
+    const globalErrorHandler = (event: ErrorEvent) => {
+      const error = event.error;
+      const errorString = String(error);
+      
+      if (
+        errorString.includes('timeout') ||
+        errorString.includes('connection') ||
+        errorString.includes('websocket') ||
+        errorString.includes('relay') ||
+        errorString.includes('network')
+      ) {
+        console.warn('🛡️ GLOBAL: Suppressed error:', errorString);
+        event.preventDefault();
+        return;
+      }
+    };
+    
+    window.addEventListener('error', globalErrorHandler);
   }
 
   private isWebSocketError(error: any): boolean {
@@ -75,13 +130,17 @@ export class NostrErrorHandler {
       message.includes('websocket') ||
       message.includes('WebSocket') ||
       message.includes('Connection timeout') ||
+      message.includes('connection timed out') ||
       message.includes('Failed to connect') ||
       message.includes('relay') ||
       message.includes('network') ||
       message.includes('ECONNREFUSED') ||
       message.includes('ENOTFOUND') ||
+      message.includes('timeout') ||
       errorString.includes('websocket') ||
       errorString.includes('WebSocket') ||
+      errorString.includes('connection timed out') ||
+      errorString.includes('timeout') ||
       error.name === 'WebSocketError' ||
       error.code === 'WEBSOCKET_ERROR' ||
       error.type === 'websocket'

@@ -24,7 +24,9 @@ import {
   deletePackage,
   acceptJobApplicant,
   rejectJobApplicant,
-} from '@/lib/nostr';
+  acceptPackageCourier,
+  rejectPackageCourier,
+} from '@/lib/nostr-client';
 import { useNostr } from '@/components/nostr-provider';
 import { QRCodeSVG } from 'qrcode.react';
 import { debugStorage } from '@/lib/local-package-service';
@@ -295,7 +297,7 @@ export default function MyActivities() {
   }, [isReady, publicKey]);
 
   const loadApplicantProfiles = useCallback(async (job: JobData) => {
-    if (!job.assignedWorkers || job.assignedWorkers.length === 0) {
+    if (!job.applicants || job.applicants.length === 0) {
       setApplicantProfiles({});
       return;
     }
@@ -304,7 +306,7 @@ export default function MyActivities() {
       setProfilesLoading(true);
       const profiles: {[key: string]: any} = {};
       
-      for (const workerPubkey of job.assignedWorkers) {
+      for (const workerPubkey of job.applicants) {
         try {
           const profile = await getUserProfile(workerPubkey);
           profiles[workerPubkey] = profile;
@@ -365,6 +367,40 @@ export default function MyActivities() {
       toast.error('Failed to reject worker. Please try again.');
     }
   }, [loadMyPostedJobs]);
+
+  const handleAcceptCourier = useCallback(async (packageId: string, courierPubkey: string) => {
+    try {
+      setAcceptingWorker(courierPubkey);
+      
+      // Accept the package courier using the new API
+      await acceptPackageCourier(packageId, courierPubkey);
+      
+      toast.success('Courier accepted successfully!');
+      
+      // Refresh the packages to reflect the change
+      await loadMyPackages();
+      // Optimistically move accepted courier to the top in UI
+      setApplicantProfiles((prev) => ({ ...prev }));
+
+    } catch (error) {
+      console.error('Failed to accept courier:', error);
+      toast.error('Failed to accept courier. Please try again.');
+    } finally {
+      setAcceptingWorker(null);
+    }
+  }, [loadMyPackages]);
+
+  const handleRejectCourier = useCallback(async (packageId: string, courierPubkey: string) => {
+    try {
+      // Reject the package courier using the new API  
+      await rejectPackageCourier(packageId);
+      toast.success('Courier rejected');
+      await loadMyPackages();
+    } catch (error) {
+      console.error('Failed to reject courier:', error);
+      toast.error('Failed to reject courier. Please try again.');
+    }
+  }, [loadMyPackages]);
 
   const handleDeletePostedJob = useCallback(async (jobId: string) => {
     try {
@@ -1203,6 +1239,7 @@ export default function MyActivities() {
                   </CardTitle>
                   <CardDescription className='text-[#FAFAFA]/70'>
                     {selectedItemType === 'job' && selectedJob && selectedJob.pubkey === publicKey ? 'Review and accept applicants' :
+                     selectedItemType === 'package' && selectedDelivery && selectedDelivery.pubkey === publicKey ? 'Review and accept applicants' :
                      selectedItemType === 'job' && selectedJob ? 'View work assignment location' :
                      selectedItemType === 'delivery' && selectedDelivery ? 'View delivery location' :
                      selectedItemType === 'package' && selectedDelivery ? 'View package location' :
@@ -1278,6 +1315,74 @@ export default function MyActivities() {
                         );
                       })}
                     </div>
+                  ) : selectedItemType === 'package' && selectedDelivery && selectedDelivery.pubkey === publicKey ? (
+                    <div className='space-y-4'>
+                      {(!selectedDelivery.applicants || selectedDelivery.applicants.length === 0) && (
+                        <p className='text-sm text-[#FAFAFA]/60'>No applications yet.</p>
+                      )}
+                      {/* Accepted section */}
+                      {selectedDelivery.acceptedCourier && (
+                        <div>
+                          <div className='text-xs uppercase tracking-wide text-[#FAFAFA]/50 mb-2'>Accepted</div>
+                          <div className='space-y-2'>
+                            {[selectedDelivery.acceptedCourier].map((worker: string) => {
+                              const profile = applicantProfiles[worker];
+                              const level = profile ? (profile.deliveries >= 50 ? 'CypherMax' : profile.deliveries >= 30 ? 'Local Driver' : profile.deliveries >= 20 ? 'Cypherpunk' : profile.deliveries >= 10 ? 'Novice Courier' : 'Neophyte') : 'Neophyte';
+                              return (
+                                <div key={`accepted-${worker}`} className='flex items-center justify-between bg-black/20 border border-green-400/20 rounded-lg p-3'>
+                                  <div className='flex items-center gap-3'>
+                                    <img src={profile?.picture || '/avatar.png'} alt={profile?.displayName || 'User'} className='w-9 h-9 rounded-full object-cover' />
+                                    <div>
+                                      <Link href={`/profile?pubkey=${worker}`} className='text-sm text-[#FAFAFA] hover:underline'>
+                                        {profile?.displayName || profile?.name || 'Unknown User'}
+                                      </Link>
+                                      <div className='text-xs text-[#FAFAFA]/60'>Level: {level}</div>
+                                    </div>
+                                  </div>
+                                  <div className='flex items-center gap-2'>
+                                    <Badge variant='outline' className='text-xs bg-green-500/10 text-green-400 border-green-400/30 whitespace-nowrap'>Accepted</Badge>
+                                    <Button size='sm' variant='outline' className='text-red-400 border-red-400/30 hover:bg-red-500/10 hover:border-red-400/40' onClick={() => handleRejectCourier(selectedDelivery.id, worker)}>
+                                      Reject
+                                    </Button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Applicants section */}
+                      {selectedDelivery.applicants && selectedDelivery.applicants.map((worker) => {
+                        const profile = applicantProfiles[worker];
+                        const level = profile ? (profile.deliveries >= 50 ? 'CypherMax' : profile.deliveries >= 30 ? 'Local Driver' : profile.deliveries >= 20 ? 'Cypherpunk' : profile.deliveries >= 10 ? 'Novice Courier' : 'Neophyte') : 'Neophyte';
+                        return (
+                          <div key={worker} className='flex items-center justify-between bg-black/20 border border-blue-400/20 rounded-lg p-3'>
+                            <div className='flex items-center gap-3'>
+                              <img src={profile?.picture || '/avatar.png'} alt={profile?.displayName || 'User'} className='w-9 h-9 rounded-full object-cover' />
+                              <div>
+                                <Link href={`/profile?pubkey=${worker}`} className='text-sm text-[#FAFAFA] hover:underline'>
+                                  {profile?.displayName || profile?.name || 'Unknown User'}
+                                </Link>
+                                <div className='text-xs text-[#FAFAFA]/60'>Level: {level}</div>
+                              </div>
+                            </div>
+                            {selectedDelivery.acceptedCourier === worker ? (
+                              <div className='flex items-center gap-2'>
+                                <Badge variant='outline' className='text-xs bg-green-500/10 text-green-400 border-green-400/30 whitespace-nowrap'>Accepted</Badge>
+                                <Button size='sm' variant='outline' className='text-red-400 border-red-400/30 hover:bg-red-500/10 hover:border-red-400/40' onClick={() => handleRejectCourier(selectedDelivery.id, worker)}>
+                                  Reject
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button size='sm' onClick={() => handleAcceptCourier(selectedDelivery.id, worker)} disabled={acceptingWorker === worker} className='bg-blue-500/20 border border-blue-400/30 hover:bg-blue-500/30 text-[#FAFAFA]'>
+                                {acceptingWorker === worker ? 'Accepting...' : 'Accept'}
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   ) : (
                   <ActivityMap
                         deliveries={selectedItemType === 'delivery' && selectedDelivery ? [selectedDelivery] : 
@@ -1329,10 +1434,12 @@ export default function MyActivities() {
               </Button>
               <div>
                 <p className='text-off-white text-base font-medium'>
-                  {selectedItemType === 'job' && selectedJob && selectedJob.pubkey === publicKey ? 'Applications' : 'Details'}
+                  {selectedItemType === 'job' && selectedJob && selectedJob.pubkey === publicKey ? 'Applications' : 
+                   selectedItemType === 'package' && selectedDelivery && selectedDelivery.pubkey === publicKey ? 'Applications' : 'Details'}
                 </p>
                 <p className='text-xs text-blue-300'>
-                  {selectedItemType === 'job' && selectedJob && selectedJob.pubkey === publicKey ? 'Review and accept applicants' : 'Map view'}
+                  {selectedItemType === 'job' && selectedJob && selectedJob.pubkey === publicKey ? 'Review and accept applicants' : 
+                   selectedItemType === 'package' && selectedDelivery && selectedDelivery.pubkey === publicKey ? 'Review and accept applicants' : 'Map view'}
                 </p>
               </div>
             </div>
@@ -1400,6 +1507,77 @@ export default function MyActivities() {
                             </div>
                           ) : (
                             <Button size='sm' onClick={() => handleAcceptWorker(selectedJob.id, worker)} disabled={acceptingWorker === worker} className='bg-blue-500/20 border border-blue-400/30 hover:bg-blue-500/30 text-[#FAFAFA]'>
+                              {acceptingWorker === worker ? 'Accepting...' : 'Accept'}
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : selectedItemType === 'package' && selectedDelivery && selectedDelivery.pubkey === publicKey ? (
+                <div className='h-full w-full flex flex-col px-4 py-3'>
+                  <div className='space-y-4 overflow-y-auto'>
+                    {(!selectedDelivery.applicants || selectedDelivery.applicants.length === 0) && (
+                      <p className='text-sm text-[#FAFAFA]/60'>No applications yet.</p>
+                    )}
+                    
+                    {/* Accepted section */}
+                    {selectedDelivery.acceptedCourier && (
+                      <div>
+                        <div className='text-xs uppercase tracking-wide text-[#FAFAFA]/50 mb-2'>Accepted</div>
+                        <div className='space-y-2'>
+                          {[selectedDelivery.acceptedCourier].map((worker: string) => {
+                            const profile = applicantProfiles[worker];
+                            const level = profile ? (profile.deliveries >= 50 ? 'CypherMax' : profile.deliveries >= 30 ? 'Local Driver' : profile.deliveries >= 20 ? 'Cypherpunk' : profile.deliveries >= 10 ? 'Novice Courier' : 'Neophyte') : 'Neophyte';
+                            return (
+                              <div key={`accepted-${worker}`} className='flex items-center justify-between bg-black/20 border border-green-400/20 rounded-lg p-3'>
+                                <div className='flex items-center gap-3'>
+                                  <img src={profile?.picture || '/avatar.png'} alt={profile?.displayName || 'User'} className='w-9 h-9 rounded-full object-cover' />
+                                  <div>
+                                    <Link href={`/profile?pubkey=${worker}`} className='text-sm text-[#FAFAFA] hover:underline'>
+                                      {profile?.displayName || profile?.name || 'Unknown User'}
+                                    </Link>
+                                    <div className='text-xs text-[#FAFAFA]/60'>Level: {level}</div>
+                                  </div>
+                                </div>
+                                <div className='flex items-center gap-2'>
+                                  <Badge variant='outline' className='text-xs bg-green-500/10 text-green-400 border-green-400/30 whitespace-nowrap'>Accepted</Badge>
+                                  <Button size='sm' variant='outline' className='text-red-400 border-red-400/30 hover:bg-red-500/10 hover:border-red-400/40' onClick={() => handleRejectCourier(selectedDelivery.id, worker)}>
+                                    Reject
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Applicants section */}
+                    {selectedDelivery.applicants && selectedDelivery.applicants.map((worker) => {
+                      const profile = applicantProfiles[worker];
+                      const level = profile ? (profile.deliveries >= 50 ? 'CypherMax' : profile.deliveries >= 30 ? 'Local Driver' : profile.deliveries >= 20 ? 'Cypherpunk' : profile.deliveries >= 10 ? 'Novice Courier' : 'Neophyte') : 'Neophyte';
+                      return (
+                        <div key={worker} className='flex items-center justify-between bg-black/20 border border-blue-400/20 rounded-lg p-3'>
+                          <div className='flex items-center gap-3'>
+                            <img src={profile?.picture || '/avatar.png'} alt={profile?.displayName || 'User'} className='w-9 h-9 rounded-full object-cover' />
+                            <div>
+                              <Link href={`/profile?pubkey=${worker}`} className='text-sm text-[#FAFAFA] hover:underline'>
+                                {profile?.displayName || profile?.name || 'Unknown User'}
+                              </Link>
+                              <div className='text-xs text-[#FAFAFA]/60'>Level: {level}</div>
+                            </div>
+                          </div>
+                          {selectedDelivery.acceptedCourier === worker ? (
+                            <div className='flex items-center gap-2'>
+                              <Badge variant='outline' className='text-xs bg-green-500/10 text-green-400 border-green-400/30 whitespace-nowrap'>Accepted</Badge>
+                              <Button size='sm' variant='outline' className='text-red-400 border-red-400/30 hover:bg-red-500/10 hover:border-red-400/40' onClick={() => handleRejectCourier(selectedDelivery.id, worker)}>
+                                Reject
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button size='sm' onClick={() => handleAcceptCourier(selectedDelivery.id, worker)} disabled={acceptingWorker === worker} className='bg-blue-500/20 border border-blue-400/30 hover:bg-blue-500/30 text-[#FAFAFA]'>
                               {acceptingWorker === worker ? 'Accepting...' : 'Accept'}
                             </Button>
                           )}

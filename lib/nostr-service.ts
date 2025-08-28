@@ -15,15 +15,9 @@ const RELAYS = [
   'wss://nostr.l484.com',
 ];
 
-// Popular public relays for profile data (metadata events)
+// Use only our custom relay for consistency
 const PROFILE_RELAYS = [
-  'wss://relay.damus.io',
-  'wss://nos.lol',
-  'wss://relay.snort.social',
-  'wss://relay.primal.net',
-  'wss://relay.nostr.band',
-  'wss://purplepag.es',
-  'wss://relay.bitcoin.social',
+  'wss://nostr.l484.com',
 ];
 
 // Simple connection pool (SSR-safe)
@@ -92,12 +86,14 @@ async function getConnection(relay: string): Promise<any> {
     console.log(`🔌 Connecting to ${relay}`);
     const SimplePool = await getSimplePool();
     if (!SimplePool) {
-      throw new Error('Failed to load SimplePool');
+      console.warn('Failed to load SimplePool - falling back to local data');
+      return null;
     }
     
     let connection;
     try {
       connection = new SimplePool();
+      console.log(`✅ SimplePool created for ${relay}`);
     } catch (poolError) {
       console.warn(`❌ Failed to create SimplePool for ${relay}:`, poolError);
       return null;
@@ -178,11 +174,19 @@ async function getCachedOrFetch<T>(key: string, fetcher: () => Promise<T>, ttl: 
 }
 
 // Check if a relay is responsive
-export async function checkRelay(relay: string, timeoutMs = 5000): Promise<boolean> {
+export async function checkRelay(relay: string, timeoutMs = 10000): Promise<boolean> {
   try {
+    console.log(`🔍 Checking relay health: ${relay}`);
     const pool = await getConnection(relay);
-    return !!pool;
+    if (pool) {
+      console.log(`✅ Relay ${relay} is healthy`);
+      return true;
+    } else {
+      console.warn(`❌ Relay ${relay} is not responsive`);
+      return false;
+    }
   } catch (error) {
+    console.warn(`❌ Error checking relay ${relay}:`, error);
     return false;
   }
 }
@@ -207,13 +211,16 @@ export async function getWorkingRelays(): Promise<string[]> {
 // Smart listEvents function with caching and connection management
 export async function listEvents(
   filters: any[], // Changed from Filter[] to any[] to avoid SSR issues
-  timeoutMs = 15000
+  timeoutMs = 30000
 ): Promise<any[]> { // Changed from NostrEvent[] to any[] to avoid SSR issues
   // Only run on client side
   if (typeof window === 'undefined') {
     console.log('SSR: Returning empty array for listEvents');
     return [];
   }
+  
+  // Wrap everything in a try-catch that never rejects
+  try {
 
   console.log('🚀 Fetching events with smart connection management');
   
@@ -252,7 +259,7 @@ export async function listEvents(
       }
 
       if (!workingPool) {
-        console.warn('⚠️ No working connections available, falling back to local data');
+        console.warn('⚠️ No working connections available, gracefully falling back to local data');
         return [];
       }
 
@@ -290,6 +297,10 @@ export async function listEvents(
     },
     60000 // 1 minute cache
   );
+  } catch (error) {
+    console.warn('listEvents: Critical error, returning empty array:', error);
+    return [];
+  }
 }
 
 // Fetch events with timeout

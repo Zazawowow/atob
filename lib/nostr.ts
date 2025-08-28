@@ -16,6 +16,9 @@ import {
   getLocalPackageById,
   deleteLocalPackage,
   getAllLocalDeliveries,
+  applyForLocalPackage,
+  acceptPackageCourierLocal,
+  rejectPackageCourierLocal,
 } from './local-package-service';
 import {
   saveLocalJob,
@@ -35,16 +38,7 @@ import type { Event as NostrEvent } from 'nostr-tools';
 
 // Popular public relays for profile data (metadata events)
 const PROFILE_RELAYS = [
-  'wss://relay.damus.io',
-  'wss://nos.lol',
-  'wss://relay.snort.social',
-  'wss://relay.primal.net',
-  'wss://relay.nostr.band',
-  'wss://purplepag.es',
-  'wss://relay.bitcoin.social',
-  'wss://relay.nostr.wirednet.jp',
-  'wss://relay.nostr.com.au',
-  'wss://relay.nostr.net',
+  'wss://nostr.l484.com',
 ];
 // Define storage keys directly (matching the ones in local-package-service.ts)
 const PACKAGES_STORAGE_KEY = 'shared_packages_v1';
@@ -366,6 +360,7 @@ export async function createPackage(
 
 // Get all jobs
 export async function getJobs(): Promise<JobData[]> {
+  // Final safety net - this function will NEVER reject
   try {
     // First try to get jobs from Nostr
     try {
@@ -423,14 +418,34 @@ export async function getJobs(): Promise<JobData[]> {
           deleteLocalJob(deletedId);
         }
       }
-
-      // Get updated local jobs after deletion cleanup
-      const updatedLocalJobs = getLocalJobs();
+      
+      // Clean up jobs that have been marked for deletion for more than 5 minutes
+      // This prevents accumulation of deleted jobs in localStorage
+      const now = Math.floor(Date.now() / 1000);
+      const fiveMinutesAgo = now - (5 * 60);
+      for (const job of localJobs) {
+        if (job.status === 'deletion_pending' && job.created_at < fiveMinutesAgo) {
+          console.log('getJobs - Cleaning up old deletion_pending job:', job.id);
+          deleteLocalJob(job.id);
+        }
+      }
+      
+      // Also check if any local jobs have been marked for deletion locally
+      // This prevents locally deleted jobs from reappearing
+      const localJobsAfterNostrCleanup = getLocalJobs();
+      const finalLocalJobs = localJobsAfterNostrCleanup.filter(job => {
+        // Skip jobs that were deleted locally but deletion event might not have propagated yet
+        if (job.status === 'deleted' || job.status === 'deletion_pending') {
+          console.log('getJobs - Skipping locally deleted job:', job.id);
+          return false;
+        }
+        return true;
+      });
 
       // Save Nostr jobs to localStorage if they don't exist locally AND haven't been deleted
       const { saveExistingJobToLocal } = await import('@/lib/local-job-service');
       for (const job of jobs) {
-        const existingLocalJob = updatedLocalJobs.find(localJob => localJob.id === job.id);
+        const existingLocalJob = finalLocalJobs.find(localJob => localJob.id === job.id);
         if (!existingLocalJob && !deletedEventIds.has(job.id)) {
           console.log('Saving Nostr job to localStorage:', job.id);
           saveExistingJobToLocal(job);
@@ -438,7 +453,7 @@ export async function getJobs(): Promise<JobData[]> {
       }
 
       // Merge and deduplicate, prioritizing localStorage data
-      const allJobs = [...updatedLocalJobs, ...jobs];
+      const allJobs = [...finalLocalJobs, ...jobs];
       const uniqueJobs = allJobs.filter((job, index, self) => 
         index === self.findIndex(j => j.id === job.id)
       );
@@ -609,9 +624,11 @@ export async function deleteJob(jobId: string): Promise<void> {
   try {
     console.log(`Deleting job with ID: ${jobId}`);
 
-    // First, delete the job from localStorage
-    deleteLocalJob(jobId);
-    console.log('Job deleted from localStorage');
+    // First, mark the job as deleted in localStorage instead of removing it immediately
+    // This prevents it from reappearing if getJobs() is called before deletion propagates
+    const { updateLocalJobStatus } = await import('@/lib/local-job-service');
+    updateLocalJobStatus(jobId, 'deletion_pending');
+    console.log('Job marked as deletion_pending in localStorage');
 
     // Then try to update Nostr
     try {
@@ -937,6 +954,8 @@ export async function getPackages(): Promise<PackageData[]> {
         if (pkg.courier_pubkey) validatedPackage.courier_pubkey = pkg.courier_pubkey;
         if (pkg.pickup_time) validatedPackage.pickup_time = pkg.pickup_time;
         if (pkg.delivery_time) validatedPackage.delivery_time = pkg.delivery_time;
+        if (pkg.applicants) validatedPackage.applicants = pkg.applicants;
+        if (pkg.acceptedCourier) validatedPackage.acceptedCourier = pkg.acceptedCourier;
 
         return validatedPackage;
       }
@@ -1114,15 +1133,20 @@ export async function getMyDeliveries(): Promise<PackageData[]> {
     }
 
     // If no local deliveries, try Nostr with a timeout
-    const timeoutPromise = new Promise<PackageData[]>((resolve) => {
-      setTimeout(() => {
-        console.log('Nostr fetch timed out, returning local deliveries only');
-        resolve(localDeliveries);
-      }, 3000); // 3 second timeout
-    });
+    try {
+      const timeoutPromise = new Promise<PackageData[]>((resolve) => {
+        setTimeout(() => {
+          console.log('Nostr fetch timed out, returning local deliveries only');
+          resolve(localDeliveries);
+        }, 3000); // 3 second timeout
+      });
 
-    // Race between Nostr fetch and timeout
-    return Promise.race([fetchNostrDeliveries(), timeoutPromise]);
+      // Race between Nostr fetch and timeout
+      return await Promise.race([fetchNostrDeliveries(), timeoutPromise]);
+    } catch (raceError) {
+      console.warn('Promise race failed, falling back to local deliveries:', raceError);
+      return localDeliveries;
+    }
   } catch (error) {
     console.error('Failed to fetch deliveries:', error);
     // Fallback to localStorage if Nostr fails, but only return in_transit deliveries
@@ -2014,5 +2038,124 @@ export async function purgeAllPostsRelay(): Promise<{deleted: number; errors: nu
   } catch (error) {
     console.error('purgeAllPostsRelay failed:', error);
     return { deleted: 0, errors: 1 };
+  }
+}
+
+// Apply for package delivery
+export async function applyForPackage(packageId: string): Promise<void> {
+  try {
+    console.log('applyForPackage called with packageId:', packageId);
+
+    // Update local storage first
+    applyForLocalPackage(packageId);
+
+    // Try to update Nostr
+    try {
+      // Create an application event
+      const tags = [
+        ['t', 'package-application'],
+        ['e', packageId], // Reference to the package
+        ['status', 'applied'],
+        ['created_at', Math.floor(Date.now() / 1000).toString()]
+      ];
+
+      const event = await createSignedEvent(
+        EVENT_KINDS.PACKAGE,
+        JSON.stringify({
+          packageId,
+          applicant: getUserPubkey(),
+          timestamp: Math.floor(Date.now() / 1000)
+        }),
+        tags
+      );
+
+      const publishResult = await publishNostrEvent(event);
+      console.log('Package application published to Nostr:', publishResult);
+    } catch (nostrError) {
+      console.error('Nostr error, application saved locally only:', nostrError);
+    }
+        } catch (error) {
+    console.error('Failed to apply for package:', error);
+    throw new Error('Failed to apply for package');
+  }
+}
+
+// Accept package courier
+export async function acceptPackageCourier(packageId: string, courierPubkey: string): Promise<void> {
+  try {
+    console.log('acceptPackageCourier called with packageId:', packageId, 'courierPubkey:', courierPubkey);
+
+    // Update local storage
+    acceptPackageCourierLocal(packageId, courierPubkey);
+
+    // Try to update Nostr
+    try {
+      // Create an acceptance event
+      const tags = [
+        ['t', 'package-acceptance'],
+        ['e', packageId], // Reference to the package
+        ['p', courierPubkey], // Accepted courier
+        ['status', 'accepted'],
+        ['created_at', Math.floor(Date.now() / 1000).toString()]
+      ];
+
+      const event = await createSignedEvent(
+        EVENT_KINDS.PACKAGE,
+        JSON.stringify({
+          packageId,
+          acceptedCourier: courierPubkey,
+          status: 'in_transit',
+          timestamp: Math.floor(Date.now() / 1000)
+        }),
+        tags
+      );
+
+      const publishResult = await publishNostrEvent(event);
+      console.log('Package acceptance published to Nostr:', publishResult);
+    } catch (nostrError) {
+      console.error('Nostr error, acceptance saved locally only:', nostrError);
+    }
+  } catch (error) {
+    console.error('Failed to accept package courier:', error);
+    throw new Error('Failed to accept package courier');
+  }
+}
+
+// Reject package courier
+export async function rejectPackageCourier(packageId: string): Promise<void> {
+  try {
+    console.log('rejectPackageCourier called with packageId:', packageId);
+
+    // Update local storage
+    rejectPackageCourierLocal(packageId);
+
+    // Try to update Nostr
+    try {
+      // Create a rejection event
+      const tags = [
+        ['t', 'package-rejection'],
+        ['e', packageId], // Reference to the package
+        ['status', 'rejected'],
+        ['created_at', Math.floor(Date.now() / 1000).toString()]
+      ];
+
+      const event = await createSignedEvent(
+        EVENT_KINDS.PACKAGE,
+        JSON.stringify({
+          packageId,
+          status: 'available',
+          timestamp: Math.floor(Date.now() / 1000)
+        }),
+        tags
+      );
+
+      const publishResult = await publishNostrEvent(event);
+      console.log('Package rejection published to Nostr:', publishResult);
+    } catch (nostrError) {
+      console.error('Nostr error, rejection saved locally only:', nostrError);
+    }
+  } catch (error) {
+    console.error('Failed to reject package courier:', error);
+    throw new Error('Failed to reject package courier');
   }
 }

@@ -10,6 +10,8 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   
+
+  
   // Force dynamic rendering for all pages
   trailingSlash: false,
   

@@ -496,3 +496,90 @@ export function debugStorage(): void {
     console.error('Error in debug storage:', error);
   }
 }
+
+// Apply for package delivery
+export function applyForLocalPackage(packageId: string): void {
+  try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
+    const packages = getLocalPackages();
+    const updatePackage = (packageList: PackageData[]) => {
+      return packageList.map((pkg) => {
+        if (pkg.id === packageId) {
+          const applicants = pkg.applicants || [];
+          const userPubkey = getUserPubkey();
+          if (!applicants.includes(userPubkey)) {
+            const updatedPackage = {
+              ...pkg,
+              applicants: [...applicants, userPubkey],
+            };
+            return updatedPackage;
+          }
+        }
+        return pkg;
+      });
+    };
+    const updatedPackages = updatePackage(packages);
+    localStorage.setItem(PACKAGES_STORAGE_KEY, JSON.stringify(updatedPackages));
+    backupPackages();
+  } catch (error) {
+    console.error('Failed to apply for local package:', error);
+  }
+}
+
+// Accept package courier
+export function acceptPackageCourierLocal(packageId: string, courierPubkey: string): void {
+  try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
+    const packages = getLocalPackages();
+    const updatePackage = (packageList: PackageData[]) => {
+      return packageList.map((pkg) => {
+        if (pkg.id === packageId) {
+          const updatedPackage = {
+            ...pkg,
+            acceptedCourier: courierPubkey,
+            status: 'in_transit' as const,
+          };
+          return updatedPackage;
+        }
+        return pkg;
+      });
+    };
+    const updatedPackages = updatePackage(packages);
+    localStorage.setItem(PACKAGES_STORAGE_KEY, JSON.stringify(updatedPackages));
+    backupPackages();
+  } catch (error) {
+    console.error('Failed to accept package courier:', error);
+  }
+}
+
+// Reject package courier
+export function rejectPackageCourierLocal(packageId: string): void {
+  try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
+    const packages = getLocalPackages();
+    const updatePackage = (packageList: PackageData[]) => {
+      return packageList.map((pkg) => {
+        if (pkg.id === packageId) {
+          const updatedPackage = {
+            ...pkg,
+            acceptedCourier: undefined,
+            status: 'available' as const,
+          };
+          return updatedPackage;
+        }
+        return pkg;
+      });
+    };
+    const updatedPackages = updatePackage(packages);
+    localStorage.setItem(PACKAGES_STORAGE_KEY, JSON.stringify(updatedPackages));
+    backupPackages();
+  } catch (error) {
+    console.error('Failed to reject package courier:', error);
+  }
+}

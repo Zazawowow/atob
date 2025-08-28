@@ -24,6 +24,8 @@ export interface PackageData {
   courier_pubkey?: string;
   pickup_time?: number;
   delivery_time?: number;
+  applicants?: string[]; // Array of pubkeys who applied for pickup
+  acceptedCourier?: string; // Single accepted courier pubkey
 }
 
 // Job data interface
@@ -36,7 +38,7 @@ export interface JobData {
   compensation: string;
   pubkey: string;
   created_at: number;
-  status: 'open' | 'in_progress' | 'completed' | 'expired';
+  status: 'open' | 'in_progress' | 'completed' | 'expired' | 'deletion_pending';
 
   // Optional fields
   description?: string;
