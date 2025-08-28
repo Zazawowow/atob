@@ -96,11 +96,24 @@ async function getConnection(relay: string): Promise<any> {
     }
     
     const connection = new SimplePool();
-    pool.set(relay, connection);
-    console.log(`✅ Connected to ${relay}`);
-    return connection;
+    
+    // Test the connection without timeout since ensureRelay is synchronous
+    try {
+      // Test the connection by ensuring relay
+      connection.ensureRelay(relay);
+      pool.set(relay, connection);
+      console.log(`✅ Connected to ${relay}`);
+      return connection;
+    } catch (error) {
+      console.warn(`⚠️ Failed to ensure relay ${relay}:`, error);
+      // Still return the connection as it might work for publishing
+      pool.set(relay, connection);
+      return connection;
+    }
   } catch (error) {
     console.warn(`❌ Failed to connect to ${relay}:`, error);
+    // Don't store failed connections
+    pool.delete(relay);
     return null;
   }
 }
@@ -209,7 +222,7 @@ export async function listEvents(
       }
 
       if (!workingPool) {
-        console.warn('⚠️ No working connections, returning empty array');
+        console.warn('⚠️ No working connections available, falling back to local data');
         return [];
       }
 
@@ -406,9 +419,12 @@ export async function createSignedEvent(
   tags: string[][] = []
 ): Promise<any> { // Changed from NostrEvent to any to avoid SSR issues
   // Get the public key - only in browser environment
+  console.log('🔐 Creating signed event:', { kind, contentLength: content.length, tagsCount: tags.length });
+  
   let pubkey: string | null = null;
   if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
     pubkey = localStorage.getItem('nostr_pubkey');
+    console.log('📝 Got pubkey from localStorage:', pubkey);
   }
   
   if (!pubkey) {
@@ -454,11 +470,13 @@ export async function createSignedEvent(
     }
     
     event.id = getEventHashFn(event);
+    console.log('📝 Generated event ID:', event.id);
 
     // Convert hex private key to Uint8Array
     const privateKeyBytes = new Uint8Array(
       privateKey.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
     );
+    console.log('🔑 Private key converted to bytes, length:', privateKeyBytes.length);
 
     // Sign the event using the private key
     const { schnorr } = await import('@noble/curves/secp256k1');
@@ -466,7 +484,9 @@ export async function createSignedEvent(
     event.sig = Array.from(signature)
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
+    console.log('✍️ Generated signature:', event.sig);
     
+    console.log('✅ Successfully created signed event:', { id: event.id, kind: event.kind, pubkey: event.pubkey });
     return event;
   } catch (error) {
     console.error('Failed to sign event:', error);
@@ -498,32 +518,34 @@ async function retryOperation<T>(
 }
 
 // Update publishEvent to work with single relay
-export async function publishEvent(event: any): Promise<string[]> { // Changed from NostrEvent to any to avoid SSR issues
+export async function publishEvent(event: any): Promise<string[]> {
   try {
-    const relays = getRelays(); // Always use our custom relay
+    const relays = getRelays();
     if (relays.length === 0) {
       throw new Error('No relay configured');
     }
 
-    const relay = relays[0]; // We only have one relay
+    const relay = relays[0];
     
-    try {
-      const SimplePool = await getSimplePool();
-      if (!SimplePool) {
-        throw new Error('Failed to load SimplePool');
-      }
-      
-      const pool = new SimplePool();
-      await pool.publish([relay], event);
-      console.log(`Event published successfully to ${relay}`);
-      return ['ok'];
-    } catch (error) {
-      console.error(`Failed to publish to ${relay}:`, error);
-      return ['failed: ' + (error instanceof Error ? error.message : String(error))];
+    const SimplePool = await getSimplePool();
+    if (!SimplePool) {
+      throw new Error('Failed to load SimplePool');
     }
-  } catch (error) {
-    console.error('Failed to publish event:', error);
-    return ['failed: ' + (error instanceof Error ? error.message : String(error))];
+    
+    const pool = new SimplePool();
+    
+    // Simple publish - nostr-tools handles the complexity
+    try {
+      await pool.publish([relay], event);
+      console.log(`✅ Published to ${relay}`);
+      return ['ok'];
+    } catch (error: any) {
+      console.error(`❌ Failed to publish to ${relay}:`, error);
+      return ['failed: ' + error.message];
+    }
+  } catch (error: any) {
+    console.error('❌ Publish error:', error);
+    return ['failed: ' + error.message];
   }
 }
 

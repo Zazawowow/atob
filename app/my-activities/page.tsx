@@ -17,13 +17,19 @@ import {
   completeDelivery,
   getEffectiveStatus,
   getMyJobs,
+  getJobs,
   getPackages,
   getUserProfile,
+  deleteJob,
+  deletePackage,
+  acceptJobApplicant,
+  rejectJobApplicant,
 } from '@/lib/nostr';
 import { useNostr } from '@/components/nostr-provider';
 import { QRCodeSVG } from 'qrcode.react';
 import { debugStorage } from '@/lib/local-package-service';
 import { type PackageData, type JobData } from '@/lib/nostr-types';
+import { NostrErrorHandler } from '@/lib/error-handler';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { CourierBadges } from '@/components/courier-badges';
@@ -80,6 +86,7 @@ export default function MyActivities() {
   const [refreshing, setRefreshing] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [acceptingWorker, setAcceptingWorker] = useState<string | null>(null);
+  const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'deliveries' | 'jobs' | 'my-packages' | 'my-jobs'>(() => {
     // Get saved tab from localStorage, default to 'all'
     if (typeof window !== 'undefined') {
@@ -105,7 +112,11 @@ export default function MyActivities() {
     
     try {
       setDeliveriesLoading(true);
-      const deliveriesData = await getMyDeliveries();
+      const deliveriesData = await NostrErrorHandler.withErrorHandling(
+        () => getMyDeliveries(),
+        [],
+        'Failed to load deliveries due to connection issues'
+      );
       setDeliveries(deliveriesData);
       console.log(`Loaded ${deliveriesData.length} deliveries`);
     } catch (error) {
@@ -224,19 +235,24 @@ export default function MyActivities() {
   }, [loadDeliveries]);
 
   const loadMyJobs = useCallback(async () => {
-    if (!isReady) return;
+    if (!isReady || !publicKey) return;
     
     try {
       setJobsLoading(true);
-      const jobsData = await getMyJobs();
-      setMyJobs(jobsData);
+      // Get all jobs and filter for jobs where the user has been accepted
+      const allJobs = await getJobs();
+      const acceptedJobs = allJobs.filter(job => 
+        job.acceptedWorker === publicKey &&
+        job.pubkey !== publicKey // Exclude jobs posted by the user
+      );
+      setMyJobs(acceptedJobs);
     } catch (error) {
       console.error('Failed to load my jobs:', error);
       toast.error('Failed to load your jobs');
     } finally {
       setJobsLoading(false);
     }
-  }, [isReady]);
+  }, [isReady, publicKey]);
 
   const loadMyPackages = useCallback(async () => {
     if (!isReady || !publicKey) return;
@@ -320,14 +336,15 @@ export default function MyActivities() {
     try {
       setAcceptingWorker(workerPubkey);
       
-      // Update the job status to accepted for this worker
-      // This would typically involve updating the job in Nostr
-      // For now, we'll just show a success message
+      // Accept the job applicant using the new API
+      await acceptJobApplicant(jobId, workerPubkey);
       
       toast.success('Worker accepted successfully!');
       
       // Refresh the jobs to reflect the change
       await loadMyPostedJobs();
+      // Optimistically move accepted worker to the top in UI
+      setApplicantProfiles((prev) => ({ ...prev }));
       
     } catch (error) {
       console.error('Failed to accept worker:', error);
@@ -336,6 +353,39 @@ export default function MyActivities() {
       setAcceptingWorker(null);
     }
   }, [loadMyPostedJobs]);
+
+  const handleRejectWorker = useCallback(async (jobId: string, workerPubkey: string) => {
+    try {
+      // Reject the job applicant using the new API  
+      await rejectJobApplicant(jobId);
+      toast.success('Worker rejected');
+      await loadMyPostedJobs();
+    } catch (error) {
+      console.error('Failed to reject worker:', error);
+      toast.error('Failed to reject worker. Please try again.');
+    }
+  }, [loadMyPostedJobs]);
+
+  const handleDeletePostedJob = useCallback(async (jobId: string) => {
+    try {
+      setDeletingJobId(jobId);
+      await deleteJob(jobId);
+      toast.success('Job deleted successfully');
+      // Optimistic UI update
+      setMyJobs((prev) => prev.filter((j) => j.id !== jobId));
+      setMyPostedJobs((prev) => prev.filter((j) => j.id !== jobId));
+      await loadMyPostedJobs();
+      if (selectedJob?.id === jobId) {
+        setSelectedJob(null);
+        setSelectedItemType(null);
+      }
+    } catch (error) {
+      console.error('Failed to delete job:', error);
+      toast.error('Failed to delete job');
+    } finally {
+      setDeletingJobId(null);
+    }
+  }, [loadMyPostedJobs, selectedJob]);
 
   // Combine job sources for the map
   const allJobsForMap = useMemo(() => {
@@ -367,6 +417,22 @@ export default function MyActivities() {
       loadMyPackages();
       loadMyPostedJobs();
     }
+  }, [isReady, loadDeliveries, loadMyJobs, loadMyPackages, loadMyPostedJobs]);
+
+  // Add visibility change listener to refresh data when page becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isReady) {
+        console.log('Page became visible, refreshing my activities data...');
+        loadMyPostedJobs();
+        loadMyJobs();
+        loadMyPackages();
+        loadDeliveries();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [isReady, loadDeliveries, loadMyJobs, loadMyPackages, loadMyPostedJobs]);
 
   if (!mounted || !isReady || deliveriesLoading) {
@@ -607,7 +673,7 @@ export default function MyActivities() {
                                 </div>
                                 <Badge
                                   variant='outline'
-                                  className={`text-xs ${
+                                  className={`text-xs whitespace-nowrap ${
                                     job.status === 'open'
                                       ? 'bg-green-400/10 text-green-400 border-green-400/30'
                                       : job.status === 'in_progress'
@@ -618,6 +684,14 @@ export default function MyActivities() {
                                   {job.status === 'open' ? 'Open' : job.status === 'in_progress' ? 'In Progress' : 'Completed'}
                                 </Badge>
                               </div>
+                              <Button
+                                onClick={(e) => { e.stopPropagation(); handleDeletePostedJob(job.id); }}
+                                variant='outline'
+                                size='sm'
+                                className='mt-3 w-full bg-red-500/10 border-red-400/30 text-red-400 hover:bg-red-500/20 hover:border-red-400/40'
+                              >
+                                Delete
+                              </Button>
                             </CardContent>
                           </Card>
                         ))}
@@ -665,7 +739,7 @@ export default function MyActivities() {
                                 </div>
                                 <Badge
                                   variant='outline'
-                                  className={`text-xs ${
+                                  className={`text-xs whitespace-nowrap ${
                                     getEffectiveStatus(pkg) === 'available'
                                       ? 'bg-green-400/10 text-green-400 border-green-400/30'
                                       : getEffectiveStatus(pkg) === 'in_transit'
@@ -678,6 +752,14 @@ export default function MyActivities() {
                                    'Delivered'}
                                 </Badge>
                               </div>
+                              <Button
+                                onClick={(e) => { e.stopPropagation(); deletePackage(pkg.id); setMyPackages((prev)=>prev.filter(p=>p.id!==pkg.id)); }}
+                                variant='outline'
+                                size='sm'
+                                className='mt-3 w-full bg-red-500/10 border-red-400/30 text-red-400 hover:bg-red-500/20 hover:border-red-400/40'
+                              >
+                                Delete
+                              </Button>
                             </CardContent>
                           </Card>
                         ))}
@@ -691,6 +773,8 @@ export default function MyActivities() {
                             }`}
                             onClick={() => {
                               setSelectedJob(job);
+                              setSelectedDelivery(null);
+                              setSelectedItemType('job');
                               loadApplicantProfiles(job);
                             }}
                           >
@@ -725,7 +809,7 @@ export default function MyActivities() {
                                 </div>
                                 <Badge
                                   variant='outline'
-                                  className={`text-xs ${
+                                  className={`text-xs whitespace-nowrap ${
                                     job.status === 'open'
                                       ? 'bg-green-400/10 text-green-400 border-green-400/30'
                                       : job.status === 'in_progress'
@@ -736,6 +820,17 @@ export default function MyActivities() {
                                   {job.status === 'open' ? 'Open' : job.status === 'in_progress' ? 'In Progress' : 'Completed'}
                                 </Badge>
                               </div>
+                            </CardContent>
+                            <CardContent className='px-4 pt-0 pb-4'>
+                              <Button
+                                onClick={(e) => { e.stopPropagation(); handleDeletePostedJob(job.id); setMyPostedJobs((prev)=>prev.filter(j=>j.id!==job.id)); }}
+                                variant='outline'
+                                size='sm'
+                                className='mt-3 w-full bg-red-500/10 border-red-400/30 text-red-400 hover:bg-red-500/20 hover:border-red-400/40'
+                                disabled={deletingJobId === job.id}
+                              >
+                                {deletingJobId === job.id ? 'Deleting…' : 'Delete'}
+                              </Button>
                             </CardContent>
                           </Card>
                         ))}
@@ -765,7 +860,7 @@ export default function MyActivities() {
                             setShowQR(false);
                           }}
                         >
-                          <CardHeader className='p-4'>
+                          <CardHeader className='px-4 pt-3 pb-2'>
                             <div className='flex items-center justify-between mb-2'>
                               <div className='flex items-center gap-2'>
                                 <Truck className='h-4 w-4 text-cyan-400' />
@@ -789,7 +884,7 @@ export default function MyActivities() {
                               </CardDescription>
                             </div>
                           </CardHeader>
-                          <CardContent className='p-4 pt-0'>
+                          <CardContent className='px-4 pt-0'>
                             <div className='flex justify-between items-center'>
                               <div className='text-sm text-[#FAFAFA]/70'>
                                 {delivery.pickupLocation} → {delivery.destination}
@@ -831,11 +926,22 @@ export default function MyActivities() {
                       myPackages.map((pkg) => (
                         <Card
                           key={pkg.id}
-                          className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 transition-all duration-300'
+                          className={`cursor-pointer ${getCardBorderStyle('package')}`}
+                          onClick={() => {
+                            setSelectedDelivery(pkg);
+                            setSelectedJob(null);
+                            setSelectedItemType('package');
+                          }}
                         >
                           <CardHeader className='p-4'>
-                            {/* Mobile: Badge at top, Desktop: Badge on right */}
-                            <div className='md:hidden mb-3 flex justify-end'>
+                            <div className='flex items-center justify-between mb-2'>
+                              <div className='flex items-center gap-2'>
+                                <svg className='h-4 w-4 text-purple-400' viewBox="0 0 122.88 122.25" fill="currentColor">
+                                  <g><path d="M122.57,29.25l0.31,62.88c0.01,3.28-2.05,6.1-5,7.29l0.01,0.01l-54.64,22.09c-0.99,0.4-2.05,0.6-3.12,0.6 c-0.11,0-0.22,0-0.33-0.01c-0.47,0.08-0.95,0.13-1.42,0.13c-1.06,0-2.11-0.21-3.08-0.62L4.94,100.46l0-0.01 C2.03,99.22-0.01,96.32,0,92.94l0.3-62.08c-0.04-0.66,0-1.33,0.12-1.99c0.02-0.95,0.22-1.88,0.58-2.76 c0.84-2.04,2.47-3.55,4.42-4.33l0-0.01L57.98,0.6c2.14-0.86,4.44-0.77,6.4,0.07l52.47,18.97c3.14,1.13,5.13,3.96,5.27,7.01 C122.41,27.49,122.57,28.37,122.57,29.25L122.57,29.25z M51.51,108.46l0.39-54.77L9.82,35.5L8.93,90.49L51.51,108.46L51.51,108.46 L51.51,108.46z M113.58,35.5L66.55,53.7l0.37,54.71l46.94-17.54L113.58,35.5L113.58,35.5L113.58,35.5z"/></g></svg>
+                                <Badge variant='outline' className='bg-purple-400/10 text-purple-400 border-purple-400/30 text-xs'>
+                                  My Package
+                                </Badge>
+                              </div>
                               <Badge
                                 variant='outline'
                                 className='bg-blue-400/10 text-blue-400 border-blue-400/30 px-3 py-1 text-sm font-medium'
@@ -843,7 +949,6 @@ export default function MyActivities() {
                                 {pkg.cost} sats
                               </Badge>
                             </div>
-                            <div className='flex justify-between items-start'>
                               <div>
                                 <CardTitle className='text-lg font-semibold mb-1 text-[#FAFAFA]'>
                                   {pkg.title}
@@ -851,13 +956,6 @@ export default function MyActivities() {
                                 <CardDescription className='text-sm text-[#FAFAFA]/70'>
                                   {pkg.description || 'No description provided'}
                                 </CardDescription>
-                              </div>
-                              <Badge
-                                variant='outline'
-                                className='hidden md:block bg-blue-400/10 text-blue-400 border-blue-400/30'
-                              >
-                                {pkg.cost} sats
-                              </Badge>
                             </div>
                           </CardHeader>
                           <CardContent className='p-4 pt-0'>
@@ -867,7 +965,7 @@ export default function MyActivities() {
                               </div>
                               <Badge
                                 variant='outline'
-                                className={`text-xs ${
+                                className={`text-xs whitespace-nowrap ${
                                   getEffectiveStatus(pkg) === 'available'
                                     ? 'bg-green-400/10 text-green-400 border-green-400/30'
                                     : getEffectiveStatus(pkg) === 'in_transit'
@@ -880,6 +978,14 @@ export default function MyActivities() {
                                  getEffectiveStatus(pkg)}
                               </Badge>
                             </div>
+                            <Button
+                              onClick={(e) => { e.stopPropagation(); deletePackage(pkg.id); setMyPackages((prev)=>prev.filter(p=>p.id!==pkg.id)); }}
+                              variant='outline'
+                              size='sm'
+                              className='mt-3 w-full bg-red-500/10 border-red-400/30 text-red-400 hover:bg-red-500/20 hover:border-red-400/40'
+                            >
+                              Delete
+                            </Button>
                           </CardContent>
                         </Card>
                       ))
@@ -913,8 +1019,13 @@ export default function MyActivities() {
                           }}
                         >
                           <CardHeader className='p-4'>
-                            {/* Mobile: Badge at top, Desktop: Badge on right */}
-                            <div className='md:hidden mb-3 flex justify-end'>
+                            <div className='flex items-center justify-between mb-2'>
+                              <div className='flex items-center gap-2'>
+                                <Briefcase className='h-4 w-4 text-orange-400' />
+                                <Badge variant='outline' className='bg-orange-400/10 text-orange-400 border-orange-400/30 text-xs'>
+                                  My Job
+                                </Badge>
+                              </div>
                               <Badge
                                 variant='outline'
                                 className='bg-blue-400/10 text-blue-400 border-blue-400/30 px-3 py-1 text-sm font-medium'
@@ -922,7 +1033,6 @@ export default function MyActivities() {
                                 {job.compensation} sats
                               </Badge>
                             </div>
-                            <div className='flex justify-between items-start'>
                               <div>
                                 <CardTitle className='text-lg font-semibold mb-1 text-[#FAFAFA]'>
                                   {job.title}
@@ -930,13 +1040,6 @@ export default function MyActivities() {
                                 <CardDescription className='text-sm text-[#FAFAFA]/70'>
                                   {job.description || 'No description provided'}
                                 </CardDescription>
-                              </div>
-                              <Badge
-                                variant='outline'
-                                className='hidden md:block bg-blue-400/10 text-blue-400 border-blue-400/30'
-                              >
-                                {job.compensation} sats
-                              </Badge>
                             </div>
                           </CardHeader>
                           <CardContent className='p-4 pt-0'>
@@ -946,7 +1049,7 @@ export default function MyActivities() {
                               </div>
                               <Badge
                                 variant='outline'
-                                className={`text-xs ${
+                                className={`text-xs whitespace-nowrap ${
                                   job.status === 'open'
                                     ? 'bg-green-400/10 text-green-400 border-green-400/30'
                                     : job.status === 'in_progress'
@@ -958,43 +1061,66 @@ export default function MyActivities() {
                               </Badge>
                             </div>
                           </CardContent>
+                          <CardContent className='px-4 pt-0 pb-4'>
+                            <Button
+                              onClick={(e) => { e.stopPropagation(); handleDeletePostedJob(job.id); }}
+                              variant='outline'
+                              size='sm'
+                              className='mt-3 w-full bg-red-500/10 border-red-400/30 text-red-400 hover:bg-red-500/20 hover:border-red-400/40'
+                              disabled={deletingJobId === job.id}
+                            >
+                              {deletingJobId === job.id ? 'Deleting…' : 'Delete'}
+                            </Button>
+                          </CardContent>
                         </Card>
                       ))
                     )}
                   </>
                 ) : (
                   <>
+                    {/* Work - Jobs you've applied for and been accepted to */}
                     {jobsLoading && myJobs.length === 0 ? (
                       <div className='text-center py-8 text-[#FAFAFA]/70'>
                         <div className='animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4'></div>
-                        Loading jobs...
+                        Loading work assignments...
                       </div>
                     ) : myJobs.length === 0 ? (
                       <div className='text-center py-8 text-[#FAFAFA]/70'>
-                        No jobs posted yet
+                        No work assignments yet
                       </div>
                     ) : (
                       myJobs.map((job) => (
                         <Card
                           key={job.id}
-                          className='bg-black/20 border-blue-400/20 hover:bg-blue-400/10 hover:border-blue-400/30 transition-all duration-300'
+                          className={`cursor-pointer ${getCardBorderStyle('job')}`}
+                          onClick={() => {
+                            setSelectedJob(job);
+                            setSelectedDelivery(null);
+                            setSelectedItemType('job');
+                          }}
                         >
                           <CardHeader className='p-4'>
-                            <div className='flex justify-between items-start gap-3'>
-                              <div className='flex-1 min-w-0'>
-                                <CardTitle className='text-lg font-semibold mb-1 text-[#FAFAFA]'>
-                                  {job.title}
-                                </CardTitle>
-                                <CardDescription className='text-sm text-[#FAFAFA]/70'>
-                                  {job.description || 'No description provided'}
-                                </CardDescription>
+                            <div className='flex items-center justify-between mb-2'>
+                              <div className='flex items-center gap-2'>
+                                <svg className='h-4 w-4 text-green-400' viewBox="0 0 122.49 122.88" fill="currentColor"><g><path d="M101.12,37.47c14.95,18.54,22.23,40.44,21.28,60.48c-6.91-16.93-17.64-34.09-31.87-49.9l-4.77,4.77 c-0.54,0.54-1.42,0.54-1.96,0L68.72,37.75c-0.54-0.54-0.54-1.42,0-1.96l4.63-4.63C57.16,17.12,39.68,6.67,22.54,0.2 c20.2-1.52,42.5,5.45,61.44,20.33l2.09-2.09c0.54-0.54,1.42-0.54,1.96,0l15.08,15.08c0.54,0.54,0.54,1.42,0,1.96L101.12,37.47 L101.12,37.47z M68.16,42.51l12.22,12.22l-65.64,65.64c-3.36,3.36-8.86,3.36-12.22,0l0,0c-3.36-3.36-3.36-8.86,0-12.22L68.16,42.51 L68.16,42.51z"/></g></svg>
+                                <Badge variant='outline' className='bg-green-400/10 text-green-400 border-green-400/30 text-xs'>
+                                  Work
+                                </Badge>
                               </div>
                               <Badge
                                 variant='outline'
-                                className='hidden md:block bg-blue-400/10 text-blue-400 border-blue-400/30 flex-shrink-0'
+                                className='bg-blue-400/10 text-blue-400 border-blue-400/30 px-3 py-1 text-sm font-medium'
                               >
                                 {job.compensation} sats
                               </Badge>
+                            </div>
+                            <div>
+                              <CardTitle className='text-lg font-semibold mb-1 text-[#FAFAFA]'>
+                                {job.title}
+                              </CardTitle>
+                              <CardDescription className='text-sm text-[#FAFAFA]/70'>
+                                {job.description || 'No description provided'}
+                              </CardDescription>
                             </div>
                           </CardHeader>
                           <CardContent className='p-4 pt-0'>
@@ -1004,7 +1130,7 @@ export default function MyActivities() {
                               </div>
                               <Badge
                                 variant='outline'
-                                className={`text-xs ${
+                                className={`text-xs whitespace-nowrap ${
                                   job.status === 'open'
                                     ? 'bg-green-400/10 text-green-400 border-green-400/30'
                                     : job.status === 'in_progress'
@@ -1012,7 +1138,7 @@ export default function MyActivities() {
                                     : 'bg-gray-400/10 text-gray-400 border-gray-400/30'
                                 }`}
                               >
-                                {job.status === 'open' ? 'Open' : job.status === 'in_progress' ? 'In Progress' : 'Completed'}
+                                {job.status === 'open' ? 'Accepted' : job.status === 'in_progress' ? 'In Progress' : 'Completed'}
                               </Badge>
                             </div>
                           </CardContent>
@@ -1062,26 +1188,67 @@ export default function MyActivities() {
           </Card>
         </div>
 
-        {/* Right Column: Applications panel (hidden on mobile) */}
+        {/* Right Column: Dynamic detail panel (hidden on mobile) */}
         <div className='h-full hidden lg:block'>
           <Card className='bg-background/90 backdrop-blur-sm border border-cyan-500/20 shadow-2xl shadow-primary/10 h-full flex flex-col p-0 gap-0'>
             <CardContent className='p-0 h-full'>
               <div className='h-full w-full flex flex-col'>
                 <div className='px-6 pt-6 pb-4'>
                   <CardTitle className='text-[#FAFAFA] text-xl'>
-                    {selectedItemType === 'job' && selectedJob ? selectedJob.title : 'Applications'}
+                    {selectedItemType === 'job' && selectedJob && selectedJob.pubkey === publicKey ? selectedJob.title : 
+                     selectedItemType === 'job' && selectedJob ? 'Work Details' :
+                     selectedItemType === 'delivery' && selectedDelivery ? selectedDelivery.title :
+                     selectedItemType === 'package' && selectedDelivery ? selectedDelivery.title :
+                     'Activity Map'}
                   </CardTitle>
                   <CardDescription className='text-[#FAFAFA]/70'>
-                    {selectedItemType === 'job' && selectedJob ? 'Review and accept applicants' : 'Select a job to view applicants'}
+                    {selectedItemType === 'job' && selectedJob && selectedJob.pubkey === publicKey ? 'Review and accept applicants' :
+                     selectedItemType === 'job' && selectedJob ? 'View work assignment location' :
+                     selectedItemType === 'delivery' && selectedDelivery ? 'View delivery location' :
+                     selectedItemType === 'package' && selectedDelivery ? 'View package location' :
+                     'Select an item to view it on the map'}
                   </CardDescription>
                 </div>
                 <div className='flex-1 overflow-y-auto px-6 pb-6'>
-                  {selectedItemType === 'job' && selectedJob ? (
-                    <div className='space-y-3'>
-                      {(!selectedJob.assignedWorkers || selectedJob.assignedWorkers.length === 0) && (
+                  {selectedItemType === 'job' && selectedJob && selectedJob.pubkey === publicKey ? (
+                    <div className='space-y-4'>
+                      {(!selectedJob.applicants || selectedJob.applicants.length === 0) && (
                         <p className='text-sm text-[#FAFAFA]/60'>No applications yet.</p>
                       )}
-                      {selectedJob.assignedWorkers && selectedJob.assignedWorkers.map((worker) => {
+                      {/* Accepted section */}
+                      {selectedJob.acceptedWorker && (
+                        <div>
+                          <div className='text-xs uppercase tracking-wide text-[#FAFAFA]/50 mb-2'>Accepted</div>
+                          <div className='space-y-2'>
+                            {[selectedJob.acceptedWorker].map((worker: string) => {
+                              const profile = applicantProfiles[worker];
+                              const level = profile ? (profile.deliveries >= 50 ? 'CypherMax' : profile.deliveries >= 30 ? 'Local Driver' : profile.deliveries >= 20 ? 'Cypherpunk' : profile.deliveries >= 10 ? 'Novice Courier' : 'Neophyte') : 'Neophyte';
+                              return (
+                                <div key={`accepted-${worker}`} className='flex items-center justify-between bg-black/20 border border-green-400/20 rounded-lg p-3'>
+                                  <div className='flex items-center gap-3'>
+                                    <img src={profile?.picture || '/avatar.png'} alt={profile?.displayName || 'User'} className='w-9 h-9 rounded-full object-cover' />
+                                    <div>
+                                      <Link href={`/profile?pubkey=${worker}`} className='text-sm text-[#FAFAFA] hover:underline'>
+                                        {profile?.displayName || profile?.name || 'Unknown User'}
+                                      </Link>
+                                      <div className='text-xs text-[#FAFAFA]/60'>Level: {level}</div>
+                                    </div>
+                                  </div>
+                                  <div className='flex items-center gap-2'>
+                                    <Badge variant='outline' className='text-xs bg-green-500/10 text-green-400 border-green-400/30 whitespace-nowrap'>Accepted</Badge>
+                                    <Button size='sm' variant='outline' className='text-red-400 border-red-400/30 hover:bg-red-500/10 hover:border-red-400/40' onClick={() => handleRejectWorker(selectedJob.id, worker)}>
+                                      Reject
+                                    </Button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Applicants section */}
+                      {selectedJob.applicants && selectedJob.applicants.map((worker) => {
                         const profile = applicantProfiles[worker];
                         const level = profile ? (profile.deliveries >= 50 ? 'CypherMax' : profile.deliveries >= 30 ? 'Local Driver' : profile.deliveries >= 20 ? 'Cypherpunk' : profile.deliveries >= 10 ? 'Novice Courier' : 'Neophyte') : 'Neophyte';
                         return (
@@ -1095,15 +1262,52 @@ export default function MyActivities() {
                                 <div className='text-xs text-[#FAFAFA]/60'>Level: {level}</div>
                               </div>
                             </div>
-                            <Button size='sm' onClick={() => handleAcceptWorker(selectedJob.id, worker)} disabled={acceptingWorker === worker} className='bg-blue-500/20 border border-blue-400/30 hover:bg-blue-500/30'>
-                              {acceptingWorker === worker ? 'Accepting...' : 'Accept'}
-                            </Button>
+                            {selectedJob.acceptedWorker === worker ? (
+                              <div className='flex items-center gap-2'>
+                                <Badge variant='outline' className='text-xs bg-green-500/10 text-green-400 border-green-400/30 whitespace-nowrap'>Accepted</Badge>
+                                <Button size='sm' variant='outline' className='text-red-400 border-red-400/30 hover:bg-red-500/10 hover:border-red-400/40' onClick={() => handleRejectWorker(selectedJob.id, worker)}>
+                                  Reject
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button size='sm' onClick={() => handleAcceptWorker(selectedJob.id, worker)} disabled={acceptingWorker === worker} className='bg-blue-500/20 border border-blue-400/30 hover:bg-blue-500/30 text-[#FAFAFA]'>
+                                {acceptingWorker === worker ? 'Accepting...' : 'Accept'}
+                              </Button>
+                            )}
                           </div>
                         );
                       })}
                     </div>
                   ) : (
-                    <div className='text-sm text-[#FAFAFA]/60'>Select a job on the left to view its applicants.</div>
+                  <ActivityMap
+                        deliveries={selectedItemType === 'delivery' && selectedDelivery ? [selectedDelivery] : 
+                                   !selectedItemType ? deliveries : []}
+                        jobs={selectedItemType === 'job' && selectedJob ? [selectedJob] : 
+                              !selectedItemType ? [...myJobs, ...myPostedJobs] : []}
+                        packages={selectedItemType === 'package' && selectedDelivery ? [selectedDelivery] : 
+                                 !selectedItemType ? myPackages : []}
+                        selectedDelivery={selectedItemType === 'delivery' ? selectedDelivery || undefined : undefined}
+                        selectedJob={selectedItemType === 'job' ? selectedJob || undefined : undefined}
+                    selectedPackage={selectedItemType === 'package' ? (selectedDelivery || undefined) : undefined}
+                        onSelectDelivery={(delivery) => {
+                          setSelectedDelivery(delivery);
+                          setSelectedJob(null);
+                      setSelectedItemType('delivery');
+                    }}
+                        onSelectJob={(job) => {
+                          setSelectedJob(job);
+                          setSelectedDelivery(null);
+                      setSelectedItemType('job');
+                          if (activeTab === 'my-jobs') {
+                            loadApplicantProfiles(job);
+                          }
+                    }}
+                        onSelectPackage={(pkg) => {
+                          setSelectedDelivery(pkg);
+                          setSelectedJob(null);
+                      setSelectedItemType('package');
+                    }}
+                  />
                   )}
                 </div>
               </div>
@@ -1125,26 +1329,55 @@ export default function MyActivities() {
               </Button>
               <div>
                 <p className='text-off-white text-base font-medium'>
-                  {selectedItemType === 'job' ? 'Applications' : 'Details'}
+                  {selectedItemType === 'job' && selectedJob && selectedJob.pubkey === publicKey ? 'Applications' : 'Details'}
                 </p>
                 <p className='text-xs text-blue-300'>
-                  {selectedItemType ? (selectedItemType === 'job' ? 'Review and accept applicants' : 'Map view') : 'Select an item to view details'}
+                  {selectedItemType === 'job' && selectedJob && selectedJob.pubkey === publicKey ? 'Review and accept applicants' : 'Map view'}
                 </p>
               </div>
             </div>
             <div className='flex-1'>
-              {!selectedItemType && (
-                <div className='h-full w-full flex items-center justify-center text-[#FAFAFA]/60'>
-                  Select an item to view details
-                </div>
-              )}
-              {selectedItemType === 'job' && selectedJob && (
+              {selectedItemType === 'job' && selectedJob && selectedJob.pubkey === publicKey ? (
                 <div className='h-full w-full flex flex-col px-4 py-3'>
-                  <div className='space-y-3 overflow-y-auto'>
-                    {(!selectedJob.assignedWorkers || selectedJob.assignedWorkers.length === 0) && (
+                  <div className='space-y-4 overflow-y-auto'>
+                    {(!selectedJob.applicants || selectedJob.applicants.length === 0) && (
                       <p className='text-sm text-[#FAFAFA]/60'>No applications yet.</p>
                     )}
-                    {selectedJob.assignedWorkers && selectedJob.assignedWorkers.map((worker) => {
+                    
+                    {/* Accepted section */}
+                    {selectedJob.acceptedWorker && (
+                      <div>
+                        <div className='text-xs uppercase tracking-wide text-[#FAFAFA]/50 mb-2'>Accepted</div>
+                        <div className='space-y-2'>
+                          {[selectedJob.acceptedWorker].map((worker: string) => {
+                            const profile = applicantProfiles[worker];
+                            const level = profile ? (profile.deliveries >= 50 ? 'CypherMax' : profile.deliveries >= 30 ? 'Local Driver' : profile.deliveries >= 20 ? 'Cypherpunk' : profile.deliveries >= 10 ? 'Novice Courier' : 'Neophyte') : 'Neophyte';
+                            return (
+                              <div key={`accepted-${worker}`} className='flex items-center justify-between bg-black/20 border border-green-400/20 rounded-lg p-3'>
+                                <div className='flex items-center gap-3'>
+                                  <img src={profile?.picture || '/avatar.png'} alt={profile?.displayName || 'User'} className='w-9 h-9 rounded-full object-cover' />
+                                  <div>
+                                    <Link href={`/profile?pubkey=${worker}`} className='text-sm text-[#FAFAFA] hover:underline'>
+                                      {profile?.displayName || profile?.name || 'Unknown User'}
+                                    </Link>
+                                    <div className='text-xs text-[#FAFAFA]/60'>Level: {level}</div>
+                                  </div>
+                                </div>
+                                <div className='flex items-center gap-2'>
+                                  <Badge variant='outline' className='text-xs bg-green-500/10 text-green-400 border-green-400/30 whitespace-nowrap'>Accepted</Badge>
+                                  <Button size='sm' variant='outline' className='text-red-400 border-red-400/30 hover:bg-red-500/10 hover:border-red-400/40' onClick={() => handleRejectWorker(selectedJob.id, worker)}>
+                                    Reject
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Applicants section */}
+                    {selectedJob.applicants && selectedJob.applicants.map((worker) => {
                       const profile = applicantProfiles[worker];
                       const level = profile ? (profile.deliveries >= 50 ? 'CypherMax' : profile.deliveries >= 30 ? 'Local Driver' : profile.deliveries >= 20 ? 'Cypherpunk' : profile.deliveries >= 10 ? 'Novice Courier' : 'Neophyte') : 'Neophyte';
                       return (
@@ -1158,23 +1391,31 @@ export default function MyActivities() {
                               <div className='text-xs text-[#FAFAFA]/60'>Level: {level}</div>
                             </div>
                           </div>
-                          <Button size='sm' onClick={() => handleAcceptWorker(selectedJob.id, worker)} disabled={acceptingWorker === worker} className='bg-blue-500/20 border border-blue-400/30 hover:bg-blue-500/30'>
-                            {acceptingWorker === worker ? 'Accepting...' : 'Accept'}
-                          </Button>
+                          {selectedJob.acceptedWorker === worker ? (
+                            <div className='flex items-center gap-2'>
+                              <Badge variant='outline' className='text-xs bg-green-500/10 text-green-400 border-green-400/30 whitespace-nowrap'>Accepted</Badge>
+                              <Button size='sm' variant='outline' className='text-red-400 border-red-400/30 hover:bg-red-500/10 hover:border-red-400/40' onClick={() => handleRejectWorker(selectedJob.id, worker)}>
+                                Reject
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button size='sm' onClick={() => handleAcceptWorker(selectedJob.id, worker)} disabled={acceptingWorker === worker} className='bg-blue-500/20 border border-blue-400/30 hover:bg-blue-500/30 text-[#FAFAFA]'>
+                              {acceptingWorker === worker ? 'Accepting...' : 'Accept'}
+                            </Button>
+                          )}
                         </div>
                       );
                     })}
                   </div>
                 </div>
-              )}
-              {(selectedItemType === 'delivery' || selectedItemType === 'package') && (
-                  <ActivityMap
+              ) : (
+                <ActivityMap
                   deliveries={selectedItemType === 'delivery' && selectedDelivery ? [selectedDelivery] : []}
-                  jobs={[]}
+                  jobs={selectedItemType === 'job' && selectedJob ? [selectedJob] : []}
                   packages={selectedItemType === 'package' && selectedDelivery ? [selectedDelivery] : []}
-                    selectedDelivery={selectedDelivery || undefined}
-                  selectedJob={undefined}
-                    selectedPackage={selectedItemType === 'package' ? (selectedDelivery || undefined) : undefined}
+                  selectedDelivery={selectedItemType === 'delivery' ? selectedDelivery || undefined : undefined}
+                  selectedJob={selectedItemType === 'job' ? selectedJob || undefined : undefined}
+                  selectedPackage={selectedItemType === 'package' ? (selectedDelivery || undefined) : undefined}
                 />
               )}
                 </div>

@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Package, MapPin, Bitcoin, Eye, RefreshCw, Briefcase, Truck, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { getPackages, pickupPackage, deletePackage, getEffectiveStatus, getJobs, applyForJob, deleteJob } from '@/lib/nostr-client';
+import { getPackages, pickupPackage, deletePackage, getEffectiveStatus, getJobs, applyForJob, deleteJob, acceptJobApplicant, rejectJobApplicant } from '@/lib/nostr-client';
 import { PostJobModal } from '@/components/post-job-modal';
 import { PostPackageModal } from '@/components/post-package-modal';
 import { DeleteConfirmationModal } from '@/components/delete-confirmation-modal';
@@ -70,10 +70,12 @@ export default function ViewPackages() {
     return jobs.filter((j) => {
       if (!j?.id) return false;
       if (seen.has(j.id)) return false;
+      // Hide user's own jobs from the Find Jobs feed
+      if (j.pubkey && publicKey && j.pubkey === publicKey) return false;
       seen.add(j.id);
       return true;
     });
-  }, [jobs]);
+  }, [jobs, publicKey]);
 
   const loadPackages = useCallback(async () => {
     if (!isReady || !isLoggedIn) return;
@@ -165,10 +167,14 @@ export default function ViewPackages() {
 
   const handleApplyForJob = async (jobId: string) => {
     try {
-      
       await applyForJob(jobId);
       toast.success('Application submitted successfully!');
-      await loadJobs();
+      
+      // Add a small delay to ensure localStorage is updated
+      setTimeout(async () => {
+        await loadJobs();
+      }, 100);
+      
     } catch (error) {
       console.error('Failed to apply for job:', error);
       toast.error('Failed to apply for job. Please try again.');
@@ -238,8 +244,7 @@ export default function ViewPackages() {
   };
 
   const hasAppliedToJob = (job: any) => {
-    const hasApplied = job.assignedWorkers && job.assignedWorkers.includes(publicKey);
-    return hasApplied;
+    return job.applicants && job.applicants.includes(publicKey);
   };
 
   const formatCompensation = (compensation: string) => {
@@ -252,7 +257,12 @@ export default function ViewPackages() {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string, job?: any) => {
+    // If user has applied to this job, show green color
+    if (job && hasAppliedToJob(job)) {
+      return 'bg-green-400/10 text-green-400 border-green-400/30';
+    }
+    
     switch (status) {
       case 'available':
       case 'open':
@@ -270,7 +280,12 @@ export default function ViewPackages() {
     }
   };
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (status: string, job?: any) => {
+    // If user has applied to this job, show "Applied" instead of the default status
+    if (job && hasAppliedToJob(job)) {
+      return 'Applied';
+    }
+    
     switch (status) {
       case 'available':
         return 'Available';
@@ -449,7 +464,7 @@ export default function ViewPackages() {
                         Try Again
                       </Button>
                     </div>
-                  ) : uniquePackages.length === 0 ? (
+                  ) : uniquePackages.filter((p)=>!(p.pubkey && publicKey && p.pubkey === publicKey)).length === 0 ? (
                     <div className='text-center text-gray-400 py-8'>
                       <Package className='h-16 w-16 mx-auto mb-4 opacity-50' />
                       <p>No packages available</p>
@@ -458,7 +473,9 @@ export default function ViewPackages() {
                       </Button>
                     </div>
                   ) : (
-                    uniquePackages.map((pkg) => {
+                    uniquePackages
+                      .filter((pkg) => !(pkg.pubkey && publicKey && pkg.pubkey === publicKey))
+                      .map((pkg) => {
                       const ownPackage = isOwnPackage(pkg);
                       const isSelected = selectedPackage?.id === pkg.id;
                       
@@ -501,20 +518,9 @@ export default function ViewPackages() {
                                 {pkg.pickupLocation} → {pkg.destination}
                               </div>
                               {/* Desktop/tablet action buttons */}
-                              <div className='hidden md:flex gap-2'>
-                                {pkg.status === 'available' && !ownPackage && (
-                                  <Button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handlePickup(pkg.id);
-                                    }}
-                                    variant='outline'
-                                    size='sm'
-                                    className='bg-black/20 border-purple-400/20 hover:bg-purple-400/10 hover:border-purple-400/30 text-[#FAFAFA]'
-                                  >
-                                    <Truck className='h-4 w-4 mr-2' />
-                                    Pick Up
-                                  </Button>
+                              <div className='hidden md:flex gap-2 items-center'>
+                                {pkg.status === 'in_transit' && (
+                                  <Badge variant='outline' className='text-xs bg-blue-400/10 text-blue-400 border-blue-400/30 whitespace-nowrap'>Picked up</Badge>
                                 )}
                                 {ownPackage && pkg.status === 'available' && (
                                   <Button
@@ -522,9 +528,9 @@ export default function ViewPackages() {
                                       e.stopPropagation();
                                       handleDeleteClick({ id: pkg.id, title: pkg.title, type: 'package' });
                                     }}
-                                    variant='destructive'
+                                    variant='outline'
                                     size='sm'
-                                    className='bg-red-400/10 border-red-400/20 hover:bg-red-400/20 hover:border-red-400/30 text-red-400'
+                                    className='w-full bg-red-500/10 border-red-400/30 text-red-400 hover:bg-red-500/20 hover:border-red-400/40'
                                   >
                                     Delete
                                   </Button>
@@ -532,7 +538,10 @@ export default function ViewPackages() {
                               </div>
                             </div>
 
-                            {/* Mobile full-width Pick Up button */}
+                            {/* Full-width Pick Up button */}
+                            {pkg.status === 'in_transit' && (
+                              <Badge variant='outline' className='mt-3 w-full text-center bg-blue-400/10 text-blue-400 border-blue-400/30'>Picked up</Badge>
+                            )}
                             {pkg.status === 'available' && !ownPackage && (
                               <Button
                                 onClick={(e) => {
@@ -541,7 +550,7 @@ export default function ViewPackages() {
                                 }}
                                 variant='outline'
                                 size='sm'
-                                className='mt-3 md:hidden w-full bg-purple-500/20 border-purple-400/30 text-off-white hover:bg-purple-500/30 hover:border-purple-400'
+                                className='mt-3 w-full bg-purple-500/20 border-purple-400/30 text-off-white hover:bg-purple-500/30 hover:border-purple-400'
                               >
                                 <Truck className='h-4 w-4 mr-2' />
                                 Pick Up
@@ -565,16 +574,15 @@ export default function ViewPackages() {
                         Try Again
                       </Button>
                     </div>
-                  ) : jobs.length === 0 ? (
-                    <div className='text-center text-gray-400 py-8'>
+                  ) : jobs.filter((j)=>!(j.pubkey && publicKey && j.pubkey === publicKey)).length === 0 ? (
+                    <div className='flex flex-col items-center justify-center text-center text-gray-400 py-16'>
                       <Briefcase className='h-16 w-16 mx-auto mb-4 opacity-50' />
                       <p>No jobs available</p>
-                      <Button onClick={handleJobClick} className='mt-4 btn-purple'>
-                        Post First Job
-                      </Button>
                     </div>
                   ) : (
-                    uniqueJobs.map((job) => {
+                    uniqueJobs
+                      .filter((job) => !(job.pubkey && publicKey && job.pubkey === publicKey))
+                      .map((job) => {
                       const ownJob = isOwnJob(job);
                       const isSelected = selectedJob?.id === job.id;
                       
@@ -593,8 +601,8 @@ export default function ViewPackages() {
                               <CardTitle className='text-off-white text-lg line-clamp-2'>
                                 {job.title}
                               </CardTitle>
-                              <Badge className={getStatusColor(job.status)}>
-                                {getStatusText(job.status)}
+                              <Badge className={getStatusColor(job.status, job)}>
+                                {getStatusText(job.status, job)}
                               </Badge>
                             </div>
                           </CardHeader>
@@ -662,16 +670,16 @@ export default function ViewPackages() {
                                     handleDeleteClick({ id: job.id, title: job.title, type: 'job' });
                                   }}
                                   size='sm'
-                                  variant='destructive'
-                                  className='flex-1'
+                                  variant='outline'
+                                  className='flex-1 bg-red-500/10 border-red-400/30 text-red-400 hover:bg-red-500/20 hover:border-red-400/40'
                                 >
                                   Delete
                                 </Button>
                               )}
                               
-                              {job.status === 'in_progress' && (
-                                <Badge className='bg-blue-400/10 text-blue-400 border-blue-400/30'>
-                                  In Progress
+                              {(job.status === 'in_progress' || hasAppliedToJob(job)) && (
+                                <Badge className={getStatusColor(job.status, job)}>
+                                  {getStatusText(job.status, job)}
                                 </Badge>
                               )}
                             </div>
@@ -686,7 +694,9 @@ export default function ViewPackages() {
                     {/* Packages section */}
                     {packages.length > 0 && (
                       <div className='space-y-2'>
-                        {packages.map((pkg) => {
+                        {packages
+                          .filter((pkg) => !(pkg.pubkey && publicKey && pkg.pubkey === publicKey))
+                          .map((pkg) => {
                           const ownPackage = isOwnPackage(pkg);
                           const isSelected = selectedPackage?.id === pkg.id;
                           return (
@@ -721,19 +731,56 @@ export default function ViewPackages() {
                                   <div className='text-sm text-[#FAFAFA]/70'>
                                     {pkg.pickupLocation} → {pkg.destination}
                                   </div>
-                                  <div className='hidden md:flex gap-2'>
-                                    {pkg.status === 'available' && !ownPackage && (
-                                      <Button onClick={(e)=>{e.stopPropagation();handlePickup(pkg.id);}} variant='outline' size='sm' className='bg-black/20 border-purple-400/20 hover:bg-purple-400/10 hover:border-purple-400/30 text-[#FAFAFA]'>
-                                        <Truck className='h-4 w-4 mr-2' />
-                                        Pick Up
+                                  {/* Desktop/tablet action buttons */}
+                                  <div className='hidden md:flex gap-2 items-center'>
+                                    {pkg.status === 'in_transit' && (
+                                      <Badge variant='outline' className='text-xs bg-blue-400/10 text-blue-400 border-blue-400/30 whitespace-nowrap'>Picked up</Badge>
+                                    )}
+                                    {ownPackage && pkg.status === 'available' && (
+                                      <Button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteClick({ id: pkg.id, title: pkg.title, type: 'package' });
+                                        }}
+                                        variant='outline'
+                                        size='sm'
+                                        className='w-full bg-red-500/10 border-red-400/30 text-red-400 hover:bg-red-500/20 hover:border-red-400/40'
+                                      >
+                                        Delete
                                       </Button>
                                     )}
                                   </div>
                                 </div>
+
+                                {/* Full-width Pick Up button */}
+                                {pkg.status === 'in_transit' && (
+                                  <Badge variant='outline' className='mt-3 w-full bg-blue-400/10 text-blue-400 border-blue-400/30 whitespace-nowrap text-center'>Picked up</Badge>
+                                )}
                                 {pkg.status === 'available' && !ownPackage && (
-                                  <Button onClick={(e)=>{e.stopPropagation();handlePickup(pkg.id);}} variant='outline' size='sm' className='mt-3 md:hidden w-full bg-purple-500/20 border-purple-400/30 text-off-white hover:bg-purple-500/30 hover:border-purple-400'>
+                                  <Button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePickup(pkg.id);
+                                    }}
+                                    variant='outline'
+                                    size='sm'
+                                    className='mt-3 w-full bg-purple-500/20 border-purple-400/30 text-off-white hover:bg-purple-500/30 hover:border-purple-400'
+                                  >
                                     <Truck className='h-4 w-4 mr-2' />
                                     Pick Up
+                                  </Button>
+                                )}
+                                {ownPackage && pkg.status === 'available' && (
+                                  <Button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteClick({ id: pkg.id, title: pkg.title, type: 'package' });
+                                    }}
+                                    variant='outline'
+                                    size='sm'
+                                    className='mt-3 w-full bg-red-500/10 border-red-400/30 text-red-400 hover:bg-red-500/20 hover:border-red-400/40'
+                                  >
+                                    Delete
                                   </Button>
                                 )}
                               </CardContent>
@@ -746,8 +793,11 @@ export default function ViewPackages() {
                     {/* Jobs section */}
                     {jobs.length > 0 && (
                       <div className='space-y-2'>
-                        {jobs.map((job) => {
+                        {jobs
+                          .filter((job) => !(job.pubkey && publicKey && job.pubkey === publicKey))
+                          .map((job) => {
                           const isSelected = selectedJob?.id === job.id;
+                          const ownJob = isOwnJob(job);
                           return (
                             <Card
                               key={`all-job-${job.id}`}
@@ -761,8 +811,8 @@ export default function ViewPackages() {
                                   <CardTitle className='text-off-white text-lg line-clamp-2'>
                                     {job.title}
                                   </CardTitle>
-                                  <Badge className={getStatusColor(job.status)}>
-                                    {getStatusText(job.status)}
+                                  <Badge className={getStatusColor(job.status, job)}>
+                                    {getStatusText(job.status, job)}
                                   </Badge>
                                 </div>
                               </CardHeader>
@@ -785,6 +835,27 @@ export default function ViewPackages() {
                                     {job.peopleNeeded} person{job.peopleNeeded > 1 ? 's' : ''} needed
                                   </span>
                                 </div>
+                                {job.description && (
+                                  <p className='text-sm text-gray-400 line-clamp-2'>
+                                    {job.description}
+                                  </p>
+                                )}
+                                {!ownJob && job.status === 'open' && (
+                                  hasAppliedToJob(job) ? (
+                                    <Button size='sm' variant='outline' className='w-full bg-transparent border-green-400/50 text-green-400 cursor-not-allowed' disabled>
+                                      Applied
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      onClick={(e) => { e.stopPropagation(); handleApplyForJob(job.id); }}
+                                      size='sm'
+                                      variant='outline'
+                                      className='w-full bg-transparent border-purple-400/50 text-purple-400 hover:bg-purple-400/10 hover:border-purple-400'
+                                    >
+                                      Apply
+                                    </Button>
+                                  )
+                                )}
                               </CardContent>
                             </Card>
                           );

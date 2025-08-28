@@ -114,6 +114,24 @@ export async function applyForJob(jobId: string): Promise<string> {
   return originalApplyForJob(jobId);
 }
 
+export async function acceptJobApplicant(jobId: string, workerPubkey: string): Promise<string> {
+  if (typeof window === 'undefined') {
+    throw new Error('Cannot accept job applicant during SSR');
+  }
+  
+  const { acceptJobApplicant: originalAcceptJobApplicant } = await import('./nostr');
+  return originalAcceptJobApplicant(jobId, workerPubkey);
+}
+
+export async function rejectJobApplicant(jobId: string): Promise<string> {
+  if (typeof window === 'undefined') {
+    throw new Error('Cannot reject job applicant during SSR');
+  }
+  
+  const { rejectJobApplicant: originalRejectJobApplicant } = await import('./nostr');
+  return originalRejectJobApplicant(jobId);
+}
+
 export async function getEffectiveStatus(packageId: string): Promise<string> {
   if (typeof window === 'undefined') {
     return 'unknown';

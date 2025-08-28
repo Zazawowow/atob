@@ -38,24 +38,26 @@ export function DeleteConfirmationModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md w-full max-h-[85vh] bg-black/95 border border-red-500/20 rounded-2xl shadow-red-glow/10 backdrop-blur-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-3 text-off-white text-xl">
-            <div className="p-2 bg-gradient-to-r from-red-500 to-orange-500 rounded-full">
+      <DialogContent className="max-w-md w-full bg-black/95 border border-red-500/20 rounded-2xl shadow-red-glow/10 backdrop-blur-sm p-0 my-6 sm:my-12 max-h[calc(100dvh-6rem)] sm:max-h-[calc(100dvh-8rem)] overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-red-500/20 bg-black/95 sticky top-0 z-10">
+          <DialogTitle className="flex items-center text-off-white text-xl">
+            <div className="p-2 bg-gradient-to-r from-red-500 to-orange-500 rounded-md mr-3">
               <AlertTriangle className="h-5 w-5 text-off-white" />
             </div>
             {title}
           </DialogTitle>
-          <DialogDescription className="text-gray-300 mt-2">
-            {description}
-            {itemName && (
-              <span className="block mt-2 font-medium text-red-400">
-                "{itemName}"
-              </span>
-            )}
-          </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="flex gap-3 mt-6">
+
+        <div className="px-6 py-4 text-gray-300">
+          <DialogDescription>
+            {description}
+          </DialogDescription>
+          {itemName && (
+            <span className="block mt-3 font-medium text-red-400 text-center">"{itemName}"</span>
+          )}
+        </div>
+
+        <DialogFooter className="px-6 pb-6 pt-4 border-t border-red-500/20 bg-black/95 sticky bottom-0 z-10 flex gap-3">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}

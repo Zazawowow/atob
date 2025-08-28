@@ -25,6 +25,8 @@ import {
   deleteLocalJob,
   updateLocalJobStatus,
   applyForLocalJob,
+  acceptJobApplicant as acceptJobApplicantLocal,
+  rejectJobApplicant as rejectJobApplicantLocal,
   completeLocalJob,
 } from './local-job-service';
 import { getRelays } from './nostr-service';
@@ -183,7 +185,8 @@ function parseJobFromEvent(event: any): JobData | null {
       pubkey: event.pubkey,
       created_at: event.created_at,
       // Parse additional fields if present
-      assignedWorkers: content.assignedWorkers || [],
+      applicants: content.applicants || [],
+      acceptedWorker: content.acceptedWorker || undefined,
     };
   } catch (error) {
     console.error('Failed to parse job from event:', error);
@@ -315,6 +318,8 @@ export async function createPackage(
       // Try to publish the event with increased retries
       const results = await publishNostrEvent(event);
       console.log('Package published to relays:', results);
+      console.log('Package event:', event);
+      console.log('Package pubkey:', event.pubkey);
 
       // Count successful publishes
       const successCount = results.filter((r) => r === 'ok').length;
@@ -377,9 +382,9 @@ export async function getJobs(): Promise<JobData[]> {
       // Also get from localStorage
       const localJobs = getLocalJobs();
       console.log('getJobs - Found', localJobs.length, 'local jobs');
-      console.log('getJobs - Local jobs:', localJobs.map(job => ({ id: job.id, assignedWorkers: job.assignedWorkers })));
+      console.log('getJobs - Local jobs:', localJobs.map(job => ({ id: job.id, applicants: job.applicants, acceptedWorker: job.acceptedWorker })));
       console.log('getJobs - Found', jobs.length, 'jobs from Nostr');
-      console.log('getJobs - Nostr jobs:', jobs.map(job => ({ id: job.id, assignedWorkers: job.assignedWorkers })));
+      console.log('getJobs - Nostr jobs:', jobs.map(job => ({ id: job.id, applicants: job.applicants, acceptedWorker: job.acceptedWorker })));
 
       // Save Nostr jobs to localStorage if they don't exist locally
       const { saveExistingJobToLocal } = await import('@/lib/local-job-service');
@@ -401,7 +406,7 @@ export async function getJobs(): Promise<JobData[]> {
       uniqueJobs.sort((a, b) => b.created_at - a.created_at);
 
       console.log('getJobs - Returning', uniqueJobs.length, 'unique jobs');
-      console.log('getJobs - Final jobs:', uniqueJobs.map(job => ({ id: job.id, assignedWorkers: job.assignedWorkers })));
+      console.log('getJobs - Final jobs:', uniqueJobs.map(job => ({ id: job.id, applicants: job.applicants, acceptedWorker: job.acceptedWorker })));
       return uniqueJobs;
     } catch (nostrError) {
       console.error('Nostr error, falling back to localStorage only:', nostrError);
@@ -456,6 +461,87 @@ export async function applyForJob(jobId: string): Promise<void> {
   }
 }
 
+// Accept a job applicant
+export async function acceptJobApplicant(jobId: string, workerPubkey: string): Promise<void> {
+  try {
+    console.log('acceptJobApplicant called with jobId:', jobId, 'workerPubkey:', workerPubkey);
+    
+    // Update local storage
+    acceptJobApplicantLocal(jobId, workerPubkey);
+
+    // Try to update Nostr
+    try {
+      // Create an acceptance event
+      const tags = [
+        ['t', 'job-acceptance'],
+        ['e', jobId], // Reference to the job
+        ['p', workerPubkey], // Accepted worker
+        ['status', 'accepted'],
+        ['created_at', Math.floor(Date.now() / 1000).toString()]
+      ];
+
+      const event = await createSignedEvent(
+        EVENT_KINDS.JOB,
+        JSON.stringify({
+          jobId,
+          acceptedWorker: workerPubkey,
+          status: 'in_progress',
+          timestamp: Math.floor(Date.now() / 1000)
+        }),
+        tags
+      );
+
+      await publishNostrEvent(event);
+      console.log('Job acceptance published to Nostr');
+    } catch (nostrError) {
+      console.error('Nostr error, acceptance saved locally only:', nostrError);
+    }
+  } catch (error) {
+    console.error('Failed to accept job applicant:', error);
+    throw new Error('Failed to accept job applicant');
+  }
+}
+
+// Reject a job applicant
+export async function rejectJobApplicant(jobId: string): Promise<void> {
+  try {
+    console.log('rejectJobApplicant called with jobId:', jobId);
+    
+    // Update local storage
+    rejectJobApplicantLocal(jobId);
+
+    // Try to update Nostr
+    try {
+      // Create a rejection event
+      const tags = [
+        ['t', 'job-rejection'],
+        ['e', jobId], // Reference to the job
+        ['status', 'open'],
+        ['created_at', Math.floor(Date.now() / 1000).toString()]
+      ];
+
+      const event = await createSignedEvent(
+        EVENT_KINDS.JOB,
+        JSON.stringify({
+          jobId,
+          acceptedWorker: null,
+          status: 'open',
+          timestamp: Math.floor(Date.now() / 1000)
+        }),
+        tags
+      );
+
+      await publishNostrEvent(event);
+      console.log('Job rejection published to Nostr');
+    } catch (nostrError) {
+      console.error('Nostr error, rejection saved locally only:', nostrError);
+    }
+  } catch (error) {
+    console.error('Failed to reject job applicant:', error);
+    throw new Error('Failed to reject job applicant');
+  }
+}
+
 // Get jobs posted by the current user
 export async function getMyJobs(): Promise<JobData[]> {
   try {
@@ -488,26 +574,18 @@ export async function deleteJob(jobId: string): Promise<void> {
 
     // Then try to update Nostr
     try {
-      // Create a deletion event for the job
-      const tags = [
-        ['t', 'job-deletion'],
-        ['e', jobId], // Reference to the job being deleted
-        ['status', 'deleted'],
-        ['created_at', Math.floor(Date.now() / 1000).toString()]
-      ];
-
-      const event = await createSignedEvent(
-        EVENT_KINDS.JOB,
-        JSON.stringify({
-          jobId,
-          action: 'delete',
-          timestamp: Math.floor(Date.now() / 1000)
-        }),
-        tags
-      );
-
-      await publishNostrEvent(event);
-      console.log('Job deletion published to Nostr');
+      // If this is a Nostr event id (not a local placeholder), publish a proper deletion (kind 5)
+      if (!jobId.startsWith('local-job-')) {
+        const event = await createSignedEvent(
+          5, // kind 5 deletion
+          '',
+          [['e', jobId]]
+        );
+        await publishNostrEvent(event);
+        console.log('Job deletion (kind 5) published to Nostr');
+      } else {
+        console.log('Local-only job id, skipped relay deletion');
+      }
     } catch (nostrError) {
       console.error('Nostr error, job deleted locally only:', nostrError);
     }
@@ -605,6 +683,8 @@ export async function createJob(
       // Try to publish the event with increased retries
       const results = await publishNostrEvent(event);
       console.log('Job published to relays:', results);
+      console.log('Job event:', event);
+      console.log('Job pubkey:', event.pubkey);
 
       // Count successful publishes
       const successCount = results.filter((r) => r === 'ok').length;
@@ -1850,5 +1930,63 @@ export async function publishEvent(event: Event): Promise<string[]> {
   } catch (error) {
     console.error('Failed to publish event:', error);
     return ['failed: ' + (error instanceof Error ? error.message : String(error))];
+  }
+}
+
+// Admin utility: purge all job and package events from the relay and clear local caches
+export async function purgeAllPostsRelay(): Promise<{deleted: number; errors: number}> {
+  try {
+    // List all job and package events on the relay
+    const events = await listEvents([
+      { kinds: [EVENT_KINDS.JOB], limit: 1000 },
+      { kinds: [EVENT_KINDS.PACKAGE], limit: 1000 },
+    ], 10000);
+
+    let deleted = 0;
+    let errors = 0;
+
+    // Issue deletion (kind 5) for each event id
+    for (const ev of events) {
+      try {
+        const deletion = await createSignedEvent(
+          5, // kind 5 deletion
+          '',
+          [['e', ev.id], ['reason', 'admin purge']]
+        );
+        const results = await publishNostrEvent(deletion);
+        const ok = results.some((r) => r === 'ok');
+        if (ok) deleted += 1; else errors += 1;
+      } catch (e) {
+        console.error('Failed to delete event', ev.id, e);
+        errors += 1;
+      }
+    }
+
+    // Clear local caches so UI starts fresh
+    try {
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        const keys = [
+          'shared_jobs_v1',
+          'my_jobs_v1',
+          'shared_packages_v1',
+          'my_deliveries_v2',
+          'jobs',
+          'packages',
+          'myDeliveries',
+          'jobBackup',
+          'packageBackup',
+        ];
+        for (const key of keys) {
+          if (localStorage.getItem(key)) localStorage.removeItem(key);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed clearing local caches after purge:', e);
+    }
+
+    return { deleted, errors };
+  } catch (error) {
+    console.error('purgeAllPostsRelay failed:', error);
+    return { deleted: 0, errors: 1 };
   }
 }

@@ -8,6 +8,7 @@ import { Navbar } from '@/components/navbar';
 import { UIAnimationProvider } from '@/components/ui-animation-context';
 import { ConditionalNavigation } from '@/components/conditional-navigation';
 import { PWAInstallModal } from '@/components/pwa-install-modal';
+import '@/lib/error-handler'; // Install global error handlers
 
 const inter = Inter({ subsets: ['latin'] });
 

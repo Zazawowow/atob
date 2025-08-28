@@ -43,7 +43,8 @@ export interface JobData {
   requirements?: string;
   duration?: string;
   contactInfo?: string;
-  assignedWorkers?: string[];
+  applicants?: string[]; // Array of pubkeys who applied
+  acceptedWorker?: string; // Single accepted worker pubkey
 }
 
 // Profile data interface

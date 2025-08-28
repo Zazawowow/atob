@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { MapPin } from 'lucide-react';
 import { type PackageData, type JobData } from '@/lib/nostr-types';
@@ -40,7 +40,11 @@ function RecenterMap({ lat, lng, zoom }: { lat: number; lng: number; zoom: numbe
   const map = useMap();
   useEffect(() => {
     if (map && typeof map.setView === 'function' && typeof map.getZoom === 'function') {
-      map.setView([lat, lng], zoom ?? map.getZoom());
+      // Use setView with animation options for smooth centering
+      map.setView([lat, lng], zoom ?? map.getZoom(), {
+        animate: true,
+        duration: 0.25 // 250ms animation duration
+      });
     }
   }, [lat, lng, zoom, map]);
   return null;
@@ -184,6 +188,9 @@ export default function ActivityMap({
   const [isLoading, setIsLoading] = useState(true);
   const [geocodingErrors, setGeocodingErrors] = useState<string[]>([]);
   const [lastAddressById, setLastAddressById] = useState<Record<string, string>>({});
+  
+  // Refs for markers to enable programmatic popup control
+  const markerRefs = useRef<Record<string, any>>({});
 
   // Create icons safely
   const deliveryIcon = createIcon('#06B6D4', 'delivery-marker');
@@ -301,10 +308,34 @@ export default function ActivityMap({
       setCenter(coordinates[`package-${selectedPackage.id}`]);
       setZoom(13);
     } else {
-      // No selection: zoom out to show broader area
+      // No selection: try to center on all items or fall back to user location
+      const allCoords = Object.values(coordinates);
+      if (allCoords.length > 0) {
+        // Calculate center of all items
+        const avgLat = allCoords.reduce((sum, coord) => sum + coord[0], 0) / allCoords.length;
+        const avgLng = allCoords.reduce((sum, coord) => sum + coord[1], 0) / allCoords.length;
+        setCenter([avgLat, avgLng]);
+      }
       setZoom(3);
     }
   }, [selectedDelivery, selectedJob, selectedPackage, coordinates]);
+
+  // Auto-open popup when item is selected
+  useEffect(() => {
+    if (selectedDelivery && markerRefs.current[`delivery-${selectedDelivery.id}`]) {
+      setTimeout(() => {
+        markerRefs.current[`delivery-${selectedDelivery.id}`]?.openPopup();
+      }, 300); // Increased delay to ensure map has recentered
+    } else if (selectedJob && markerRefs.current[`job-${selectedJob.id}`]) {
+      setTimeout(() => {
+        markerRefs.current[`job-${selectedJob.id}`]?.openPopup();
+      }, 300);
+    } else if (selectedPackage && markerRefs.current[`package-${selectedPackage.id}`]) {
+      setTimeout(() => {
+        markerRefs.current[`package-${selectedPackage.id}`]?.openPopup();
+      }, 300);
+    }
+  }, [selectedDelivery, selectedJob, selectedPackage]);
 
   const allItems = [...deliveries, ...jobs, ...packages];
 
@@ -346,6 +377,9 @@ export default function ActivityMap({
                     key={`delivery-${delivery.id}`}
                     position={coords}
                     icon={deliveryIcon}
+                    ref={(ref) => {
+                      if (ref) markerRefs.current[`delivery-${delivery.id}`] = ref;
+                    }}
                     eventHandlers={{
                       click: () => {
                         if (onSelectDelivery) onSelectDelivery(delivery);
@@ -380,6 +414,9 @@ export default function ActivityMap({
                     key={`job-${job.id}`}
                     position={coords}
                     icon={jobIcon}
+                    ref={(ref) => {
+                      if (ref) markerRefs.current[`job-${job.id}`] = ref;
+                    }}
                     eventHandlers={{
                       click: () => {
                         if (onSelectJob) onSelectJob(job);
@@ -414,6 +451,9 @@ export default function ActivityMap({
                     key={`package-${pkg.id}`}
                     position={coords}
                     icon={packageIcon}
+                    ref={(ref) => {
+                      if (ref) markerRefs.current[`package-${pkg.id}`] = ref;
+                    }}
                     eventHandlers={{
                       click: () => {
                         if (onSelectPackage) onSelectPackage(pkg);

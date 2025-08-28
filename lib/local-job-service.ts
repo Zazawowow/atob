@@ -2,8 +2,9 @@ import { getUserPubkey } from './nostr';
 import type { JobData } from './nostr-types';
 
 // Local storage keys
-const JOBS_STORAGE_KEY = 'shared_jobs_v1';
-const MY_JOBS_STORAGE_KEY = 'my_jobs_v1';
+const JOBS_STORAGE_KEY = 'shared_jobs_v2';
+// Remove separate per-user store to avoid duplication and divergence
+const MY_JOBS_STORAGE_KEY = 'my_jobs_v2';
 
 // Add backup storage keys
 const JOBS_BACKUP_KEY = 'shared_jobs_backup_v1';
@@ -51,11 +52,7 @@ function restoreFromBackupIfNeeded(): void {
     }
     
     if (!myJobs) {
-      const backup = localStorage.getItem(MY_JOBS_BACKUP_KEY);
-      if (backup) {
-        localStorage.setItem(MY_JOBS_STORAGE_KEY, backup);
-        console.log('Restored my jobs from backup');
-      }
+      // Do not auto-restore a separate my jobs list to avoid divergence
     }
   } catch (error) {
     console.error('Failed to restore from backup:', error);
@@ -92,10 +89,10 @@ export function getMyLocalJobs(): JobData[] {
       return [];
     }
     
-    const myJobsJson = localStorage.getItem(MY_JOBS_STORAGE_KEY);
-    if (!myJobsJson) return [];
-
-    return JSON.parse(myJobsJson) as JobData[];
+    // Derive "my jobs" from the shared jobs store to keep a single source of truth
+    const all = getLocalJobs();
+    const pubkey = getUserPubkey();
+    return all.filter(j => j.pubkey === pubkey);
   } catch (error) {
     console.error('Failed to get my local jobs:', error);
     return [];
@@ -129,10 +126,7 @@ export function saveLocalJob(
     jobs.push(newJob);
     localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(jobs));
 
-    // Also save to my jobs
-    const myJobs = getMyLocalJobs();
-    myJobs.push(newJob);
-    localStorage.setItem(MY_JOBS_STORAGE_KEY, JSON.stringify(myJobs));
+    // No separate my jobs write; derive from shared store
 
     backupJobs();
     return id;
@@ -151,15 +145,12 @@ export function deleteLocalJob(jobId: string): void {
     }
     
     const jobs = getLocalJobs();
-    const myJobs = getMyLocalJobs();
 
     // Remove from all jobs
     const updatedJobs = jobs.filter((job) => job.id !== jobId);
     localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(updatedJobs));
 
-    // Remove from my jobs
-    const updatedMyJobs = myJobs.filter((job) => job.id !== jobId);
-    localStorage.setItem(MY_JOBS_STORAGE_KEY, JSON.stringify(updatedMyJobs));
+    // No separate my jobs store to update
 
     backupJobs();
   } catch (error) {
@@ -191,7 +182,6 @@ export function updateLocalJobStatus(
     }
     
     const jobs = getLocalJobs();
-    const myJobs = getMyLocalJobs();
 
     const updateJob = (jobList: JobData[]) => {
       return jobList.map((job) => {
@@ -203,10 +193,9 @@ export function updateLocalJobStatus(
     };
 
     const updatedJobs = updateJob(jobs);
-    const updatedMyJobs = updateJob(myJobs);
 
     localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(updatedJobs));
-    localStorage.setItem(MY_JOBS_STORAGE_KEY, JSON.stringify(updatedMyJobs));
+    // No separate my jobs store to update
 
     backupJobs();
   } catch (error) {
@@ -214,7 +203,7 @@ export function updateLocalJobStatus(
   }
 }
 
-// Apply for a job (add worker to assigned workers)
+// Apply for a job (add worker to applicants)
 export function applyForLocalJob(jobId: string, workerPubkey: string): void {
   try {
     // Only run in browser environment
@@ -225,23 +214,22 @@ export function applyForLocalJob(jobId: string, workerPubkey: string): void {
     console.log('applyForLocalJob called with jobId:', jobId, 'workerPubkey:', workerPubkey);
     
     const jobs = getLocalJobs();
-    const myJobs = getMyLocalJobs();
 
     const updateJob = (jobList: JobData[]) => {
       return jobList.map((job) => {
         if (job.id === jobId) {
-          const assignedWorkers = job.assignedWorkers || [];
-          console.log('Job', jobId, 'current assignedWorkers:', assignedWorkers);
-          if (!assignedWorkers.includes(workerPubkey)) {
+          const applicants = job.applicants || [];
+          console.log('Job', jobId, 'current applicants:', applicants);
+          if (!applicants.includes(workerPubkey)) {
             const updatedJob = {
               ...job,
-              assignedWorkers: [...assignedWorkers, workerPubkey],
-              status: assignedWorkers.length === 0 ? 'in_progress' : job.status,
+              applicants: [...applicants, workerPubkey],
+              // Don't change status automatically - job poster will accept applicant
             };
-            console.log('Updated job with new assignedWorkers:', updatedJob.assignedWorkers);
+            console.log('Updated job with new applicants:', updatedJob.applicants);
             return updatedJob;
           } else {
-            console.log('Worker already assigned to job', jobId);
+            console.log('Worker already applied to job', jobId);
           }
         }
         return job;
@@ -249,15 +237,88 @@ export function applyForLocalJob(jobId: string, workerPubkey: string): void {
     };
 
     const updatedJobs = updateJob(jobs);
-    const updatedMyJobs = updateJob(myJobs);
 
     localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(updatedJobs));
-    localStorage.setItem(MY_JOBS_STORAGE_KEY, JSON.stringify(updatedMyJobs));
+    // No separate my jobs store to update
 
     console.log('Job application saved to localStorage');
     backupJobs();
   } catch (error) {
     console.error('Failed to apply for local job:', error);
+  }
+}
+
+// Accept a job applicant (set acceptedWorker and update status)
+export function acceptJobApplicant(jobId: string, workerPubkey: string): void {
+  try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
+    
+    console.log('acceptJobApplicant called with jobId:', jobId, 'workerPubkey:', workerPubkey);
+    
+    const jobs = getLocalJobs();
+
+    const updateJob = (jobList: JobData[]) => {
+      return jobList.map((job) => {
+        if (job.id === jobId) {
+          const updatedJob = {
+            ...job,
+            acceptedWorker: workerPubkey,
+            status: 'in_progress' as const,
+          };
+          console.log('Accepted worker for job:', updatedJob);
+          return updatedJob;
+        }
+        return job;
+      });
+    };
+
+    const updatedJobs = updateJob(jobs);
+
+    localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(updatedJobs));
+    console.log('Job applicant acceptance saved to localStorage');
+    backupJobs();
+  } catch (error) {
+    console.error('Failed to accept job applicant:', error);
+  }
+}
+
+// Reject a job applicant (remove acceptedWorker and revert status)
+export function rejectJobApplicant(jobId: string): void {
+  try {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
+    
+    console.log('rejectJobApplicant called with jobId:', jobId);
+    
+    const jobs = getLocalJobs();
+
+    const updateJob = (jobList: JobData[]) => {
+      return jobList.map((job) => {
+        if (job.id === jobId) {
+          const updatedJob = {
+            ...job,
+            acceptedWorker: undefined,
+            status: 'open' as const,
+          };
+          console.log('Rejected worker for job:', updatedJob);
+          return updatedJob;
+        }
+        return job;
+      });
+    };
+
+    const updatedJobs = updateJob(jobs);
+
+    localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(updatedJobs));
+    console.log('Job applicant rejection saved to localStorage');
+    backupJobs();
+  } catch (error) {
+    console.error('Failed to reject job applicant:', error);
   }
 }
 
@@ -279,7 +340,6 @@ export function saveExistingJobToLocal(job: JobData): void {
     }
     
     const jobs = getLocalJobs();
-    const myJobs = getMyLocalJobs();
 
     // Check if job already exists
     const existingJobIndex = jobs.findIndex(j => j.id === job.id);
@@ -291,14 +351,7 @@ export function saveExistingJobToLocal(job: JobData): void {
     }
 
     // Check if it's the user's job and add to my jobs
-    if (job.pubkey === getUserPubkey()) {
-      const existingMyJobIndex = myJobs.findIndex(j => j.id === job.id);
-      if (existingMyJobIndex === -1) {
-        myJobs.push(job);
-        localStorage.setItem(MY_JOBS_STORAGE_KEY, JSON.stringify(myJobs));
-        console.log('Saved existing job to my jobs:', job.id);
-      }
-    }
+    // Do not maintain a separate my jobs list; derive when needed
 
     backupJobs();
   } catch (error) {

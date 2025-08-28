@@ -22,9 +22,10 @@ import { AddressInput } from '@/components/address-input';
 interface PostJobModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onJobCreated?: () => void;
 }
 
-export function PostJobModal({ open, onOpenChange }: PostJobModalProps) {
+export function PostJobModal({ open, onOpenChange, onJobCreated }: PostJobModalProps) {
   const { isLoggedIn } = useNostr();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -121,6 +122,11 @@ export function PostJobModal({ open, onOpenChange }: PostJobModalProps) {
         duration: '',
         contactInfo: '',
       });
+
+      // Trigger refresh callback if provided
+      if (onJobCreated) {
+        onJobCreated();
+      }
 
       // Close modal
       onOpenChange(false);
